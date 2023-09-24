@@ -9,7 +9,7 @@ This class is a template class for a thread that reads in audio from PyAudio.
 
 
 class AudioThread(threading.Thread):
-    def __init__(self, name, starting_chunk_size, process_func, args_before=None, args_after=None):
+    def __init__(self, name, starting_chunk_size, process_func, args_before=(), args_after=()):
         """
         Initializes an AudioThread.
         Parameters:
@@ -29,9 +29,13 @@ class AudioThread(threading.Thread):
         self.p = None  # PyAudio vals
         self.stream = None
         self.FORMAT = pyaudio.paFloat32
-        self.CHANNELS = 2
+        self.CHANNELS = 1
         self.RATE = 44100
-        self.CHUNK = starting_chunk_size * 2
+        self.starting_chunk_size = starting_chunk_size
+        self.CHUNK = self.starting_chunk_size * self.CHANNELS
+
+        self.on_threshold = 0.3
+        self.input_on = False
 
         self.stop_request = False
 
@@ -82,6 +86,21 @@ class AudioThread(threading.Thread):
         self.stream.close()
         self.p.terminate()
 
+    def audio_on(self, audio):
+        """
+        Takes an audio input array and sets an instance variable saying whether the input is playing or not.
+        Parameters: audio: the audio input
+        Returns: nothing
+        """
+        val_sum = 0.0
+        for val in audio:
+            val_sum += val * val
+        val_sum /= len(audio)
+        if val_sum > self.on_threshold:
+            self.input_on = True
+        else:
+            self.input_on = False
+
     def callback(self, in_data, frame_count, time_info, flag):
         """
         This function is called whenever PyAudio recieves new audio. It calls process_func to process the sound data
@@ -91,5 +110,10 @@ class AudioThread(threading.Thread):
         Returns: nothing of importance to the user
         """
         numpy_array = np.frombuffer(in_data, dtype=np.float32)
-        self.data = self.process_func(*self.args_before, numpy_array, *self.args_after)
+        data = np.zeros(self.starting_chunk_size)
+        for i in range(0, self.CHANNELS):
+            data += numpy_array[i:self.CHUNK:self.CHANNELS]
+        data /= float(self.CHANNELS)
+        self.audio_on(data)
+        self.data = self.process_func(*self.args_before, data, *self.args_after)
         return None, pyaudio.paContinue
