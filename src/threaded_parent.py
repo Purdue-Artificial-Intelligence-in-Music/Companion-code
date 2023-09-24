@@ -10,9 +10,9 @@ def process_func(audio):
 
 
 def main():
+    AThread = AudioThread(name="SPA_Thread", starting_chunk_size=STARTING_CHUNK, process_func=process_func)
+    print("All threads init'ed")
     try:
-        AThread = AudioThread(name="SPA_Thread", starting_chunk_size=STARTING_CHUNK, process_func=process_func)
-        print("All threads init'ed")
         AThread.start()
         print("============== AThread started")
         while True:
