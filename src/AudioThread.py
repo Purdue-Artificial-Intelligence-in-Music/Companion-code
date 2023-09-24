@@ -7,6 +7,7 @@ import time
 This class is a template class for a thread that reads in audio from PyAudio.
 '''
 
+
 class AudioThread(threading.Thread):
     def __init__(self, name, starting_chunk_size, process_func, args_before, args_after):
         """
@@ -20,12 +21,12 @@ class AudioThread(threading.Thread):
         Returns: nothing
         """
         super(AudioThread, self).__init__()
-        self.name = name    # General imports
+        self.name = name  # General imports
         self.process_func = process_func
         self.args_before = args_before
         self.args_after = args_after
-        
-        self.p = None    # PyAudio vals
+
+        self.p = None  # PyAudio vals
         self.stream = None
         self.FORMAT = pyaudio.paFloat32
         self.CHANNELS = 2
@@ -33,25 +34,25 @@ class AudioThread(threading.Thread):
         self.CHUNK = starting_chunk_size * 2
 
         self.stop_request = False
-        
+
         self.data = None
-        
-    def set_args_before(a):
+
+    def set_args_before(self, a):
         """
         Changes the arguments before the sound array when process_func is called.
         Parameters: a: the arguments
         Returns: nothing
         """
         self.args_before = a
-    
-    def set_args_after(a):
+
+    def set_args_after(self, a):
         """
         Changes the arguments after the sound array when process_func is called.
         Parameters: a: the arguments
         Returns: nothing
         """
         self.args_after = a
-    
+
     def run(self):
         """
         When the thread is started, this function is called which opens the PyAudio object
@@ -70,7 +71,7 @@ class AudioThread(threading.Thread):
         while not self.stop_request:
             time.sleep(1.0)
         self.stop()
-            
+
     def stop(self):
         """
         When the thread is stopped, this function is called which closes the PyAudio object
