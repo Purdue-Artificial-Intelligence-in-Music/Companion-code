@@ -35,7 +35,7 @@ class AudioThread(threading.Thread):
         self.CHUNK = self.starting_chunk_size * self.CHANNELS
         
 
-        self.on_threshold = 0.0001
+        self.on_threshold = 1
         self.input_on = False
 
         self.stop_request = False
@@ -99,6 +99,7 @@ class AudioThread(threading.Thread):
         Parameters: audio: the audio input
         Returns: nothing
         """
+        audio = audio.astype(np.float64)
         val_sum = 0.0
         for val in audio:
             val_sum += val * val
@@ -116,15 +117,11 @@ class AudioThread(threading.Thread):
         Parameters: none user-exposed
         Returns: nothing of importance to the user
         """
-        numpy_array = np.frombuffer(in_data, dtype=np.float32)
-        #print("First 10 elements of audio data:", numpy_array[:10])
-        data = np.zeros(self.starting_chunk_size)
-        for i in range(0, self.CHANNELS):
-            data += numpy_array[i:self.CHUNK:self.CHANNELS]
-        data /= float(self.CHANNELS)
-        self.audio_on(data)
-        self.data = self.process_func(self,data)
-        
+        numpy_array = np.frombuffer(in_data, dtype=np.int16)
+        data = np.zeros(np.shape(numpy_array))
+        data = np.copy(numpy_array)
+        self.data = self.process_func(self,numpy_array)
+        self.audio_on(numpy_array)
         # # input to buffer
         # if self.buffer_index + len(data) <= self.buffer_size:
         #     self.audio_buffer[self.buffer_index:self.buffer_index+len(data)] = data
@@ -153,4 +150,4 @@ class AudioThread(threading.Thread):
         
 
         #return None, pyaudio.paContinue
-        return data, pyaudio.paContinue
+        return self.data, pyaudio.paContinue
