@@ -1,22 +1,23 @@
-from AudioThread import AudioThread
+from AudioThread1 import AudioThread
 import time
 import numpy as np
 
 STARTING_CHUNK = 1024
 
-def process_func(audio_thr, data):
+def process_func(self, data2):
+    data = np.copy(data2).astype(np.float64, casting='safe')
     # Does nothing
         # input to buffer
-    if audio_thr.buffer_index + len(data) <= audio_thr.buffer_size:
-        audio_thr.audio_buffer[audio_thr.buffer_index:audio_thr.buffer_index+len(data)] = data
-        audio_thr.buffer_index += len(data)
-    else:                                      
+    if self.buffer_index + len(data) <= self.buffer_size:
+        self.audio_buffer[self.buffer_index:self.buffer_index + len(data)] = data
+        self.buffer_index += len(data)
+    else:
         # Overflow: Reset or handle as per your requirement
-        audio_thr.buffer_index = 0
+        self.buffer_index = 0
 
-    if audio_thr.buffer_index >= 2 * audio_thr.starting_chunk_size:
-        audio_thr.audio_buffer[:audio_thr.buffer_index-audio_thr.starting_chunk_size] = audio_thr.audio_buffer[audio_thr.starting_chunk_size:]
-        audio_thr.buffer_index -= audio_thr.starting_chunk_size
+    if self.buffer_index >= 2 * self.starting_chunk_size:
+        self.audio_buffer[:self.buffer_index - self.starting_chunk_size] = self.audio_buffer[self.starting_chunk_size:]
+        self.buffer_index -= self.starting_chunk_size
 
     # use RMS to match the input amplitude and output amplitude
     if data is not None:
@@ -25,13 +26,10 @@ def process_func(audio_thr, data):
 
         scaling_factor = input_amplitude / (output_amplitude + 1e-6)
         data *= scaling_factor
-        data_bytes = data.tobytes()
     else:
         data_bytes = b''
+    return data.astype(np.int16)
 
-    
-    return data_bytes
-    
 
 def main():
     AThread = AudioThread(name="SPA_Thread", starting_chunk_size=STARTING_CHUNK, process_func=process_func)
