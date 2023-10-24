@@ -56,7 +56,6 @@ class AudioThreadWithBuffer(threading.Thread):
         self.last_time_updated = time.time()
 
         # self.data = None
-        self.data = np.zeros(self.starting_chunk_size)
 
     def set_args_before(self, a):
         """
@@ -151,4 +150,5 @@ class AudioThreadWithBuffer(threading.Thread):
         else:
             self.wav_index = 0
             self.data = self.process_func(self, numpy_array, self.wav_data[self.wav_index:self.wav_index + self.CHUNK])
+
         return self.data, pyaudio.paContinue
