@@ -2,13 +2,15 @@ import pyaudio
 import numpy as np
 import threading
 import time
+import wavio
 
 '''
 This class is a template class for a thread that reads in audio from PyAudio.
 '''
 
-class AudioThread(threading.Thread):
-    def __init__(self, name, starting_chunk_size, process_func, args_before=(), args_after=()):
+
+class AudioThreadWithBuffer(threading.Thread):
+    def __init__(self, name, starting_chunk_size, process_func, wav_file, args_before=(), args_after=()):
         """
         Initializes an AudioThread.
         Parameters:
@@ -19,7 +21,7 @@ class AudioThread(threading.Thread):
             args_after: a tuple of arguments for process_func to be put after the sound array
         Returns: nothing
         """
-        super(AudioThread, self).__init__()
+        super(AudioThreadWithBuffer, self).__init__()
         self.name = name  # General imports
         self.process_func = process_func
         self.args_before = args_before
@@ -28,23 +30,32 @@ class AudioThread(threading.Thread):
         self.p = None  # PyAudio vals
         self.stream = None
         self.FORMAT = pyaudio.paInt16
-        self.CHANNELS = 2
-        self.RATE = 48000
+        self.CHANNELS = 1
+        self.RATE = 88200
         self.starting_chunk_size = starting_chunk_size
         self.CHUNK = self.starting_chunk_size * self.CHANNELS
-        
 
-        self.on_threshold = 1
+        self.on_threshold = 0.5
         self.input_on = False
 
         self.stop_request = False
-        
-        #set buffer
-        self.buffer_size=2048
-        self.audio_buffer=np.zeros(self.buffer_size,dtype=np.float32) #set a zero array 
-        self.buffer_index=0 
-        #
-        #self.data = None
+
+        # input wav
+        self.wav_data_obj = wavio.read(wav_file)
+        self.wav_data = self.wav_data_obj.data[:, 0]  # Taking one channel, assuming stereo. Adjust if needed.
+        self.wav_index = 0
+
+        # set buffer
+        self.buffer_elements = 10
+        self.buffer_size = self.starting_chunk_size*self.buffer_elements*2
+        self.audio_buffer = np.zeros(self.buffer_size, dtype=np.float32)  # set a zero array
+        self.buffer_index = 0
+
+        # hysteresis for gain control
+        self.last_gain = 0.0
+        self.last_time_updated = time.time()
+
+        # self.data = None
         self.data = np.zeros(self.starting_chunk_size)
 
     def set_args_before(self, a):
@@ -75,7 +86,7 @@ class AudioThread(threading.Thread):
                                   channels=self.CHANNELS,
                                   rate=self.RATE,
                                   input=True,
-                                  output=True, #output audio
+                                  output=True,  # output audio
                                   stream_callback=self.callback,
                                   frames_per_buffer=self.CHUNK)
         while not self.stop_request:
@@ -108,6 +119,9 @@ class AudioThread(threading.Thread):
         else:
             self.input_on = False
 
+    def get_last_samples(self, n):
+        return self.audio_buffer[self.buffer_index - n:self.buffer_index]
+
     def callback(self, in_data, frame_count, time_info, flag):
         """
         This function is called whenever PyAudio recieves new audio. It calls process_func to process the sound data
@@ -117,36 +131,24 @@ class AudioThread(threading.Thread):
         Returns: nothing of importance to the user
         """
         numpy_array = np.frombuffer(in_data, dtype=np.int16)
-        data = np.zeros(np.shape(numpy_array))
-        data = np.copy(numpy_array)
-        self.data = self.process_func(self,numpy_array)
         self.audio_on(numpy_array)
-        # # input to buffer
-        # if self.buffer_index + len(data) <= self.buffer_size:
-        #     self.audio_buffer[self.buffer_index:self.buffer_index+len(data)] = data
-        #     self.buffer_index += len(data)
-        # else:
-        #     # Overflow: Reset or handle as per your requirement
-        #     self.buffer_index = 0
-        
-        # if self.buffer_index >= 2 * self.starting_chunk_size:
-        #     self.audio_buffer[:self.buffer_index-self.starting_chunk_size] = self.audio_buffer[self.starting_chunk_size:]
-        #     self.buffer_index -= self.starting_chunk_size
-    
-        # # use RMS to match the input amplitude and output amplitude
-        # input_amplitude = np.sqrt(np.mean(numpy_array ** 2))
-        # if self.data is not None:
-        #     output_amplitude = np.sqrt(np.mean(self.data ** 2))
-        # else:
-        #     output_amplitude = 0.0
-        
-        # scaling_factor = input_amplitude / (output_amplitude + 1e-6)
-        # if self.data is not None:
-        #     self.data *= scaling_factor
-        #     data_bytes = self.data.tobytes()
-        # else:
-        #     data_bytes = b''
-        
 
-        #return None, pyaudio.paContinue
+        data = numpy_array.astype(np.float64, casting='safe')
+
+        # input to buffer
+        if not self.buffer_index + len(data) <= self.buffer_size:
+            # Overflow: Reset or handle as per your requirement
+            # self.buffer_index = 0
+            self.audio_buffer[:self.buffer_size - len(data)] = self.audio_buffer[len(data):self.buffer_size]
+            self.buffer_index -= len(data)
+
+        self.audio_buffer[self.buffer_index:self.buffer_index + len(data)] = data
+        self.buffer_index += len(data)
+
+        if self.wav_index + self.CHUNK <= len(self.wav_data):
+            self.data = self.process_func(self, numpy_array, self.wav_data[self.wav_index:self.wav_index + self.CHUNK])
+            self.wav_index += self.CHUNK
+        else:
+            self.wav_index = 0
+            self.data = self.process_func(self, numpy_array, self.wav_data[self.wav_index:self.wav_index + self.CHUNK])
         return self.data, pyaudio.paContinue
