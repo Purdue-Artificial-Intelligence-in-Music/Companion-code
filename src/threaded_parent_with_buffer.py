@@ -8,6 +8,8 @@ STARTING_CHUNK = 1024
 def process_func(self, data, wav_data,
                  smoothing = 2):
     wav_data = wav_data.astype(np.float64)
+    #print(data[0:10])
+    #print((data * 2)[0:10])
 
     #if self.buffer_index >= 2 * self.starting_chunk_size:
     #    self.audio_buffer[:self.buffer_index - self.starting_chunk_size] = self.audio_buffer[self.starting_chunk_size:]
@@ -15,10 +17,13 @@ def process_func(self, data, wav_data,
 
     # use RMS to match the input amplitude and output amplitude
     if data is not None:
-        input_amplitude = max(np.sqrt(np.mean(data ** 2)), 1)
-        if input_amplitude < 5:
-            input_amplitude = 0
+        #input_amplitude = max(np.sqrt(np.abs(np.mean(data ** 2))), 1)
+        input_amplitude = np.sqrt(np.abs(np.mean(np.square(data))))
+        #if input_amplitude < 5:
+        #    input_amplitude = 0
+        #print(input_amplitude)
         output_amplitude = max(np.sqrt(np.mean(wav_data ** 2)), 1)
+        #print(output_amplitude)
 
         scaling_factor = min(max(input_amplitude / (output_amplitude + 1e-6), 0.0001), 0.003)
 
@@ -31,6 +36,7 @@ def process_func(self, data, wav_data,
             average_factor = max(0, min(time_since_update, 1/smoothing))*smoothing
             out_gain = average_factor*scaling_factor + (1 - average_factor)*self.last_gain
             self.last_gain = out_gain
+        print(self.last_gain)
         wav_data *= self.last_gain
     else:
         data_bytes = b''

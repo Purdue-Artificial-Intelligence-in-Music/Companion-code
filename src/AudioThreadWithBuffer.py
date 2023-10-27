@@ -131,6 +131,7 @@ class AudioThreadWithBuffer(threading.Thread):
         """
         numpy_array = np.frombuffer(in_data, dtype=np.int16)
         self.audio_on(numpy_array)
+        #print(numpy_array[0:10])
 
         data = numpy_array.astype(np.float64, casting='safe')
 
@@ -145,10 +146,10 @@ class AudioThreadWithBuffer(threading.Thread):
         self.buffer_index += len(data)
 
         if self.wav_index + self.CHUNK <= len(self.wav_data):
-            self.data = self.process_func(self, numpy_array, self.wav_data[self.wav_index:self.wav_index + self.CHUNK])
+            self.data = self.process_func(self, data, self.wav_data[self.wav_index:self.wav_index + self.CHUNK])
             self.wav_index += self.CHUNK
         else:
             self.wav_index = 0
-            self.data = self.process_func(self, numpy_array, self.wav_data[self.wav_index:self.wav_index + self.CHUNK])
+            self.data = self.process_func(self, data, self.wav_data[self.wav_index:self.wav_index + self.CHUNK])
 
         return self.data, pyaudio.paContinue
