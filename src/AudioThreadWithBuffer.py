@@ -31,8 +31,8 @@ class AudioThreadWithBuffer(threading.Thread):
 
         # User-editable parameters
         self.FORMAT = pyaudio.paInt16  # Leave on paInt16 if no good reason to change it
-        self.CHANNELS = 1  # Set to 1 for mono audio and 2 for stereo audio
-        self.RATE = 88200  # Sample rate of both the input and output audio
+        self.CHANNELS = 1  # Leave set to 1 (currently broken if set to 2)
+        self.RATE = 48000  # Sample rate of both the input and output audio
         self.starting_chunk_size = starting_chunk_size  # Set this in constructor
         self.CHUNK = self.starting_chunk_size * self.CHANNELS
         self.buffer_elements = 10  # number of buffer chunks to store
