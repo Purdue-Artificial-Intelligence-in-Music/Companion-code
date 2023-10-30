@@ -2,7 +2,7 @@ from AudioThreadWithBuffer import AudioThreadWithBuffer
 import time
 import numpy as np
 
-STARTING_CHUNK = 1024  # Set this appropriately for your application
+STARTING_CHUNK = 4096  # Set this appropriately for your application
 
 
 def process_func(self, data, wav_data,
@@ -20,13 +20,17 @@ def process_func(self, data, wav_data,
         smoothing: parameter for how smooth the adjustment above is
     Returns: Audio for AudioThreadWithBuffer to play through speakers with content listed above (numpy array)
     """
-    wav_data = wav_data.astype(np.float64)
+    print(wav_data[0:10])
+    print(data[0:10])
+
+    data = data.astype(np.int32, casting='safe')
+    wav_data = wav_data.astype(np.int32, casting='safe')
 
     # use RMS to match the input amplitude and output amplitude
     if data is not None:
-        input_amplitude = np.sqrt(np.abs(np.mean(np.square(data))))
-        output_amplitude = max(np.sqrt(np.mean(wav_data ** 2)), 1)
-        scaling_factor = min(max(input_amplitude / (output_amplitude + 1e-6), 0.0001), 0.003)
+        input_amplitude = np.sqrt(np.mean(data ** 2))
+        output_amplitude = np.sqrt(np.mean(wav_data ** 2))
+        scaling_factor = min(max(np.power(input_amplitude / (output_amplitude + 1e-6), 1.5), 0.001), 1)
 
         if self.last_gain == 0.0:
             self.last_gain = scaling_factor
@@ -38,8 +42,8 @@ def process_func(self, data, wav_data,
             out_gain = average_factor * scaling_factor + (1 - average_factor) * self.last_gain
             self.last_gain = out_gain
         print(self.last_gain)
-        wav_data *= self.last_gain
-    return wav_data.astype(np.int16)
+        wav_data = np.rint(wav_data * self.last_gain).astype(np.int16)
+    return wav_data
 
 
 def main():
@@ -56,7 +60,7 @@ def main():
     """
 
     AThread = AudioThreadWithBuffer(name="SPA_Thread", starting_chunk_size=STARTING_CHUNK, process_func=process_func,
-                                    wav_file="C:\\Users\\TPNml\\Downloads\\saudade4.wav")  # Initialize a new thread
+                                    wav_file="C:\\Users\\TPNml\\Downloads\\chinese joke idk.wav")  # Initialize a new thread
     print("All threads init'ed")
     try:
         AThread.start()  # Start collecting audio

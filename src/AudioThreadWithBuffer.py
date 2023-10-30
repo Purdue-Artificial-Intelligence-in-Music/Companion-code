@@ -3,9 +3,10 @@ import numpy as np
 import threading
 import time
 import wavio
+import wave
 
 '''
-This class is a template class for a thread that reads in audio from PyAudio.
+This class is a template class for a thread that reads in audio from PyAudio and stores it in a buffer.
 '''
 
 
@@ -32,7 +33,7 @@ class AudioThreadWithBuffer(threading.Thread):
         # User-editable parameters
         self.FORMAT = pyaudio.paInt16  # Leave on paInt16 if no good reason to change it
         self.CHANNELS = 1  # Leave set to 1 (currently broken if set to 2)
-        self.RATE = 48000  # Sample rate of both the input and output audio
+        self.RATE = wave.open(wav_file, 'rb').getframerate()  # Sample rate of both the input and output audio, set to sample rate of the wav you feed in
         self.starting_chunk_size = starting_chunk_size  # Set this in constructor
         self.CHUNK = self.starting_chunk_size * self.CHANNELS
         self.buffer_elements = 10  # number of buffer chunks to store
@@ -51,6 +52,20 @@ class AudioThreadWithBuffer(threading.Thread):
         # input wav
         self.wav_data = self.wav_data_obj.data[:, 0]
         self.wav_index = 0
+
+        # basic bit conversion for wav
+        self.wav_data = self.wav_data.astype(np.float64)
+        x = self.wav_data[0:1000000].max()
+        mult = np.float64(1)
+        while x < 2 ** 7:
+            x *= 2 ** 8
+            mult *= 2 ** 8
+        while x > 2 ** 15:
+            x /= 2 ** 8
+            mult /= 2 ** 8
+        self.wav_data *= mult
+        self.wav_data = self.wav_data.astype(np.int16)
+
 
         # set buffer
         self.buffer_size = self.starting_chunk_size * self.buffer_elements * 2
@@ -141,9 +156,7 @@ class AudioThreadWithBuffer(threading.Thread):
         numpy_array = np.frombuffer(in_data, dtype=np.int16)
         self.audio_on(numpy_array)
         # print(numpy_array[0:10])
-
-        data = numpy_array.astype(np.float64, casting='safe')
-
+        data = numpy_array
         # input to buffer
         if not self.buffer_index + len(data) <= self.buffer_size:
             # Overflow: Reset or handle as per your requirement
