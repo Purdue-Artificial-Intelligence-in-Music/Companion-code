@@ -1,4 +1,5 @@
 from AudioThreadWithBuffer import AudioThreadWithBuffer
+from BeatDetectionThread import BeatDetectionThread
 import time
 import numpy as np
 
@@ -61,15 +62,19 @@ def main():
 
     AThread = AudioThreadWithBuffer(name="SPA_Thread", starting_chunk_size=STARTING_CHUNK, process_func=process_func,
                                     wav_file="C:\\Users\\TPNml\\Downloads\\chinese joke idk.wav")  # Initialize a new thread
+    BeatThread = BeatDetectionThread(name="Beat_Thread", AThread=AThread)
     print("All threads init'ed")
     try:
         AThread.start()  # Start collecting audio
         print("============== AThread started")
+        BeatThread.start()
+        print("============== BeatThread started")
         while True:
             # Do any processing you want here!
             time.sleep(0.5)  # Make sure to sleep when you do not need the program to run to avoid eating too much CPU.
     except KeyboardInterrupt:  # This kills the thread when the user stops the program to avoid an infinite loop
         AThread.stop_request = True
+        BeatThread.stop_request = True
 
 
 if __name__ == "__main__":
