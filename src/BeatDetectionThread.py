@@ -7,6 +7,8 @@ class BeatDetectionThread(threading.Thread):
         self.name = name
         self.AThread = AThread
         self.stop_request = False
+
+        self.output = 0
         # Initialize whatever stuff you need here
 
     def run(self):
