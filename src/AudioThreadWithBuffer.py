@@ -36,7 +36,7 @@ class AudioThreadWithBuffer(threading.Thread):
         self.RATE = wave.open(wav_file, 'rb').getframerate()  # Sample rate of both the input and output audio, set to sample rate of the wav you feed in
         self.starting_chunk_size = starting_chunk_size  # Set this in constructor
         self.CHUNK = self.starting_chunk_size * self.CHANNELS
-        self.buffer_elements = 10  # number of buffer chunks to store
+        self.buffer_elements = 30  # number of buffer chunks to store
         self.wav_data_obj = wavio.read(wav_file)  # Source
         self.on_threshold = 0.5  # RMS threshold for audio_on
 
@@ -69,7 +69,7 @@ class AudioThreadWithBuffer(threading.Thread):
 
         # set buffer
         self.buffer_size = self.starting_chunk_size * self.buffer_elements * 2
-        self.audio_buffer = np.zeros(self.buffer_size, dtype=np.float32)  # set a zero array
+        self.audio_buffer = np.zeros(self.buffer_size, dtype=np.int16)  # set a zero array
         self.buffer_index = 0
 
         # hysteresis for gain control
@@ -165,6 +165,7 @@ class AudioThreadWithBuffer(threading.Thread):
             self.buffer_index -= len(data)
 
         self.audio_buffer[self.buffer_index:self.buffer_index + len(data)] = data
+        #self.audio_buffer[self.buffer_index:self.buffer_index + len(data)] = self.wav_data[self.wav_index:self.wav_index + self.CHUNK]
         self.buffer_index += len(data)
 
         # This is where process_func in threaded_parent_with_buffer.py is called from
