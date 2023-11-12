@@ -47,6 +47,13 @@ def process_func(self, data, wav_data,
     return wav_data
 
 
+def process_func2(self, data, wav_data):
+    last_samples = self.get_last_samples(STARTING_CHUNK)
+    if len(last_samples) < STARTING_CHUNK:
+        raise ValueError("Not enough samples in the buffer to process")
+    return last_samples
+
+
 def main():
     """
     This function runs when the program is called.
@@ -60,8 +67,8 @@ def main():
     Returns: none
     """
 
-    AThread = AudioThreadWithBuffer(name="SPA_Thread", starting_chunk_size=STARTING_CHUNK, process_func=process_func,
-                                    wav_file="C:\\Users\\TPNml\\Downloads\\chinese joke idk.wav")  # Initialize a new thread
+    AThread = AudioThreadWithBuffer(name="SPA_Thread", starting_chunk_size=STARTING_CHUNK, process_func=process_func2,
+                                    wav_file="C:\\Users\\TPNml\\Downloads\\chinese idk.wav")  # Initialize a new thread
     BeatThread = BeatDetectionThread(name="Beat_Thread", AThread=AThread)
     print("All threads init'ed")
     try:
