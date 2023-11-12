@@ -1,25 +1,24 @@
 import threading
 import time
-from OnsetDetection import spectrogram, peak_extract
+from OnsetDetection import get_times
 
 class BeatDetectionThread(threading.Thread):
     def __init__(self, name, AThread):
         super(BeatDetectionThread, self).__init__()
         self.name = name
         self.AThread = AThread
+        self.AThread.buffer_elements = 30
         self.stop_request = False
-
-        self.output = 0
-        # Initialize whatever stuff you need here
-        self.output = 0
+        self.wav_output = 0
+        self.mic_output = 0
 
     def run(self):
-        # Do beat detection
         time.sleep(0.5)
         while not self.stop_request:
-            samples = self.AThread.get_last_samples(1000)
-            spectro, df, dt = spectrogram(samples, plot=False)
-            peaks = peak_extract(spectro)
-            f_loc, t_loc = zip(*peaks)
-            self.output = np.unique(dt * (np.array(tuple(t_loc)) + 1)) # np.ndarray of shape (t,)
+            wav_samples = self.AThread.wav_data
+            mic_samples = self.AThread.get_last_samples(220500) # 5 seconds
+            if not (len(mic_samples) < 100000):
+                self.wav_output = get_times(wav_samples)
+                self.mic_output = get_times(mic_samples)
+            # Outputs a np.ndarray of shape (t,)
             time.sleep(1.0)

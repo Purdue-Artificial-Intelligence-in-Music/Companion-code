@@ -150,7 +150,7 @@ def find_min_amp(spectrogram, amp_threshold):
     return cutoff_log_amplitude
 
 # https://github.com/Team-One-Ryan-Tall/BWSI_Audio_Capstone/blob/main/Spectrogram.py
-def spectrogram(waveform: np.ndarray, plot=False, *, sr=44100):
+def spectrogram(waveform: np.ndarray, plot=False):
     """
     Makes the spectrogram which the peak-finding algorithm is used on.
     
@@ -206,7 +206,7 @@ def spectrogram(waveform: np.ndarray, plot=False, *, sr=44100):
         return amplitudes, phases
     
     recorded_audio = waveform
-    sampling_rate = sr
+    sampling_rate = 44100
     times = np.arange(len(recorded_audio)) / sampling_rate
     N = len(recorded_audio)
     T = N / sampling_rate
@@ -245,6 +245,8 @@ def spectrogram(waveform: np.ndarray, plot=False, *, sr=44100):
         )
         np.clip(spectrogram, 1E-20, a_max = None, out = spectrogram)
         S = np.log(spectrogram)
+        df = sampling_rate / S.shape[0]
+        dt = 4096 / sampling_rate
         return spectrogram, df, dt
 
 def peak_extract(samples, sampling_rate, *, amp_threshold=0.77, neighborhood_rank=2, neighborhood_connectivity=1, neighborhood_iterations=50):
@@ -314,3 +316,12 @@ def plot_song(samples, *, sampling_rate=44100):
     ax.set_xlabel("Time (sec)")
     ax.set_ylabel("Frequency (Hz)")
     return fig, ax
+
+def get_times(samples, *, sampling_rate=44100): # For beat detection thread
+    S, df, dt = spectrogram(samples, plot=False)
+    peaks = peak_extract(S, sampling_rate)
+
+    f_loc, t_loc = zip(*peaks)
+
+    times = np.unique(dt * (np.array(tuple(t_loc)) + 1))
+    return times
