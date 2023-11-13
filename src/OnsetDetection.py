@@ -11,11 +11,12 @@ from typing import Tuple, List
 
 from numba import njit
 
+
 # https://github.com/Sarcovora/CogWorks-2022-Gausslien-Audio-Capstone/blob/main/CogZam/peakExtraction.py
 
 @njit
 def _peaks(
-    data_2d: np.ndarray, nbrhd_row_offsets: np.ndarray, nbrhd_col_offsets: np.ndarray, amp_min: float
+        data_2d: np.ndarray, nbrhd_row_offsets: np.ndarray, nbrhd_col_offsets: np.ndarray, amp_min: float
 ) -> List[Tuple[int, int]]:
     """
     A Numba-optimized 2-D peak-finding algorithm.
@@ -57,7 +58,7 @@ def _peaks(
             # The amplitude falls beneath the minimum threshold
             # thus this can't be a peak.
             continue
-        
+
         # Iterating over the neighborhood centered on (r, c) to see
         # if (r, c) is associated with the largest value in that
         # neighborhood.
@@ -123,14 +124,13 @@ def local_peak_locations(data_2d: np.ndarray, neighborhood: np.ndarray, amp_min:
     # of nbrhd_row_offsets and nbrhd_col_offsets so that it has a distinct center element
     assert neighborhood.shape[0] % 2 == 1
     assert neighborhood.shape[1] % 2 == 1
-    
+
     # Find the indices of the 2D neighborhood where the 
     # values were `True`
     #
     # E.g. (row[i], col[i]) stores the row-col index for
     # the ith True value in the neighborhood (going in row-major order)
     nbrhd_row_indices, nbrhd_col_indices = np.where(neighborhood)
-    
 
     # Shift the neighbor indices so that the center element resides 
     # at coordinate (0, 0) and that the center's neighbors are represented
@@ -143,14 +143,16 @@ def local_peak_locations(data_2d: np.ndarray, neighborhood: np.ndarray, amp_min:
 
     return _peaks(data_2d, nbrhd_row_offsets, nbrhd_col_offsets, amp_min=amp_min)
 
+
 def find_min_amp(spectrogram, amp_threshold):
-    log_S = spectrogram.ravel() # flattened array
-    ind = round(len(log_S) * amp_threshold) # find index associated with the amp_threshold percentile log amplitude
+    log_S = spectrogram.ravel()  # flattened array
+    ind = round(len(log_S) * amp_threshold)  # find index associated with the amp_threshold percentile log amplitude
     cutoff_log_amplitude = np.partition(log_S, ind)[ind]
     return cutoff_log_amplitude
 
+
 # https://github.com/Team-One-Ryan-Tall/BWSI_Audio_Capstone/blob/main/Spectrogram.py
-def spectrogram(waveform: np.ndarray, plot=False):
+def spectrogram(waveform: np.ndarray, plot=False, sampling_rate=44100):
     """
     Makes the spectrogram which the peak-finding algorithm is used on.
     
@@ -173,8 +175,9 @@ def spectrogram(waveform: np.ndarray, plot=False):
     If plot = False:
         Tuple[matplotlib.pyplot.specgram, float, float]
     """
+
     def fourier_complex_to_real(
-    complex_coeffs: np.ndarray, N: int
+            complex_coeffs: np.ndarray, N: int
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Converts complex-valued Fourier coefficients (of 
@@ -200,27 +203,26 @@ def spectrogram(waveform: np.ndarray, plot=False):
         # |a_k| = 2 |c_k| / N for all k except for
         # k=0 and k=N/2 (only if N is even)
         # where |a_k| = |c_k| / N
-        amplitudes[1 : (-1 if N % 2 == 0 else None)] *= 2
+        amplitudes[1: (-1 if N % 2 == 0 else None)] *= 2
 
         phases = np.arctan2(-complex_coeffs.imag, complex_coeffs.real)
         return amplitudes, phases
-    
+
     recorded_audio = waveform
-    sampling_rate = 44100
     times = np.arange(len(recorded_audio)) / sampling_rate
     N = len(recorded_audio)
     T = N / sampling_rate
     ck = np.fft.rfft(recorded_audio)
-    
+
     ak = np.abs(ck) / N
-    ak[1 : (-1 if N % 2 == 0 else None)] *= 2
-    
+    ak[1: (-1 if N % 2 == 0 else None)] *= 2
+
     freqs = np.arange(len(ak)) / T
 
     amps, phases = fourier_complex_to_real(ck, N)
     F = freqs.max()
     extent = (0, T, 0, F)
-    
+
     if plot == True:
         fig, ax = plt.subplots()
         spectrogram, freqs, times, im = ax.specgram(
@@ -229,27 +231,29 @@ def spectrogram(waveform: np.ndarray, plot=False):
             Fs=sampling_rate,
             window=mlab.window_hanning,
         )
-        np.clip(spectrogram, 1E-20, a_max = None, out = spectrogram)
+        np.clip(spectrogram, 1E-20, a_max=None, out=spectrogram)
         S = np.log(spectrogram)
         df = sampling_rate / S.shape[0]
         dt = 4096 / sampling_rate
-        
+
         plt.colorbar(im)
         return spectrogram, fig, ax, df, dt
-    else: 
+    else:
         spectrogram, freqs, times = mlab.specgram(
             recorded_audio,
             NFFT=4096,
             Fs=sampling_rate,
             window=mlab.window_hanning,
         )
-        np.clip(spectrogram, 1E-20, a_max = None, out = spectrogram)
+        np.clip(spectrogram, 1E-20, a_max=None, out=spectrogram)
         S = np.log(spectrogram)
         df = sampling_rate / S.shape[0]
         dt = 4096 / sampling_rate
         return spectrogram, df, dt
 
-def peak_extract(samples, sampling_rate, *, amp_threshold=0.77, neighborhood_rank=2, neighborhood_connectivity=1, neighborhood_iterations=50):
+
+def peak_extract(samples, sampling_rate, *, amp_threshold=0.77, neighborhood_rank=2, neighborhood_connectivity=1,
+                 neighborhood_iterations=50):
     """
     Extracts peaks from a spectrogram created from the sample data.
     
@@ -277,16 +281,17 @@ def peak_extract(samples, sampling_rate, *, amp_threshold=0.77, neighborhood_ran
         (row, col) index pair for each local peak location, returned
         in column-major ordering.
     """
-    
-    time = np.arange(len(samples)) / sampling_rate
-    #samples = np.log10(samples)
 
-    base_structure = generate_binary_structure(neighborhood_rank,neighborhood_connectivity)
+    time = np.arange(len(samples)) / sampling_rate
+    # samples = np.log10(samples)
+
+    base_structure = generate_binary_structure(neighborhood_rank, neighborhood_connectivity)
     neighborhood = iterate_structure(base_structure, neighborhood_iterations)
-    
+
     amp_min = find_min_amp(samples, amp_threshold)
 
     return local_peak_locations(samples, neighborhood, amp_min)
+
 
 def plot_song(samples, *, sampling_rate=44100):
     """
@@ -306,19 +311,20 @@ def plot_song(samples, *, sampling_rate=44100):
     """
     S, fig, ax, df, dt = spectrogram(samples, plot=True)
     peaks = peak_extract(S, sampling_rate)
-    
+
     f_loc, t_loc = zip(*peaks)
-    
+
     times = dt * (np.array(tuple(t_loc)) + 1)
-    freqs = (df/2) * (np.array(tuple(f_loc)) + 0.5)
-    
+    freqs = (df / 2) * (np.array(tuple(f_loc)) + 0.5)
+
     ax.scatter(times, freqs, s=4, color="blue")
     ax.set_xlabel("Time (sec)")
     ax.set_ylabel("Frequency (Hz)")
     return fig, ax
 
-def get_times(samples, *, sampling_rate=44100): # For beat detection thread
-    S, df, dt = spectrogram(samples, plot=False)
+
+def get_times(samples, *, sampling_rate=44100):  # For beat detection thread
+    S, df, dt = spectrogram(samples, plot=False, sampling_rate=sampling_rate)
     peaks = peak_extract(S, sampling_rate)
 
     f_loc, t_loc = zip(*peaks)
