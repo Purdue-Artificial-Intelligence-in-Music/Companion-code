@@ -41,7 +41,7 @@ if __name__ == '__main__':
     print(n2.pitches)
     print(n1 is n2)
 
-    #testing turning into frequency
+    #testing turning notes into frequency
     freq_list = ps.translate_note_to_freq(flatten_notes_set)
     #test if length are the same
     assert len(freq_list) == len(flatten_notes_set), \
