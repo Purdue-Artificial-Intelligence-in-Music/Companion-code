@@ -1,42 +1,59 @@
-import get_notes_and_start_end_times as parse
+"""This will be the python file where the main logic of my task would be implemented"""
 from music21 import *
+import numpy as np
+import math
+import os
+import time
 
-if __name__ == '__main__':
-    print(f'executing {__file__}')
-    score = converter.parse("/home/shay/a/ko109/Companion-code/get_notes_and_start_end_times/Abide by Me.midi")
+"""Helper that extract all notes from a given measure, returned notes are collected in a set
+    input:  measure (music21.stream.Measure)
+    output: (frozenset(music21.note.Note)): a set containing all notes present in the mxml file
+"""
+def collect_all_notes_from_measure(measure):
+    return frozenset(note for note in measure.notes)
 
-    print('the piece contains the following parts')
-    for i,part in enumerate(score.parts,start=1):
-        print(f'\t{i}: ',end='')
-        print(part)
 
-    print(f"the piece is in the key of {score.analyze('key')}")
-    n_measures = parse.find_num_measures_in_score(score=score)
-    print(f'the piece has {n_measures} measures')
+"""Isacc's code refactored into a function. This is a helper that computes how many measures are in a given score
+    (a score can be a music21.stream.Measure, music21.stream.Score, music21.stream.Part...)
+    input: score (music21.stream.Score)
+    output: num_measures (int)
+"""
+def find_num_measures_in_score(score) -> int:
+    #might have to iterate through this part if there are multiple time signatures in a given score
+    beats = score.getTimeSignatures(recurse=False)[0].denominator       #retrieve the time signature of object score and save only the denominator (duration of each beat)
+    num_measures = int(math.ceil(score.highestTime / beats))            #find the when the last note finishes playing in object stream, divide it by duration of each beat, and take the ceiling
+    return num_measures
 
-    """this part looks a little off, but may be resolved by fixing the function 
-    collect_all_notes_from_score:
-        just find number of measures for only a part, as other parts should play in harmony"""
-    all_notes_set = parse.collect_all_notes_from_score(score)
+"""This function recursively flattens a set that can contain frozensets
+    input: input_set (set(frozen_set(music21.stream.Note)))
+    output: final (set(music21.stream.Note))
+"""
+def flatten_frozenset_in_sets(input_set:set, final:set) -> set:
+    for elem in input_set:
+        if type(elem) is frozenset:
+            flatten_frozenset_in_sets(set(elem), final)
+        else:
+            final.add(elem)
 
-    print(f"there are {len(all_notes_set)} measures in the piece, which contains notes: ")
-    for i,s in enumerate(all_notes_set, start=1):
-        print(f'measure {i}: ')
-        for n in s:
-            print(f'\t{n}')
+"""The "main" function that parses all the notes contained in the score out, stil need to figure out how (and is neccessary)
+    to  remove duplicates
+    input:  score (music21.stream.Score)
+    output: final (set(music21.stream.Note))
+"""
+def collect_all_notes_from_score(score) -> set:
+    all_notes = set()
+    # only compute the number of measures for the first part (if this works the program might run a little faster)
+    num_measures = find_num_measures_in_score(score.parts[0])
+    for part in score.parts:    #I am collect all notes for every part in the score, is this neccessary?
+        for i in range(1, num_measures+1, 1):
+            all_notes.add(collect_all_notes_from_measure(part.measure(i)))
+    return all_notes
 
-    flatten_notes_set = set()
-    parse.flatten_frozenset_in_sets(all_notes_set, flatten_notes_set)
-    print(f'there are {len(flatten_notes_set)} notes involved with the piece, namely: ')
-    for i,note in enumerate(flatten_notes_set, start=1):
-        print(f"\tnote #{i}: {note}")
-
-    n1 = list(flatten_notes_set)[4]
-    n2 =list(flatten_notes_set)[8]
-    #viewing their full names: try to see difference between these objects
-    print(n1.fullName)
-    print(n2.fullName)
-    print(n1.pitches)
-    print(n2.pitches)
-    print(n1 is n2)
-    print(f'end of executing {__file__}')
+"""
+take in notes_set and return a set of their frequencies
+input: notes_set (set(music21.stream.Note))
+output: freqs_list (list(float))
+"""
+def translate_note_to_freq(notes_set: set) -> list[float]:
+    #using list because we don't want to eliminate any frequencies from notes_set
+    return list(n.pitch.frequency for n in notes_set)
