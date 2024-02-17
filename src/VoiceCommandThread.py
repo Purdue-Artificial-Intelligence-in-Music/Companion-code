@@ -8,10 +8,15 @@ from nltk.stem import PorterStemmer
 
 
 class VoiceAnalyzerThread(threading.Thread):
-    def __init__(self, name, AThread):
+    def __init__(self, name, AThread, project_id, session_id, language_code="en-US"):
         super(VoiceAnalyzerThread, self).__init__()
         self.name = name
         self.AThread = AThread
+        self.project_id = project_id
+        self.session_id = session_id
+        self.language_code = language_code
+        self.session_client = dialogflow.SessionsClient()
+        self.session = self.session_client.session_path(project_id, session_id)
         self.stop_request = False
         self.r = sr.Recognizer()
         self.ps = PorterStemmer()
@@ -25,6 +30,13 @@ class VoiceAnalyzerThread(threading.Thread):
         engine = pyttsx3.init()
         engine.say(command)
         engine.runAndWait()
+
+    def detect_intent_texts(self, text):
+        """Returns the result of detect intent with texts as inputs."""
+        text_input = dialogflow.TextInput(text=text, language_code=self.language_code)
+        query_input = dialogflow.QueryInput(text=text_input)
+        response = self.session_client.detect_intent(session=self.session, query_input=query_input)
+        return response.query_result
 
     def getSpeech(self, audio2):
         # Exception handling to handle
