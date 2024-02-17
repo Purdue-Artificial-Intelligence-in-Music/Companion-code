@@ -31,6 +31,7 @@ class AudioThreadWithBuffer(threading.Thread):
         self.args_after = args_after
 
         # User-editable parameters
+        self.dtype = np.int16
         self.FORMAT = pyaudio.paInt16  # Leave on paInt16 if no good reason to change it
         self.CHANNELS = 1  # Leave set to 1 (currently broken if set to 2)
         self.RATE = wave.open(wav_file, 'rb').getframerate()  # Sample rate of both the input and output audio, set to sample rate of the wav you feed in
@@ -68,9 +69,12 @@ class AudioThreadWithBuffer(threading.Thread):
 
 
         # set buffer
-        self.buffer_size = self.starting_chunk_size * self.buffer_elements * 2
-        self.audio_buffer = np.zeros(self.buffer_size, dtype=np.int16)  # set a zero array
-        self.buffer_index = 0
+        self.pred_length = 4  # number of seconds of audio the buffer should store
+        self.desired_buffer_size = self.pred_length * self.RATE * self.CHANNELS  # desired buffer size in samples
+        # round to nearest multiple of self.CHUNK
+        self.buffer_size = self.desired_buffer_size + self.CHUNK - (self.desired_buffer_size % self.CHUNK)
+        self.audio_buffer = np.zeros(self.buffer_size, dtype=self.dtype)  # set a zero array
+        self.buffer_index = 0  # current last sample stored in buffer
 
         # hysteresis for gain control
         self.last_gain = 0.0
@@ -143,7 +147,7 @@ class AudioThreadWithBuffer(threading.Thread):
         Parameters: n: number of samples
         Returns: the last n samples from the buffer (as a numpy array)
         """
-        return self.audio_buffer[self.buffer_index - n:self.buffer_index]
+        return self.audio_buffer[max(self.buffer_index - n, 0):self.buffer_index]
 
     def callback(self, in_data, frame_count, time_info, flag):
         """
@@ -153,19 +157,23 @@ class AudioThreadWithBuffer(threading.Thread):
         Parameters: none user-exposed
         Returns: new audio for PyAudio to play through speakers.
         """
-        numpy_array = np.frombuffer(in_data, dtype=np.int16)
+        numpy_array = np.frombuffer(in_data, dtype=self.dtype)
+        data = np.zeros(self.starting_chunk_size, dtype=np.float64)
+        for i in range(0, self.CHANNELS):
+            data += numpy_array[i:self.CHUNK:self.CHANNELS]
+        data /= np.float64(self.CHANNELS)
+        self.audio_on(data / np.float64(2 ** 15))
+        data = self.dtype(data)
         self.audio_on(numpy_array)
         # print(numpy_array[0:10])
         data = numpy_array
-        # input to buffer
+        # Add audio to buffer
         if not self.buffer_index + len(data) <= self.buffer_size:
             # Overflow: Reset or handle as per your requirement
             # self.buffer_index = 0
             self.audio_buffer[:self.buffer_size - len(data)] = self.audio_buffer[len(data):self.buffer_size]
             self.buffer_index -= len(data)
-
         self.audio_buffer[self.buffer_index:self.buffer_index + len(data)] = data
-        #self.audio_buffer[self.buffer_index:self.buffer_index + len(data)] = self.wav_data[self.wav_index:self.wav_index + self.CHUNK]
         self.buffer_index += len(data)
 
         # This is where process_func in threaded_parent_with_buffer.py is called from
