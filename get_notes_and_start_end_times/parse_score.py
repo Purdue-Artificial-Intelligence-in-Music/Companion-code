@@ -1,4 +1,4 @@
-"""This will be the python file where the main logic of my task would be implemented"""
+"""This will be the python file where the main logic of parsing score would be implemented"""
 from music21 import *
 import numpy as np
 import math
