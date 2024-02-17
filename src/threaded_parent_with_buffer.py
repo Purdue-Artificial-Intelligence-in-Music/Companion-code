@@ -4,7 +4,7 @@ from TsmThread import TimeStretchThread
 import time
 import numpy as np
 
-STARTING_CHUNK = 4096  # Set this appropriately for your application
+STARTING_CHUNK = 44100  # Set this appropriately for your application
 
 
 def process_func(self, data, wav_data,
@@ -22,8 +22,8 @@ def process_func(self, data, wav_data,
         smoothing: parameter for how smooth the adjustment above is
     Returns: Audio for AudioThreadWithBuffer to play through speakers with content listed above (numpy array)
     """
-    print(wav_data[0:10])
-    print(data[0:10])
+    #print(wav_data[0:10])
+    #print(data[0:10])
 
     data = data.astype(np.int32, casting='safe')
     wav_data = wav_data.astype(np.int32, casting='safe')
@@ -43,9 +43,16 @@ def process_func(self, data, wav_data,
             average_factor = max(0, min(time_since_update, 1 / smoothing)) * smoothing
             out_gain = average_factor * scaling_factor + (1 - average_factor) * self.last_gain
             self.last_gain = out_gain
-        print(self.last_gain)
+        #print(self.last_gain)
         wav_data = np.rint(wav_data * self.last_gain).astype(np.int16)
     return wav_data
+
+
+def process_func2(self, data, wav_data):
+    last_samples = self.get_last_samples(STARTING_CHUNK)
+    if len(last_samples) < STARTING_CHUNK:
+        raise ValueError("Not enough samples in the buffer to process")
+    return last_samples
 
 
 def main():
@@ -61,8 +68,13 @@ def main():
     Returns: none
     """
 
+<<<<<<< HEAD
     AThread = AudioThreadWithBuffer(name="SPA_Thread", starting_chunk_size=STARTING_CHUNK, process_func=process_func,
                                     wav_file=r"C:\Users\Tima\Desktop\Companion-code\beat_tempo_detection\songs\around_the_output.wav" ) # Initialize a new thread
+=======
+    AThread = AudioThreadWithBuffer(name="SPA_Thread", starting_chunk_size=STARTING_CHUNK, process_func=process_func2,
+                                    wav_file="C:\\Users\\TPNml\\Downloads\\chinese idk.wav")  # Initialize a new thread
+>>>>>>> main
     BeatThread = BeatDetectionThread(name="Beat_Thread", AThread=AThread)
 
 
@@ -82,6 +94,7 @@ def main():
         print("============== Time Stretching started")
         while True:
             # Do any processing you want here!
+            print(BeatThread.mic_tempo)
             time.sleep(0.5)  # Make sure to sleep when you do not need the program to run to avoid eating too much CPU.
     except KeyboardInterrupt:  # This kills the thread when the user stops the program to avoid an infinite loop
         AThread.stop_request = True
