@@ -12,11 +12,17 @@ def set_sampling_rate(sr: int) -> None:
 def get_start_end_time_of_notes(freq_keys: list[float], audio: np.array) -> dict[float : tuple[int, int]]:
     # note that freq_keys.length <= audio.length
     freq_to_time = {freq: [0,0] for freq in freq_keys}
-    # try to account for repeated notes in a section (e.g. if an audio plays 4 C notes in a single measure, make sure to get the correct start end times for each C)
+    n_samples = len(audio)
+
     for idx, sample in enumerate(audio):
         freq_to_time[sample][0] = idx / SAMPLING_RATE
-        freq_to_time[sample][1] = (idx + 1)/ SAMPLING_RATE
+        end_idx = idx + 1
+        # if a note is played then there is some pause (i.e. audio[idx+1:(somewhere)] = 0.0)
+        while (end_idx < n_samples) and (audio[end_idx] == 0.0):
+            end_idx += 1
+        freq_to_time[sample][1] = end_idx/ SAMPLING_RATE
 
+    # convert the filled-in dictionary to float:tuple
     for freq in freq_to_time.keys():
         freq_to_time[freq] = tuple(freq_to_time[freq])
 
