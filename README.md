@@ -8,6 +8,9 @@ Tanin Padungkirtsakul
 
 ## Modifications
 All edits made by this branch are highlighted in red.
+
+
+
 ![image](https://github.com/Purdue-Artificial-Intelligence-in-Music/Companion-code/assets/77745845/4174026c-9e36-4670-8f97-90b442352924)
 
 
