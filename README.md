@@ -31,8 +31,9 @@ All edits made by this branch are highlighted in red.
 
 ## Installation
 
-1. Clone the repository:
-2. Install the required dependencies:
+1. Clone the repository
+2. Install the required dependencies
+3. Run the file 'threaded_parent_with_buffer.py'
 
 ## Usage
 
