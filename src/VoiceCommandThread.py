@@ -1,3 +1,10 @@
+"""
+This file defines the VoiceAnalyzerThread class, which facilitates speech recognition and intent detection within audio streams 
+using Google's Dialogflow and speech_recognition libraries. Key functionalities include converting text to speech, detecting intents 
+from texts, and processing speech to extract relevant commands.
+"""
+
+
 import threading
 import time
 import AudioThreadWithBuffer
@@ -5,10 +12,13 @@ import speech_recognition as sr
 import pyttsx3
 import numpy as np
 from nltk.stem import PorterStemmer
+import dialogflow
 
 
 class VoiceAnalyzerThread(threading.Thread):
+    """A thread class for analyzing voice commands using Dialogflow and speech recognition."""
     def __init__(self, name, AThread, project_id, session_id, language_code="en-US"):
+        """Initializes the voice analyzer thread with required parameters."""
         super(VoiceAnalyzerThread, self).__init__()
         self.name = name
         self.AThread = AThread
@@ -64,6 +74,7 @@ class VoiceAnalyzerThread(threading.Thread):
             self.stop_request = True
         self.output = ""
 
+    # Main method to be executed by the thread
     def run(self):
         # Do beat detection
         time.sleep(0.5)
