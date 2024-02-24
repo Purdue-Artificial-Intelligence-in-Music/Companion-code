@@ -1,5 +1,5 @@
 """
-File: time_stretch_thread.py
+File: TsmThread.py
 Description: This file contains the definition of the TimeStretchThread class,
     which is a threaded implementation for time-stretching audio based on microphone and WAV tempos,
     and process_func() function, which performs time-stretching on WAV audio based on microphone

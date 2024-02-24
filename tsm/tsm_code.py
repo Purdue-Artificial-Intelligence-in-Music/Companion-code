@@ -1,3 +1,13 @@
+"""
+File: tsm_code.py
+Description: This file contains ORIGINAL functions for audio processing, including time-stretching and splitting audio files.
+Functions:
+- split_file(x, sr, time, tempo): Splits an audio file into multiple chunks based on time and tempo.
+- time_stretch(input_file, pairs): Time-stretches an audio file based on specified time and tempo pairs.
+"""
+
+
+
 import numpy as np
 import pytsmod as tsm
 import soundfile as sf
@@ -5,11 +15,17 @@ import soundfile as sf
 
 def split_file(x,sr,time,tempo):
     '''
-    input:
-    -x, sf data
-    -sr, sample rate
-    -time(seconds)
-    -tempo(bpm)
+    Split the input audio file into multiple chunks based on time and tempo.
+
+    Args:
+    - x: Soundfile data (numpy array)
+    - sr: Sample rate (integer)
+    - time: List of time boundaries (seconds)
+    - tempo: List of tempos (beats per minute)
+
+    Returns:
+    - x_split: List of audio chunks
+    - scale: List of scaling factors
     '''
     x_split = []
     scale = []
@@ -18,21 +34,26 @@ def split_file(x,sr,time,tempo):
     for i in range(len(time)-1):
         i1 = int(time[i]*sr)
         i2 = int((time[i+1]*sr)+1)
+        # Split the audio into chunks
         print(i1,i2)
         temp = x[:,i1:i2].copy()
         print(temp)
         x_split.append(temp)
+        # Calculate the scaling factor based on tempo
         scale.append(120/tempo[i])
     return(x_split, scale)
 
 def time_stretch(input_file, pairs):
     '''
-    input:
-    - input_file (wav file)
-    - pairs (t, bpm)
-    output:
-    - x (soundfile data)
-    - sr (sample rate)
+    Time-stretch an audio file based on specified time and tempo pairs.
+
+    Args:
+    - input_file: Path to the input WAV file
+    - pairs: List of time and tempo pairs [(time, tempo), ...]
+
+    Returns:
+    - x_output: Time-stretched audio data
+    - sr: Sample rate
     '''
     x,sr = sf.read(input_file) #gets data and sample rate
     x = x.T
