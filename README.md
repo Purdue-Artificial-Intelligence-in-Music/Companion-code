@@ -2,7 +2,7 @@
 
 This branch of the main project implements audio time-stretching using beat detection. It allows you to stretch the time of an audio file while preserving the tempo, based on beat detection analysis.
 
-## Authors:
+## Authors
 Temirlan Karataev
 Tanin Padungkirtsakul
 
