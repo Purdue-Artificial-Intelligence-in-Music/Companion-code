@@ -1,6 +1,10 @@
 # Audio Time-Stretching with Beat Detection
 
-This project implements audio time-stretching using beat detection. It allows you to stretch the time of an audio file while preserving the tempo, based on beat detection analysis.
+This branch of the main project implements audio time-stretching using beat detection. It allows you to stretch the time of an audio file while preserving the tempo, based on beat detection analysis.
+
+## Authors:
+Temirlan Karataev
+Tanin Padungkirtsakul
 
 ## Features
 
@@ -31,5 +35,5 @@ This project implements audio time-stretching using beat detection. It allows yo
 3. Adjust the `pairs` variable in the `main.py` script to match the desired time and tempo values for time-stretching.
 
 
-Contributing
+## Contributing
 Contributions are welcome! If you have any ideas, suggestions, or bug reports, please open an issue or submit a pull request.
