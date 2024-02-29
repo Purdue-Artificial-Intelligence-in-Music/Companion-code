@@ -24,7 +24,6 @@ def get_start_end_time_of_notes(freq_keys: list[float], audio: np.array) -> dict
         freq_to_time[sample][1] = end_idx/ SAMPLING_RATE
 
     # convert the filled-in dictionary to float:tuple
-    for freq in freq_to_time.keys():
-        freq_to_time[freq] = tuple(freq_to_time[freq])
+    freq_to_time = {tuple(freq_to_time[freq]) for freq in freq_to_time.keys()}
 
     return freq_to_time
