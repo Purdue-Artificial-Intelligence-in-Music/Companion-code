@@ -16,18 +16,18 @@ def get_start_end_time_of_notes(freq_keys: list[float], audio: np.array) -> dict
 
     # fill-in start and end times
     for idx, sample in enumerate(audio):
-        # if sample not in freq_keys:
-        #     # if sample not in freqs parsed from audio, skip
-        #     # print(f'sample frequency {sample:.2f} is not in parsed score')
-        #     continue
+        sample = np.abs(sample)         #prevent negative frequency
+        if sample not in freq_keys:
+            print(f'sample frequency {sample:.2f} is not in parsed score')
+            continue
         freq_to_time[sample][0] = idx / SAMPLING_RATE # fill-in start time
         end_idx = idx + 1
+        # if a note is played following some pause (i.e. audio[idx+1:(somewhere)] = 0.0)
         # if a note is played following some pause (i.e. audio[idx+1:(somewhere)] = 0.0)
         while (end_idx < n_samples) and (audio[end_idx] == 0.0):
             end_idx += 1
         freq_to_time[sample][1] = end_idx/ SAMPLING_RATE
 
     # convert the filled-in dictionary to float:tuple
-    freq_to_time = {tuple(freq_to_time[freq]) for freq in freq_to_time.keys()}
-
+    freq_to_time = {freq : tuple(pair) for freq,pair in freq_to_time.items()}
     return freq_to_time
