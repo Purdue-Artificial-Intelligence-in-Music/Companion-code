@@ -322,6 +322,30 @@ def plot_song(samples, *, sampling_rate=44100):
     ax.set_ylabel("Frequency (Hz)")
     return fig, ax
 
+# https://rsokl.github.io/CogWeb/Audio/Exercises/PeakFinding.html
+
+def ecdf(data):
+    """Returns (x) the sorted data and (y) the empirical cumulative-proportion
+    of each datum.
+
+    Parameters
+    ----------
+    data : numpy.ndarray, size-N
+
+    Returns
+    -------
+    Tuple[numpy.ndarray shape-(N,), numpy.ndarray shape-(N,)]
+        Sorted data, empirical CDF values"""
+    data = np.asarray(data).ravel()  # flattens the data
+    y = np.linspace(1 / len(data), 1, len(data))  # stores the cumulative proportion associated with each sorted datum
+    x = np.sort(data)
+    return x, y
+
+def find_threshold(cumulative_proportion):
+    percentiles = {}
+    for per in range(1, 11):
+        percentiles[per/10] = sum(1 for x in cumulative_proportion if x < per/10 and x > (per - 1)/10)
+    return max(percentiles, key=percentiles.get)
 
 def get_times(samples, *, sampling_rate=44100):  # For beat detection thread
     S, df, dt = spectrogram(samples, plot=False, sampling_rate=sampling_rate)

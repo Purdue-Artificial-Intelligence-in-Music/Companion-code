@@ -11,8 +11,19 @@ def get_tempo(x: np.ndarray):
         diff = x[i+1] - x[i]
         out += diff
     out /= len(x)
-    out = 60.0 / out
+    if out != 0:
+        out = 60.0 / out
     return out
+
+def get_error(input_times, wav_times):
+    beats = len(input_times)
+    tempo = get_tempo(wav_times)
+    for i in range(len(input_times) - 1):
+        if input_times[i+1] - input_times[i] > (tempo / 60.0 + 5): # Assumption is missing beat
+            beats += (input_times[i+1] - input_times[i]) * tempo / 60.0 # Divide by 60 for BPS
+        if input_times[i+1] - input_times[i] < 0.5: # Too fast to be an actual beat
+            beats -= 1
+    return len(wav_times) - beats
 
 class BeatDetectionThread(threading.Thread):
     def __init__(self, name, AThread):
@@ -25,6 +36,7 @@ class BeatDetectionThread(threading.Thread):
         self.mic_output = 0
         self.wav_tempo = 120.0
         self.mic_tempo = 120.0
+        self.loss = 0
 
     def run(self):
         time.sleep(0.5)
@@ -36,6 +48,8 @@ class BeatDetectionThread(threading.Thread):
                 self.wav_tempo = get_tempo(self.wav_output)
                 self.mic_output = get_times(mic_samples, sampling_rate=self.AThread.RATE)
                 self.mic_tempo = get_tempo(self.mic_output)
+                self.loss = get_error(self.mic_output, self.wav_output)
 
             # Outputs a np.ndarray of shape (t,)
             time.sleep(0.2)
+
