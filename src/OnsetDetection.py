@@ -10,7 +10,7 @@ from scipy.ndimage import iterate_structure
 from typing import Tuple, List
 
 from numba import njit
-
+from BeatNet.BeatNet import BeatNet
 
 # https://github.com/Sarcovora/CogWorks-2022-Gausslien-Audio-Capstone/blob/main/CogZam/peakExtraction.py
 
@@ -347,11 +347,7 @@ def find_threshold(cumulative_proportion):
         percentiles[per/10] = sum(1 for x in cumulative_proportion if x < per/10 and x > (per - 1)/10)
     return max(percentiles, key=percentiles.get)
 
-def get_times(samples, *, sampling_rate=44100):  # For beat detection thread
-    S, df, dt = spectrogram(samples, plot=False, sampling_rate=sampling_rate)
-    peaks = peak_extract(S, sampling_rate)
-
-    f_loc, t_loc = zip(*peaks)
-
-    times = np.unique(dt * (np.array(tuple(t_loc)) + 1))
-    return times
+def get_times(samples, *, sampling_rate=22050):  # For beat detection thread
+    estimator = BeatNet(1, mode='online', inference_model='PF', plot=[], thread=False)
+    output = estimator.process(samples)
+    return output[:, 0]
