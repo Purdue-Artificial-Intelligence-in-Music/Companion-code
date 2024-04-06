@@ -103,8 +103,9 @@ def main():
             # Do any processing you want here!
             print("This is mic_tempo:", BeatThread.mic_tempo, "and mic_output:", BeatThread.mic_output)
             print("This is a wav_tempo: " , BeatThread.wav_tempo, "and wav_output:", BeatThread.wav_output)
-            timestretch_ratio = tsm_process_func(BeatThread.wav_tempo, BeatThread.mic_tempo, input_file)
-            print("The ratio is: ", timestretch_ratio)
+            # timestretch_ratio = tsm_process_func(BeatThread.wav_tempo, BeatThread.mic_tempo, input_file)
+            # print("The ratio is: ", timestretch_ratio)
+            print("This is the error: ", BeatThread.loss)
 
             time.sleep(0.5)  # Make sure to sleep when you do not need the program to run to avoid eating too much CPU.
     except KeyboardInterrupt:  # This kills the thread when the user stops the program to avoid an infinite loop
