@@ -57,7 +57,8 @@ def get_tempo(x: np.ndarray):
         diff = x[i+1] - x[i]
         out += diff
     out /= len(x)
-    out = 60.0 / out
+    if out != 0:
+        out = 60.0 / out
     return out
 
 def get_error(input_times, wav_times):
@@ -68,7 +69,8 @@ def get_error(input_times, wav_times):
             beats += (input_times[i+1] - input_times[i]) * tempo / 60.0 # Divide by 60 for BPS
         if input_times[i+1] - input_times[i] < 0.5: # Too fast to be an actual beat
             beats -= 1
-    return beats - len(wav_times)
+
+    return len(wav_times) - beats
 
 class BeatDetectionThread(threading.Thread):
     def __init__(self, name, AThread):
