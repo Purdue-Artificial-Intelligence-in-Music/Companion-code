@@ -79,14 +79,14 @@ def main():
 
 
     AThread = AudioThreadWithBuffer(name="SPA_Thread", starting_chunk_size=STARTING_CHUNK, process_func=process_func2,
-                                    wav_file='C:\\Users\\Tima\\Desktop\\Companion-code\\beat_tempo_detection\\songs\\ImperialMarch60.wav')  # Initialize a new thread
+                                    wav_file='C:\\Users\\TPNml\\Documents\\GitHub\\Companion-code\\beat_tempo_detection\\songs\\ImperialMarch60.wav')  # Initialize a new thread
 
     BeatThread = BeatDetectionThread(name="Beat_Thread", AThread=AThread)
 
 
     # input_file = AThread.wav_file
     # pairs = [[2], [60]]
-    input_file = 'C:\\Users\\Tima\\Desktop\\Companion-code\\beat_tempo_detection\\songs\\ImperialMarch60.wav'
+    input_file = 'C:\\Users\\TPNml\\Documents\\GitHub\\Companion-code\\beat_tempo_detection\\songs\\ImperialMarch60.wav'
     output_filepath = './tsm/test1_output.wav'
 
     TsmThread = TimeStretchThread(BeatThread.wav_tempo, BeatThread.mic_tempo,input_file, output_filepath)
