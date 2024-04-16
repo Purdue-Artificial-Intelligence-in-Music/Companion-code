@@ -17,9 +17,11 @@ import threading
 import librosa
 import time
 from tsm_functions import *
+from BeatDetectionThread import *
+from AudioThreadWithBuffer import *
 
 class TimeStretchThread(threading.Thread):
-    def __init__(self, name, AThread, Beat_Thread):
+    def __init__(self, name, AThread: AudioThreadWithBuffer, Beat_Thread: BeatDetectionThread):
         threading.Thread.__init__(self) 
         self.name = name
         self.AThread = AThread
@@ -32,11 +34,21 @@ class TimeStretchThread(threading.Thread):
         self.timestretch_ratio = 0
         self.integrating_error = 0
 
+    def calculate_expected_tempo(self, error):
+        # Calculate expected tempo using PID controller
+        # Update integrating error
+        return self.current_tempo
+
     def run(self):
         while not self.stop_request:
             # Attempt to get most recent prediction from BeatThread for beats
+            error = self.Beat_Thread.error
             # Calculate expected tempo
+            self.current_tempo = self.calculate_expected_tempo(error)
+            actual_wav_tempo = self.Beat_Thread.wav_tempo
+            self.timestretch_ratio = self.current_tempo / actual_wav_tempo
             # Ask AudioThread for correct number of samples
-            # Time stretch samples
-            # Set output_audio to time-stretched samples
-            # Store played samples in buffer for BeatThread
+            current_audio = self.AThread.get_last_samples_wav_file(self.AThread.CHUNK / float(self.timestretch_ratio))
+            # Time stretch samples and set output_audio to time-stretched samples
+            self.output_audio = librosa.effects.time_stretch(current_audio, rate=self.AThread.RATE)
+            assert abs(len(self.output_audio) - len(current_audio) / float(self.AThread.CHUNK)) < 0.05
