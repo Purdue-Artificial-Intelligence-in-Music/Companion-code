@@ -25,12 +25,12 @@ class TimeStretchThread(threading.Thread):
         self.AThread = AThread
         self.Beat_Thread = Beat_Thread
         self.stop_request = False
-        self.current_audio = None
-        self.current_tempo = 0
-        self.timestretch_ratio = 0
         self.output_audio = None
 
         # PID control variables
+        self.current_tempo = 0
+        self.timestretch_ratio = 0
+        self.integrating_error = 0
 
     def run(self):
         while not self.stop_request:

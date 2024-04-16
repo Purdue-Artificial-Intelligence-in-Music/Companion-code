@@ -1,5 +1,6 @@
 from AudioThreadWithBuffer import AudioThreadWithBuffer
 from BeatDetectionThread import BeatDetectionThread
+from TsmThread import TimeStretchThread
 import time
 import numpy as np
 
@@ -53,6 +54,15 @@ def process_func2(self, data, wav_data):
         raise ValueError("Not enough samples in the buffer to process")
     return last_samples
 
+def tsm_process_func(wav_tempo, mic_tempo, wav_data):
+
+    timestretch_ratio = mic_tempo / wav_tempo # Calculate the time-stretch ratio
+    # timestretched_wav = time_stretch(wav_data, timestretch_ratio) # Perform time-stretching on the wav audio using the ratio
+
+    # self.previous_microphone_tempo = tempo_microphone
+    # self.previous_wav_tempo = tempo_wav
+    return timestretch_ratio
+
 
 def main():
     """
@@ -67,22 +77,41 @@ def main():
     Returns: none
     """
 
+
     AThread = AudioThreadWithBuffer(name="SPA_Thread", starting_chunk_size=STARTING_CHUNK, process_func=process_func2,
-                                    wav_file="C:\\Users\\TPNml\\Downloads\\chinese idk.wav")  # Initialize a new thread
+                                    wav_file='C:\\Users\\TPNml\\Documents\\GitHub\\Companion-code\\beat_tempo_detection\\songs\\ImperialMarch60.wav')  # Initialize a new thread
+
     BeatThread = BeatDetectionThread(name="Beat_Thread", AThread=AThread)
+
+
+    # input_file = AThread.wav_file
+    # pairs = [[2], [60]]
+    input_file = 'C:\\Users\\TPNml\\Documents\\GitHub\\Companion-code\\beat_tempo_detection\\songs\\ImperialMarch60.wav'
+    output_filepath = './tsm/test1_output.wav'
+
+    TsmThread = TimeStretchThread(BeatThread.wav_tempo, BeatThread.mic_tempo,input_file, output_filepath)
+    
     print("All threads init'ed")
     try:
         AThread.start()  # Start collecting audio
         print("============== AThread started")
         BeatThread.start()
         print("============== BeatThread started")
+        TsmThread.start()
+        print("============== Time Stretching started")
         while True:
             # Do any processing you want here!
-            print(BeatThread.mic_tempo)
+            print("This is mic_tempo:", BeatThread.mic_tempo, "and mic_output:", BeatThread.mic_output)
+            print("This is a wav_tempo: " , BeatThread.wav_tempo, "and wav_output:", BeatThread.wav_output)
+            # timestretch_ratio = tsm_process_func(BeatThread.wav_tempo, BeatThread.mic_tempo, input_file)
+            # print("The ratio is: ", timestretch_ratio)
+            print("This is the error: ", BeatThread.loss)
+
             time.sleep(0.5)  # Make sure to sleep when you do not need the program to run to avoid eating too much CPU.
     except KeyboardInterrupt:  # This kills the thread when the user stops the program to avoid an infinite loop
         AThread.stop_request = True
         BeatThread.stop_request = True
+        TsmThread.stop_request = True
 
 
 if __name__ == "__main__":
