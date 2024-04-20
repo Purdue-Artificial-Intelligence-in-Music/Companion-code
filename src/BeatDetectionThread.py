@@ -69,7 +69,6 @@ def get_error(input_times, wav_times):
             beats += (input_times[i+1] - input_times[i]) * tempo / 60.0 # Divide by 60 for BPS
         if input_times[i+1] - input_times[i] < 0.5: # Too fast to be an actual beat
             beats -= 1
-
     return len(wav_times) - beats
 
 class BeatDetectionThread(threading.Thread):
