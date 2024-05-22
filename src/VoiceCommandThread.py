@@ -93,6 +93,10 @@ class VoiceAnalyzerThread(threading.Thread):
                 if phrase in spokenWords.lower():
                     return command
 
+            # If no command is found for action phrase then call upon work from VoiceDictionary.py
+            # to generate a new phrase / command that the user can tell the goal is
+            # add an edit command that can override this process so the user can just do it directly?
+
             # If no special cases, proceed with model classification
             hypotheses = [f"The action is: {desc}" for desc in commands.values()]
             result = classifier(spokenWords, hypotheses, multi_label=True) # Changed multi_class to multi_label
