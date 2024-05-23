@@ -68,6 +68,9 @@ class VoiceAnalyzerThread(threading.Thread):
                 "don't go": "stop",
                 "do not go": "stop",
                 "never go": "stop",
+                "don't do this": "edit",
+                "do not do this": "edit",
+                "never do this": "edit",
             }
             # Action phrases that directly map to commands
             action_phrases = {
@@ -82,10 +85,15 @@ class VoiceAnalyzerThread(threading.Thread):
                 "pause": "stop", 
                 "I can't hear": "volume up",
                 "it's noisy": "volume down",
+                "fix": "edit",
+                "change": "edit",
+                "alter": "edit",
+                "modify": "edit",
             }
 
             #Preset to "edit" since that's the key to adding/changing a command
             myCommand = "edit"
+            toInsert = True
             
             # First check for any negation adjustments
             for phrase, command in adjustments.items():
@@ -106,8 +114,22 @@ class VoiceAnalyzerThread(threading.Thread):
                 MyText = self.r.recognize_google(audio)
                 MyText = MyText.lower()
                 yourDesc = np.array(MyText.split())
-            
-                commands[name] = yourDesc
+
+                # First check if this is just a new negation
+                for phrase, command in adjustments.items():
+                    if yourDesc in spokenWords.lower():
+                        adjustments[name] = yourDesc
+                        toInsert = False
+
+                # Next, check if its a new alterantive mapping
+                for phrase, command in action_phrases.items():
+                    if yourDesc in spokenWords.lower():
+                        action_phrases[name] = yourDesc
+                        toInsert = False
+
+                # Lastly, if it wasn't either then insert it properly into the commands list
+                if (toInsert):
+                    commands[name] = yourDesc
 
 
             # If no special cases, proceed with model classification
