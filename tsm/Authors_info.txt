@@ -1,0 +1,7 @@
+Primary Authors: Temirlan Karataev, Tanin Padungkirtsakul
+GitHub Username: tema014
+
+List of Files:
+1. all files inside of tsm folder
+2. TsmThread.py
+4. Tsm.py
