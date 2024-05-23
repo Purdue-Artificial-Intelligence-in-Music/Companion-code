@@ -53,7 +53,8 @@ class VoiceAnalyzerThread(threading.Thread):
                 "volume up": "The action involves increasing volume.",
                 "volume down": "The action involves decreasing volume.",
                 "stop": "The action involves bringing something to a halt.",
-                "start": "The action involves beginning something."
+                "start": "The action involves beginning something.",
+                "edit": "The action involves changing something."
             }
 
             # Enhance the classify_command function to handle a wider range of negations
@@ -83,19 +84,31 @@ class VoiceAnalyzerThread(threading.Thread):
                 "it's noisy": "volume down",
             }
 
+            #Preset to "edit" since that's the key to adding/changing a command
+            myCommand = "edit"
+            
             # First check for any negation adjustments
             for phrase, command in adjustments.items():
                 if phrase in spokenWords.lower():
-                    return command
+                    myCommand = command
 
             # Next, check for direct action phrase mappings
             for phrase, command in action_phrases.items():
                 if phrase in spokenWords.lower():
-                    return command
+                    myCommand = command
 
-            # If no command is found for action phrase then call upon work from VoiceDictionary.py
-            # to generate a new phrase / command that the user can tell the goal is
-            # add an edit command that can override this process so the user can just do it directly?
+            #If no new command was grabbed then act upon the edit
+            if (myCommand == "edit"):
+                print("No command found for what you said, please define your command")
+                
+                name = spokenWords
+
+                MyText = self.r.recognize_google(audio)
+                MyText = MyText.lower()
+                yourDesc = np.array(MyText.split())
+            
+                commands[name] = yourDesc
+
 
             # If no special cases, proceed with model classification
             hypotheses = [f"The action is: {desc}" for desc in commands.values()]
