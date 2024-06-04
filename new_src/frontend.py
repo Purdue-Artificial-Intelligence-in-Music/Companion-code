@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from AudioBuffer import *
 
 FRAMES_PER_BUFFER = 1024
@@ -30,6 +31,10 @@ def main():
         buffer.stop_request = True
         buffer.stop()
     print("Program done")
+=======
+def main():
+    print("Hi")
+>>>>>>> 42fc452c864bd1e925a08c11e45ec45b417fdc2b
 
 
 if __name__ == "__main__":
