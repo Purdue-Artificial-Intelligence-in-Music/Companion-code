@@ -20,7 +20,7 @@ def main():
     buffer = AudioBuffer(name="buffer", frames_per_buffer=FRAMES_PER_BUFFER,
                                     wav_file="C:\\Users\\TPNml\\Downloads\\sine tone.wav",
                                     process_func=process_func,
-                                    process_func_args=()
+                                    process_func_args=(),
                                     debug_prints=True)
     voice = VoiceAnalyzerThread(name="voice", AThread=AudioBuffer)
     try:
