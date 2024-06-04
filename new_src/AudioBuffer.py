@@ -15,7 +15,7 @@ This is version 2 of the code.
 
 
 class AudioBuffer(threading.Thread):
-    def __init__(self, name, frames_per_buffer: int, wav_file: str, process_func: Callable, process_func_args=(), debug_prints = False):
+    def __init__(self, name: str, frames_per_buffer: int, wav_file: str, process_func: Callable, process_func_args=(), debug_prints = False):
         """
         Initializes an AudioThreadWithBuffer object (a thread that takes audio, stores it in a buffer,
         optionally processes it, and returns new audio to play back).
@@ -36,19 +36,27 @@ class AudioBuffer(threading.Thread):
         self.process_func_args = process_func_args
 
         # User-editable parameters for the audio system
-        self.wav_data, self.RATE = librosa.load(wav_file)  # Audio file and sample rate of wav audio
 
+        # Get the audio data and sample rate from the wav file
+        self.wav_data, self.RATE = librosa.load(wav_file) 
+
+        # the data type of the audio data
         self.dtype = self.wav_data.dtype
+
+        # set the pyaudio format
         if self.dtype == np.float32:
             self.FORMAT = pyaudio.paFloat32
         elif self.dtype == np.int16:
             self.FORMAT = pyaudio.paInt16
         elif self.dtype == np.int32:
             self.FORMAT = pyaudio.paInt32
+        
+        # if the audio data has only a single channel, reshape the array so that 
         if len(self.wav_data.shape) == 1:
             self.wav_data = self.wav_data.reshape((-1, 1))
         self.CHANNELS = self.wav_data.shape[1]
         
+        # a frame consists of samples across all channels at a certain point in time
         self.FRAMES_PER_BUFFER = frames_per_buffer
         
         if debug_prints:
@@ -87,20 +95,22 @@ class AudioBuffer(threading.Thread):
         if debug_prints:
             print("Buffer elements: %d\nBuffer size (in samples): %d\nBuffer size (in seconds): %.2f" % (self.buffer_elements, self.buffer_size, self.buffer_size / float(self.RATE)))
 
+        # Shape of transform buffer: Buffer elements * transform values * channels
         self.transform_buffer = np.zeros((self.buffer_elements, *self.wav_transform.shape[1:]), dtype=self.dtype)
         self.transform_buffer_index = 0
         self.transform_buffer_filled = False
 
         if debug_prints:
-            print("Transform buffer shape %s" % (str(self.transform_buffer.shape)))
+            print("Transform buffer shape = %s" % (str(self.transform_buffer.shape)))
 
         self.sample_counter = Counter()
 
-
     def transform_func(self, audio: np.ndarray) -> np.ndarray:
         if len(audio) < self.FRAMES_PER_BUFFER:
-            audio = np.concatenate((audio, np.zeros((self.FRAMES_PER_BUFFER - audio.shape[0], audio.shape[1]), dtype=audio.dtype)))
+            audio = np.concatenate((audio, np.zeros((self.FRAMES_PER_BUFFER - audio.shape[0], audio.shape[1]), dtype=audio.dtype)), axis=0)
         transform_output = librosa.feature.chroma_cqt(y=audio.T, sr=self.RATE, hop_length=self.FRAMES_PER_BUFFER)
+        if len(audio) % self.FRAMES_PER_BUFFER == 0:
+            transform_output = transform_output[:, :, :-1]
         transform_output = transform_output.swapaxes(0, 2)
         if transform_output.shape[0] == 1:
             transform_output.reshape(transform_output.shape[1:])
@@ -141,6 +151,7 @@ class AudioBuffer(threading.Thread):
         Returns: nothing
         """
         # self.stream.stop_stream()
+        print("Stopping")
         self.stream.close()
         self.p.terminate()
         self.stop_request = True
@@ -271,10 +282,10 @@ class AudioBuffer(threading.Thread):
         self.sample_counter.subtract_all(L)  # Update sample counter
 
         # Process transform and add to transform buffer
-        self.transform_buffer[self.transform_buffer_index] = self.process_func(input_array)  # Process the input info
-        if self.transform_buffer_index == self.buffer_elements - 1:  # Once the buffer is filled, mark it as filled
-            self.transform_buffer_filled = True
-        self.transform_buffer_index = (self.transform_buffer_index + 1) % self.buffer_elements  # Increment the buffer counter
+        # self.transform_buffer[self.transform_buffer_index] = self.transform_func(input_array)  # Process the input info
+        # if self.transform_buffer_index == self.buffer_elements - 1:  # Once the buffer is filled, mark it as filled
+        #     self.transform_buffer_filled = True
+        # self.transform_buffer_index = (self.transform_buffer_index + 1) % self.buffer_elements  # Increment the buffer counter
 
         # This is where process_func in threaded_parent_with_buffer.py is called from
         if self.wav_index + self.FRAMES_PER_BUFFER <= self.wav_len:  # If there is enough data in wav

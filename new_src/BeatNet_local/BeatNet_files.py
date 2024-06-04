@@ -20,7 +20,7 @@ import time
 import threading
 
 
-class BeatNet:
+class BeatNet_for_files:
 
     '''
     The main BeatNet handler class including different trained models, different modes for extracting the activation and causal and non-causal inferences
@@ -52,7 +52,7 @@ class BeatNet:
         self.model = model
         self.mode = mode
         self.inference_model = inference_model
-        self.plot= plot
+        self.plot = plot
         self.thread = thread
         self.device = device
         if plot and thread:

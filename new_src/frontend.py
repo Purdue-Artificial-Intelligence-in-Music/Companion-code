@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 from AudioBuffer import *
 
 FRAMES_PER_BUFFER = 1024
@@ -16,25 +16,25 @@ def process_func(self, input_array, wav_data):
     return output
 
 def main():
-    buffer = AudioBuffer(name="buffer", frames_per_buffer=FRAMES_PER_BUFFER,
-                                    wav_file="C:\\Users\\TPNml\\Downloads\\sine tone.wav",
-                                    process_func=process_func,
-                                    process_func_args=()
-                                    debug_prints=True)
+    buffer = AudioBuffer(name="buffer", 
+                         frames_per_buffer=FRAMES_PER_BUFFER,
+                         wav_file="new_src\hunt.wav",
+                         process_func=process_func,
+                         process_func_args=(),
+                         debug_prints=True)
+    buffer.daemon = True
+    buffer.start()
+    print("Buffer started")
     try:
-        buffer.start()
-        print("Buffer started")
         while not buffer.stop_request:
             time.sleep(0.5)
+
     except Exception:
         print("Detected interrupt")
-        buffer.stop_request = True
         buffer.stop()
+        buffer.join()
+
     print("Program done")
-=======
-def main():
-    print("Hi")
->>>>>>> 42fc452c864bd1e925a08c11e45ec45b417fdc2b
 
 
 if __name__ == "__main__":
