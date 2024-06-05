@@ -5,6 +5,7 @@ import speech_recognition as sr
 import pyttsx3
 import numpy as np
 from nltk.stem import PorterStemmer
+from transformers import pipeline
 
 
 class VoiceAnalyzerThread(threading.Thread):
@@ -38,20 +39,114 @@ class VoiceAnalyzerThread(threading.Thread):
         # exceptions at the runtime
         try:
             # Using google to recognize audio
+
+            # Initialize the zero-shot classification pipeline with the Roberta model
+            classifier = pipeline('zero-shot-classification', model='roberta-large-mnli')
             
             MyText = self.r.recognize_google(audio)
             MyText = MyText.lower()
             spokenWords = np.array(MyText.split())
-            commands = ["speed", "go to", "exit", "start", ""]
-            relevantWord = []
-            for i in commands:
-                for j in range(len(spokenWords) - 1):
-                    if (self.ps.stem(spokenWords[j]) == i):
-                        relevantWord.append(i)
-                    if ((self.ps.stem(spokenWords[j]) + " " + self.ps.stem(spokenWords[j + 1]) == i)):
-                        relevantWord.append(i)
-            print(relevantWord)
-            self.output = relevantWord
+            # Define the list of possible commands along with hypothesis templates
+            commands = {
+                "speed up": "The action involves increasing speed.",
+                "slow down": "The action involves decreasing speed.",
+                "volume up": "The action involves increasing volume.",
+                "volume down": "The action involves decreasing volume.",
+                "stop": "The action involves bringing something to a halt.",
+                "start": "The action involves beginning something.",
+                "edit": "The action involves changing something."
+            }
+
+            # Enhance the classify_command function to handle a wider range of negations
+            # Check for negations and adjust the command accordingly
+            negations = ["don't", "do not", "please don't", "never", "no", "not"]
+            # Adjustments for negations
+            adjustments = {
+                "don't stop": "start",
+                "do not stop": "start",
+                "never stop": "start",
+                "don't go": "stop",
+                "do not go": "stop",
+                "never go": "stop",
+                "don't do this": "edit",
+                "do not do this": "edit",
+                "never do this": "edit",
+            }
+            # Action phrases that directly map to commands
+            action_phrases = {
+                "too fast": "slow down",
+                "too slow": "speed up",
+                "too loud": "volume down",
+                "too quiet": "volume up",
+                "go": "start",
+                "halt": "stop",
+                "be quiet": "volume down",
+                "stop playing": "stop",  
+                "pause": "stop", 
+                "I can't hear": "volume up",
+                "it's noisy": "volume down",
+                "fix": "edit",
+                "change": "edit",
+                "alter": "edit",
+                "modify": "edit",
+            }
+
+            #Preset to "edit" since that's the key to adding/changing a command
+            myCommand = "edit"
+            toInsert = True
+            
+            # First check for any negation adjustments
+            for phrase, command in adjustments.items():
+                if phrase in spokenWords.lower():
+                    myCommand = command
+
+            # Next, check for direct action phrase mappings
+            for phrase, command in action_phrases.items():
+                if phrase in spokenWords.lower():
+                    myCommand = command
+
+            #If no new command was grabbed then act upon the edit
+            if (myCommand == "edit"):
+                print("No command found for what you said, please define your command")
+                
+                name = spokenWords
+
+                MyText = self.r.recognize_google(audio)
+                MyText = MyText.lower()
+                yourDesc = np.array(MyText.split())
+
+                # First check if this is just a new negation
+                for phrase, command in adjustments.items():
+                    if yourDesc in spokenWords.lower():
+                        adjustments[name] = yourDesc
+                        toInsert = False
+
+                # Next, check if its a new alterantive mapping
+                for phrase, command in action_phrases.items():
+                    if yourDesc in spokenWords.lower():
+                        action_phrases[name] = yourDesc
+                        toInsert = False
+
+                # Lastly, if it wasn't either then insert it properly into the commands list
+                if (toInsert):
+                    commands[name] = yourDesc
+
+
+            # If no special cases, proceed with model classification
+            hypotheses = [f"The action is: {desc}" for desc in commands.values()]
+            result = classifier(spokenWords, hypotheses, multi_label=True) # Changed multi_class to multi_label
+            highest_score = max(result['scores'])
+            highest_scoring_command = [cmd for cmd, desc in commands.items() if f"The action is: {desc}" == result['labels'][result['scores'].index(highest_score)]][0]
+
+            # relevantWord = []
+            # for i in commands:
+            #     for j in range(len(spokenWords) - 1):
+            #         if (self.ps.stem(spokenWords[j]) == i):
+            #             relevantWord.append(i)
+            #         if ((self.ps.stem(spokenWords[j]) + " " + self.ps.stem(spokenWords[j + 1]) == i)):
+            #             relevantWord.append(i)
+            # print(relevantWord)
+            self.output = highest_scoring_command
         except sr.RequestError as e:
             print("Could not request results; {0}".format(e))
             self.stop_request = True
@@ -69,8 +164,9 @@ class VoiceAnalyzerThread(threading.Thread):
             time.sleep(self.voice_length)
 
 def main():
+    #Todo: Change to your file path
     AThread = AudioThreadWithBuffer(name="AThread", starting_chunk_size=1024, 
-                                    wav_file = "C:\\Users\\shris\\Downloads\\IMG_8791.wav",
+                                    wav_file = "C:\\Users\\Eddie\\Downloads\\IMG_8791.wav",
                                     process_func=(lambda x, y, z: z))
     VThread = VoiceAnalyzerThread(AThread=AThread, name = "Vthread")
     try:
