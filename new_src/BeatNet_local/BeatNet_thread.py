@@ -119,7 +119,7 @@ class BeatNet:
             # print("Expected buffer of %d samples" % self.log_spec_hop_length)
             counter_val = self.BUFFER.sample_counter.get("beatnet_streaming_counter")
             hop = self.BUFFER.get_range_samples(counter_val, counter_val + self.log_spec_hop_length + 1) # changed here
-            self.BUFFER.sample_counter.add("beatnet_streaming_counter", self.log_spec_hop_length)s
+            self.BUFFER.sample_counter.add("beatnet_streaming_counter", self.log_spec_hop_length)
             # print("Got a buffer of %d samples" % len(hop))
             hop = hop.astype(dtype=np.float32, casting='safe')
             self.stream_window = np.append(self.stream_window[self.log_spec_hop_length:], hop)
