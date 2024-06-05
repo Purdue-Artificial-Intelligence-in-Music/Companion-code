@@ -3,7 +3,7 @@ import time
 
 import numpy as np
 
-from unused_code.OnsetDetection import get_times
+from OnsetDetection import get_times
 
 def get_tempo(x: np.ndarray):
     out = 0.0

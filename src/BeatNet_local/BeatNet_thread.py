@@ -20,7 +20,7 @@ import time
 import threading
 from AudioBuffer import *
 
-class BeatNet:
+class BeatNet_thread:
 
     '''
     The main BeatNet handler class including different trained models, different modes for extracting the activation and causal and non-causal inferences
@@ -46,13 +46,12 @@ class BeatNet:
     '''
     
     
-    def __init__(self, model, BUFFER: AudioBuffer, plot=[], thread=False, device='cpu'):
+    def __init__(self, model, BUFFER: AudioBuffer, plot=[], device='cpu'):
         self.model = model
         self.mode = 'stream'
         self.inference_model = 'PF'
         self.BUFFER = BUFFER
         self.plot= plot
-        self.thread = thread
         self.device = device
         if plot and thread:
             raise RuntimeError('Plotting cannot be accomplished in the threading mode')
@@ -118,18 +117,21 @@ class BeatNet:
         with torch.no_grad():
             # print("Expected buffer of %d samples" % self.log_spec_hop_length)
             counter_val = self.BUFFER.sample_counter.get("beatnet_streaming_counter")
-            hop = self.BUFFER.get_range_samples(counter_val, counter_val + self.log_spec_hop_length + 1) # changed here
-            self.BUFFER.sample_counter.add("beatnet_streaming_counter", self.log_spec_hop_length)
-            # print("Got a buffer of %d samples" % len(hop))
-            hop = hop.astype(dtype=np.float32, casting='safe')
-            self.stream_window = np.append(self.stream_window[self.log_spec_hop_length:], hop)
-            if self.counter < 5:
-                self.pred = np.zeros([1,2])
+            if counter_val < self.log_spec_hop_length:
+                time.sleep(self.BUFFER.FRAMES_PER_BUFFER / self.BUFFER.RATE)
             else:
-                feats = self.proc.process_audio(self.stream_window).T[-1]
-                feats = torch.from_numpy(feats)
-                feats = feats.unsqueeze(0).unsqueeze(0).to(self.device)
-                pred = self.model(feats)[0]
-                pred = self.model.final_pred(pred)
-                pred = pred.cpu().detach().numpy()
-                self.pred = np.transpose(pred[:2, :])
+                hop = self.BUFFER.get_range_samples(counter_val, counter_val + self.log_spec_hop_length + 1) # changed here
+                self.BUFFER.sample_counter.add("beatnet_streaming_counter", self.log_spec_hop_length)
+                # print("Got a buffer of %d samples" % len(hop))
+                hop = hop.astype(dtype=np.float32, casting='safe')
+                self.stream_window = np.append(self.stream_window[self.log_spec_hop_length:], hop)
+                if self.counter < 5:
+                    self.pred = np.zeros([1,2])
+                else:
+                    feats = self.proc.process_audio(self.stream_window).T[-1]
+                    feats = torch.from_numpy(feats)
+                    feats = feats.unsqueeze(0).unsqueeze(0).to(self.device)
+                    pred = self.model(feats)[0]
+                    pred = self.model.final_pred(pred)
+                    pred = pred.cpu().detach().numpy()
+                    self.pred = np.transpose(pred[:2, :])

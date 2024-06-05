@@ -1,6 +1,6 @@
 import threading
 import time
-from AudioThreadWithBuffer import AudioThreadWithBuffer
+from AudioBuffer import AudioBuffer
 import speech_recognition as sr
 import pyttsx3
 import numpy as np
@@ -9,10 +9,10 @@ from transformers import pipeline
 
 
 class VoiceAnalyzerThread(threading.Thread):
-    def __init__(self, name, AThread, voice_length=3):
+    def __init__(self, name: str, BUFFER: AudioBuffer, voice_length=3):
         super(VoiceAnalyzerThread, self).__init__()
         self.name = name
-        self.AThread = AThread
+        self.BUFFER = BUFFER
         self.stop_request = False
         self.r = sr.Recognizer()
         self.ps = PorterStemmer()
@@ -20,29 +20,28 @@ class VoiceAnalyzerThread(threading.Thread):
         self.voice_length = voice_length
         # Initialize whatever stuff you need here
 
-    def convert_to_AudioData(self, nparr):
-        # sample_width=2 relies on the fact that AudioThreadWithBuffer's format is PyAudio.paInt16, which has 16 bits
-        return sr.AudioData(frame_data=nparr.tobytes(), 
-                            sample_rate=self.AThread.RATE, 
-                            sample_width=2)
+        # Initialize the zero-shot classification pipeline with the Roberta model
+        self.classifier = pipeline('zero-shot-classification', model='roberta-large-mnli')
+
+    def convert_to_AudioData(self, arr: np.ndarray):
+        # sample_width=2 relies on the fact that AudioThreadWithBuffer's format is PyAudio.paFloat32, which has 4 bytes per sample
+        return sr.AudioData(frame_data=arr.tobytes(), 
+                            sample_rate=self.BUFFER.RATE, 
+                            sample_width=4)
 
     # Function to convert text to
     # speech
-    def SpeakText(command):
+    def SpeakText(command: str):
         # Initialize the engine
         engine = pyttsx3.init()
         engine.say(command)
         engine.runAndWait()
 
-    def getSpeech(self, audio):
+    def getSpeech(self, audio: sr.AudioData):
         # Exception handling to handle
         # exceptions at the runtime
         try:
             # Using google to recognize audio
-
-            # Initialize the zero-shot classification pipeline with the Roberta model
-            classifier = pipeline('zero-shot-classification', model='roberta-large-mnli')
-            
             MyText = self.r.recognize_google(audio)
             MyText = MyText.lower()
             spokenWords = np.array(MyText.split())
@@ -134,7 +133,7 @@ class VoiceAnalyzerThread(threading.Thread):
 
             # If no special cases, proceed with model classification
             hypotheses = [f"The action is: {desc}" for desc in commands.values()]
-            result = classifier(spokenWords, hypotheses, multi_label=True) # Changed multi_class to multi_label
+            result = self.classifier(spokenWords, hypotheses, multi_label=True) # Changed multi_class to multi_label
             highest_score = max(result['scores'])
             highest_scoring_command = [cmd for cmd, desc in commands.items() if f"The action is: {desc}" == result['labels'][result['scores'].index(highest_score)]][0]
 
@@ -158,17 +157,17 @@ class VoiceAnalyzerThread(threading.Thread):
     def run(self):
         time.sleep(0.5)
         while not self.stop_request:
-            smp = self.AThread.get_last_samples(self.AThread.RATE * self.voice_length)
-            if len(smp) >= self.AThread.RATE * self.voice_length / 2.0:
+            smp = self.BUFFER.get_last_samples(self.BUFFER.RATE * self.voice_length)
+            if len(smp) >= self.BUFFER.RATE * self.voice_length / 2.0:
                 self.getSpeech(self.convert_to_AudioData(smp))
             time.sleep(self.voice_length)
 
 def main():
     #Todo: Change to your file path
-    AThread = AudioThreadWithBuffer(name="AThread", starting_chunk_size=1024, 
-                                    wav_file = "C:\\Users\\Eddie\\Downloads\\IMG_8791.wav",
+    AThread = AudioBuffer(name="AThread", frames_per_buffer=1024, 
+                                    wav_file = "new_src\hunt.wav",
                                     process_func=(lambda x, y, z: z))
-    VThread = VoiceAnalyzerThread(AThread=AThread, name = "Vthread")
+    VThread = VoiceAnalyzerThread(BUFFER=AThread, name = "Vthread")
     try:
         AThread.start()
         VThread.start()
