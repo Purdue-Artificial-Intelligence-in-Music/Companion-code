@@ -2,44 +2,33 @@
 from BeatNet_local.BeatNet_thread import BeatNet_thread
 from AudioBuffer import *
 from VoiceCommandThread import *
-import pytsmod as tsm
 
 FRAMES_PER_BUFFER = 1024
 
 def process_func(self, input_array, wav_data):
-    if wav_data is not None:
-    # print("-------")
-    # print(input_array.shape)
-    # print(input_array.dtype)
-    # print(wav_data.shape)
-    # print(wav_data.dtype)
-        # L = min(len(input_array), len(wav_data))
-        # output = input_array[:L] + wav_data[:L]
-        output = wav_data[self.wav_index, self.wav_index+self.FRAMES_PER_BUFFER]
-        self.wav_index += self.FRAMES_PER_BUFFER
-    else:
-        output = input_array
-    # print(wav_data.shape)
-    # print(wav_data.dtype)
-    return output
+    return wav_data
 
 def main():
-
     buffer = AudioBuffer(name="buffer", 
                          frames_per_buffer=FRAMES_PER_BUFFER,
-                         wav_file="new_src\hunt.wav",
+                         wav_file="src\mountain_king.mp3",
                          process_func=process_func,
                          process_func_args=(),
-                         calc_beats=True,
-                         debug_prints=True,
-                         time_stretch=True,
+                         calc_transforms=False, 
+                         calc_beats=False,
+                         run_counter=False,
                          kill_after_finished=True,
-                         output_path="./src/wav_output.wav")
+                         time_stretch=True,
+                         playback_rate=2.0,
+                         sr_no_wav=44100,
+                         dtype_no_wav=np.float32,
+                         channels_no_wav=1,
+                         output_path="",
+                         debug_prints=True)
     # beat_detector = BeatNet_thread(model="PF", BUFFER=buffer, plot=[], thread = False, device='cpu')
     voice_recognizer = VoiceAnalyzerThread(name="voice_recognizer",
                                            BUFFER=buffer,
                                            voice_length=3)
-    buffer.daemon = True
     # beat_detector = True
     voice_recognizer.daemon = True
     print("All thread objects initialized")

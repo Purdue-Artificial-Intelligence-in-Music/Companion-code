@@ -9,6 +9,7 @@ from Counter import *
 import pytsmod
 import soundfile
 import matplotlib.pyplot as plt
+from noisereduce import reduce_noise
 
 '''
 This class is a template class for a thread that reads in audio fromxPyAudio and stores it in a buffer.
@@ -28,6 +29,7 @@ class AudioBuffer(threading.Thread):
                  run_counter = False,
                  kill_after_finished = True,
                  time_stretch = False,
+                 playback_rate = 1,
                  sr_no_wav = 44100,
                  dtype_no_wav = np.float32,
                  channels_no_wav = 1,
@@ -38,15 +40,16 @@ class AudioBuffer(threading.Thread):
         optionally processes it, and returns new audio to play back).
         Parameters:
             name: unique identifier for audio thread
-            frames_per_buffer: size of the buffer (a frame is the set of samples across all channels at a given index)
+            frames_per_buffer: frames per buffer for the pyaudio stream
             process_func: the user-defined function to be called as a callback when new audio is received from PyAudio - must accept at least 2 args
             process_func_args: additional arguments for process_func
             wav_file: path to a wav file to pass to process_func
             calc_transforms: if True, calculate chroma features for microphone audio in real time
             calc_beats: if True, detect beats in microphone and wav file audio using BeatNet
-            run_counter:
+            run_counter: if Ture, create a Counter object to help with synchronization
             kill_after_finished: if False, keep pyaudio stream will remain open after entire wav file has been played
             time_stretch: if True, time stretch the wav file audio
+            time_stretch_factor: multiplier for audio speed when time stretching
             sr_no_wav: sample rate to use if no wav file is provided
             dtype_no_wav: dtype to use if no wav file is provided
             channels_no_wav: number of channels if no wav file is provided
@@ -57,6 +60,8 @@ class AudioBuffer(threading.Thread):
         All params directly passed to PyAudio are in ALL CAPS.
         """
         super(AudioBuffer, self).__init__()  # initialize parent class
+        self.daemon = True
+
         self.name = name 
         self.FRAMES_PER_BUFFER = frames_per_buffer 
         self.process_func = process_func 
@@ -66,20 +71,21 @@ class AudioBuffer(threading.Thread):
         self.run_counter = run_counter
         self.kill_after_finished = kill_after_finished 
         self.time_stretch = time_stretch
+        self.playback_rate = playback_rate
         self.RATE = sr_no_wav
         self.dtype = dtype_no_wav
+        self.CHANNELS = channels_no_wav
         self.output_path = output_path
-
         self.paused = False
+        self.debug_prints = debug_prints
 
-        # User-editable parameters for the audio system
+        # initialize WAV file properites
         self.wav_data = None
         self.wav_index = 0
         self.wav_len = 0
-        self.CHANNELS = channels_no_wav
-        self.wav_buffer = None
+        # self.wav_buffer = None
         
-        # Get the audio data and sample rate from the wav file
+        # Get the audio data and sample rate from the wav file if one is provided
         if wav_file is not None:
             self.wav_data, self.RATE = librosa.load(wav_file) 
             self.dtype = self.wav_data.dtype
@@ -88,27 +94,28 @@ class AudioBuffer(threading.Thread):
             if len(self.wav_data.shape) == 1:
                 self.wav_data = self.wav_data.reshape(1, -1)
 
+            # self.wav_data has shape (channels, # samples)
             self.CHANNELS, self.wav_len = self.wav_data.shape
+
             # if calc_transforms:
             #     self.wav_transform = self.transform_func(self.wav_data)
             #     if debug_prints:
             #         print("Wav transform shape = %s" % (str(self.wav_transform.shape)))
 
-            self.wav_buffer = np.zeros_like(self.wav_data)  # set a zero array
+            # self.wav_buffer = np.zeros_like(self.wav_data)  # set a zero array
 
         # set the pyaudio format
-        if self.dtype == np.float32:
-            self.FORMAT = pyaudio.paFloat32
-        elif self.dtype == np.int16:
+        if self.dtype == np.int16:
             self.FORMAT = pyaudio.paInt16
         elif self.dtype == np.int32:
             self.FORMAT = pyaudio.paInt32
+        else:
+            self.FORMAT = pyaudio.paFloat32
         
-        # a frame consists of samples across all channels at a certain point in time
-        if debug_prints:
-            print("Audio init parameters:\nFormat = %s\ndtype = %s\nChannels = %d\nFrames per buffer = %d" % (self.FORMAT, self.dtype, self.CHANNELS, self.FRAMES_PER_BUFFER))
-            if wav_file is not None:
-                print("Shape of wav_data: ", self.wav_data.shape)
+        # if debug_prints:
+        #     print("Audio init parameters:\nFormat = %s\ndtype = %s\nChannels = %d\nFrames per buffer = %d" % (self.FORMAT, self.dtype, self.CHANNELS, self.FRAMES_PER_BUFFER))
+        #     if wav_file is not None:
+        #         print("Shape of wav_data: ", self.wav_data.shape)
 
         # Helper function vals
         self.on_threshold = 0.5  # RMS threshold for audio_on
@@ -118,19 +125,20 @@ class AudioBuffer(threading.Thread):
         self.stream = None  # PyAudio stream
 
         # Instance vals
-        self.output_array = None  # Most recent output data
+        self.output_array = None  # Audio data that the audio stream will play next
         self.input_on = False  # True if audio is being played into PyAudio, False otherwise, set by audio_on()
         self.stop_request = False   # True if AudioThreadWithBuffer needs to be killed, False otherwise
 
-        # set audio buffer
+        # create audio buffer to store microphone input (not the same as pyaudio buffer)
         self.buffer_elements = 50  # number of CHUNKs the buffer should store
         self.buffer_size = self.buffer_elements * self.FRAMES_PER_BUFFER  # desired buffer size in samples
-        self.audio_buffer = np.zeros((self.CHANNELS, self.FRAMES_PER_BUFFER), dtype=self.dtype)  # set a zero array
+        self.audio_buffer = np.zeros((self.CHANNELS, self.buffer_size), dtype=self.dtype)  # set a zero array
         self.buffer_index = 0  # current last sample stored in buffer
         self.buffer_filled = False # True if buffer has been filled all the way, False otherwise
+        self.buffer_length = len(self.audio_buffer)
 
-        if debug_prints:
-            print("Buffer elements: %d\nBuffer size (in samples): %d\nBuffer size (in seconds): %.2f" % (self.buffer_elements, self.buffer_size, self.buffer_size / float(self.RATE)))
+        # if debug_prints:
+        #     print("Buffer elements: %d\nBuffer size (in samples): %d\nBuffer size (in seconds): %.2f" % (self.buffer_elements, self.buffer_size, self.buffer_size / float(self.RATE)))
 
         # if calc_transforms:
         #     # Shape of transform buffer: Buffer elements * transform values * channels
@@ -141,8 +149,12 @@ class AudioBuffer(threading.Thread):
         #     if debug_prints:
         #         print("Transform buffer shape = %s" % (str(self.transform_buffer.shape)))
 
+        self.mic_sample_counter = None
         if run_counter:
             self.mic_sample_counter = Counter()
+
+        
+        self.wav_beats = None
 
         if calc_beats:
             estimator = BeatNet_for_audio_arr(1, mode='online', inference_model='PF', plot=[], thread=False)
@@ -151,11 +163,6 @@ class AudioBuffer(threading.Thread):
                 self.wav_beats[i][0] = int(self.wav_beats[i][0] * self.RATE)
             if debug_prints:
                 print(self.wav_beats)
-
-        # if self.time_stretch:
-        #     self.time_stretch_factor = 0.5
-        #     self.time_stretch_length = min(time_stretch_length, self.FRAMES_PER_BUFFER)
-
 
     def transform_func(self, audio: np.ndarray) -> np.ndarray:
         if len(audio) < self.FRAMES_PER_BUFFER:
@@ -203,11 +210,10 @@ class AudioBuffer(threading.Thread):
                                   output=True,  # output audio
                                   stream_callback=self.callback,
                                   frames_per_buffer=self.FRAMES_PER_BUFFER)
-        print(1)
+        
         # Ensure that this is the expected size
         while not self.stop_request:
             time.sleep(1.0)
-        self.stop()
 
     def stop(self):
         """
@@ -229,8 +235,9 @@ class AudioBuffer(threading.Thread):
         """
         audio = audio.astype(np.float64)
         val_sum = 0.0
-        for val in audio:
-            val_sum += val * val
+        for col in audio.T:
+            val = np.dot(col, col)
+            val_sum += val
         val_sum /= len(audio)
         if val_sum > self.on_threshold:
             self.input_on = True
@@ -322,8 +329,8 @@ class AudioBuffer(threading.Thread):
     def unpause(self):
         self.paused = False
 
-    def change_time_stretch_factor(self, val: float):
-        self.time_stretch_factor = val
+    def change_playback_rate(self, val: float):
+        self.playback_rate = val
         
     def callback(self, in_data, frame_count, time_info, flag):
         """
@@ -333,23 +340,22 @@ class AudioBuffer(threading.Thread):
         Parameters: none user-exposed
         Returns: new audio for PyAudio to play through speakers.
         """
-        
         input_array = np.frombuffer(in_data, dtype=self.dtype)
         L = len(input_array)
 
         # Reshaping code to correct channels
-        input_array = np.reshape(input_array, (self.CHANNELS, -1)).T
+        input_array = np.reshape(input_array, (self.CHANNELS, -1))
        
         # Check if audio is on and update instance val
         self.audio_on(input_array)
 
         # Add audio to buffer
         if self.buffer_index + L > self.buffer_size: # If buffer will overflow
-            self.audio_buffer[self.buffer_index:] = input_array[0:self.buffer_length-self.buffer_index] # Add the first portion to the end
-            self.audio_buffer[0:L-(self.buffer_length-self.buffer_index)] = input_array[self.buffer_length-self.buffer_index:] # Add the rest at the front
+            self.audio_buffer[:, self.buffer_index:] = input_array[:, :self.buffer_length-self.buffer_index] # Add the first portion to the end
+            self.audio_buffer[:, 0:L-(self.buffer_length-self.buffer_index)] = input_array[:, self.buffer_length-self.buffer_index:] # Add the rest at the front
             self.buffer_filled = True
         else:
-            self.audio_buffer[self.buffer_index:self.buffer_index + L] = input_array # Add it all at once
+            self.audio_buffer[:, self.buffer_index:self.buffer_index + L] = input_array # Add it all at once
         self.buffer_index = (self.buffer_index + L) % self.buffer_size # Increment the buffer counter
 
         # Counter
@@ -389,33 +395,34 @@ class AudioBuffer(threading.Thread):
         #     current_wav_data = current_wav_data[:num_samples_needed]
         #     self.wav_buffer[self.wav_index : self.wav_index + len(current_wav_data)] = current_wav_data
         #     print("current_wav_data shape", current_wav_data.shape)
-
         # This is where process_func in threaded_parent_with_buffer.py is called from
-        if not self.paused:
-            if self.wav_data is not None:
-                if self.wav_index < self.wav_len:  # If there is enough data in wav
-                    self.output_array = self.process_func(self, 
-                                                          input_array, 
-                                                          self.wav_data, 
-                                                          *self.process_func_args) # Call process_func
-                    # self.wav_index += self.FRAMES_PER_BUFFER
-                else:  # Send the rest of the wav to process_func and kill the PyAudio stream
-                    self.output_array = self.process_func(self, input_array, 
-                                                self.wav_data, 
-                                                *self.process_func_args)
-                    if self.kill_after_finished:
-                        if self.wave_data is not None and self.output_path is not None:
-                            soundfile.write(self.output_path, self.wav_buffer.flatten(), self.RATE)
-                        self.stop()
-                        return self.output_array.flatten(order='F'), pyaudio.paAbort
-                    else:
-                        self.pause()
-                        self.wav_index = 0
-            else:
-                self.output_array = self.process_func(self, input_array, 
-                                                None, 
-                                                *self.process_func_args) # Call process_func
-        if self.stop_request:
-            self.stop()
-            return self.output_array.flatten(order='F'), pyaudio.paAbort
+        if self.paused:
+            return np.zeros((self.CHANNELS, self.FRAMES_PER_BUFFER)), pyaudio.paContinue
+        
+        if self.wav_data is not None:
+            start = max(0, self.wav_index)
+            end = min(self.wav_index + 5 * self.FRAMES_PER_BUFFER, self.wav_len)
+            self.wav_index += self.playback_rate * self.FRAMES_PER_BUFFER
+
+            stretched_audio = librosa.effects.time_stretch(y=self.wav_data[:, int(start):int(end)], rate=self.playback_rate)  # get audio
+            stretched_audio = stretched_audio.reshape((self.CHANNELS, -1))
+            wav_slice = stretched_audio[:, :self.FRAMES_PER_BUFFER]
+            wav_slice = np.pad(wav_slice, ((0, 0), (0, self.FRAMES_PER_BUFFER - wav_slice.shape[1])), mode='constant', constant_values=((0, 0), (0, 0)))
+            # wav_slice = reduce_noise(wav_slice, sr=self.RATE)
+
+            if self.wav_index < self.wav_len:  # If there is enough data in wav
+                self.output_array = self.process_func(self, input_array, wav_slice, *self.process_func_args)
+            else:  # Send the rest of the wav to process_func and kill the PyAudio stream
+                self.output_array = self.process_func(self, input_array, self.wav_data, *self.process_func_args)
+                if self.kill_after_finished:
+                    self.stop()
+                    return self.output_array.flatten(order='F'), pyaudio.paAbort
+                else:
+                    self.pause()
+                    self.wav_index = 0
+        else:
+            self.output_array = self.process_func(self, input_array, 
+                                            None, 
+                                            *self.process_func_args) # Call process_func
+        
         return self.output_array.flatten(order='F'), pyaudio.paContinue
