@@ -9,7 +9,7 @@ class Counter:
         self.array_size = start_array_size
         self.array = np.zeros((self.array_size,), dtype=self.dtype)
     
-    def add(self, key: str, start) -> None:
+    def insert(self, key: str, start) -> None:
         if self.num_elems == self.array_size:
             self.array = np.concatenate((self.array, np.zeros((self.array_size,), dtype=self.dtype)))
         self.entry_lookup[key] = self.num_elems
@@ -30,3 +30,6 @@ class Counter:
 
     def get(self, key: str):
         return self.array[self.entry_lookup[key]]
+    
+    def modify(self, key: str, val):
+        self.array[self.entry_lookup[key]] = val

@@ -53,7 +53,8 @@ class VoiceAnalyzerThread(threading.Thread):
                 "volume down": "The action involves decreasing volume.",
                 "stop": "The action involves bringing something to a halt.",
                 "start": "The action involves beginning something.",
-                "edit": "The action involves changing something."
+                "exit": "The action involves the termination of something.",
+                # "edit": "The action involves changing something."
             }
 
             # Enhance the classify_command function to handle a wider range of negations
@@ -67,9 +68,9 @@ class VoiceAnalyzerThread(threading.Thread):
                 "don't go": "stop",
                 "do not go": "stop",
                 "never go": "stop",
-                "don't do this": "edit",
-                "do not do this": "edit",
-                "never do this": "edit",
+                # "don't do this": "edit",
+                # "do not do this": "edit",
+                # "never do this": "edit",
             }
             # Action phrases that directly map to commands
             action_phrases = {
@@ -84,51 +85,51 @@ class VoiceAnalyzerThread(threading.Thread):
                 "pause": "stop", 
                 "I can't hear": "volume up",
                 "it's noisy": "volume down",
-                "fix": "edit",
-                "change": "edit",
-                "alter": "edit",
-                "modify": "edit",
+                # "fix": "edit",
+                # "change": "edit",
+                # "alter": "edit",
+                # "modify": "edit",
             }
 
-            #Preset to "edit" since that's the key to adding/changing a command
-            myCommand = "edit"
-            toInsert = True
+            # #Preset to "edit" since that's the key to adding/changing a command
+            # myCommand = "edit"
+            # toInsert = True
             
             # First check for any negation adjustments
             for phrase, command in adjustments.items():
                 if phrase in spokenWords.lower():
-                    myCommand = command
+                    command = command
 
             # Next, check for direct action phrase mappings
             for phrase, command in action_phrases.items():
                 if phrase in spokenWords.lower():
-                    myCommand = command
+                    command = command
 
-            #If no new command was grabbed then act upon the edit
-            if (myCommand == "edit"):
-                print("No command found for what you said, please define your command")
+            # #If no new command was grabbed then act upon the edit
+            # if (myCommand == "edit"):
+            #     print("No command found for what you said, please define your command")
                 
-                name = spokenWords
+            #     name = spokenWords
 
-                MyText = self.r.recognize_google(audio)
-                MyText = MyText.lower()
-                yourDesc = np.array(MyText.split())
+            #     MyText = self.r.recognize_google(audio)
+            #     MyText = MyText.lower()
+            #     yourDesc = np.array(MyText.split())
 
-                # First check if this is just a new negation
-                for phrase, command in adjustments.items():
-                    if yourDesc in spokenWords.lower():
-                        adjustments[name] = yourDesc
-                        toInsert = False
+            #     # First check if this is just a new negation
+            #     for phrase, command in adjustments.items():
+            #         if yourDesc in spokenWords.lower():
+            #             adjustments[name] = yourDesc
+            #             toInsert = False
 
-                # Next, check if its a new alterantive mapping
-                for phrase, command in action_phrases.items():
-                    if yourDesc in spokenWords.lower():
-                        action_phrases[name] = yourDesc
-                        toInsert = False
+            #     # Next, check if its a new alterantive mapping
+            #     for phrase, command in action_phrases.items():
+            #         if yourDesc in spokenWords.lower():
+            #             action_phrases[name] = yourDesc
+            #             toInsert = False
 
-                # Lastly, if it wasn't either then insert it properly into the commands list
-                if (toInsert):
-                    commands[name] = yourDesc
+            #     # Lastly, if it wasn't either then insert it properly into the commands list
+            #     if (toInsert):
+            #         commands[name] = yourDesc
 
 
             # If no special cases, proceed with model classification
@@ -137,21 +138,48 @@ class VoiceAnalyzerThread(threading.Thread):
             highest_score = max(result['scores'])
             highest_scoring_command = [cmd for cmd, desc in commands.items() if f"The action is: {desc}" == result['labels'][result['scores'].index(highest_score)]][0]
 
-            # relevantWord = []
-            # for i in commands:
-            #     for j in range(len(spokenWords) - 1):
-            #         if (self.ps.stem(spokenWords[j]) == i):
-            #             relevantWord.append(i)
-            #         if ((self.ps.stem(spokenWords[j]) + " " + self.ps.stem(spokenWords[j + 1]) == i)):
-            #             relevantWord.append(i)
-            # print(relevantWord)
+            # Now that the most optimal command has been determined... 
             self.output = highest_scoring_command
+
+            # TODO: Process the command and act upon the AudioBuffer
+            # MVP: Get start and stop to work
+
+            if self.output == "start":
+
+                print("start")
+                #Check if audio is playing
+                self.BUFFER.audio_on()
+                #If audio is not playing from the AudioBuffer, then start playing audio
+                if self.BUFFER.input_on() is False:
+                    print("Turning on audio")
+                    self.BUFFER.unpause()
+
+            elif self.output == "stop":
+
+                print("stop")
+                #Still run Buffer in the background, but don't play audio
+                self.BUFFER.pause()
+
+            elif self.output == "exit":
+
+                print("Detected interrupt")
+                #Stop both voice and buffer
+                self.stop()
+                self.BUFFER.stop()
+
+            else:
+                #TODO
+                print("Run the user's defined command")
+
+            self.output = ""
+
         except sr.RequestError as e:
             print("Could not request results; {0}".format(e))
             self.stop_request = True
         except sr.UnknownValueError:
             print("unknown error occurred")
             self.stop_request = True
+
         self.output = ""
 
     def run(self):

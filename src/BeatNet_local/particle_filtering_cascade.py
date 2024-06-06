@@ -220,6 +220,9 @@ class particle_filter_cascade:
             self.down_particles_swarm = self.subplot3.axvline(x=position_downs) # setting up downbeat particle average to display
         
             #plt.show(block=False)
+        
+        self.downbeats = 0
+        self.beats = 0
 
     def process(self, activations):
 
@@ -285,10 +288,13 @@ class particle_filter_cascade:
                     self.path = np.append(self.path, [[self.offset + self.counter * self.T, 1]], axis=0)
                     if self.mode == 'stream' or self.mode == 'realtime':
                         print("*beat!")
+                        self.downbeats += 1
+                        self.beats += 1
                 elif (activations[i]>0.4) :
                     self.path = np.append(self.path, [[self.offset + self.counter * self.T, 2]], axis=0)
                     if self.mode == 'stream' or self.mode == 'realtime':
                         print("beat!")
+                        self.beats += 1
                     #librosa.clicks(times=None, frames=None, sr=22050, hop_length=512, click_freq=440.0, click_duration=0.1, click=None, length=None)
                 if 'downbeat_particles' in self.plot:
                     self.downbeat_particles_plot()

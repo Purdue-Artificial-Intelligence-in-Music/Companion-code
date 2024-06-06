@@ -19,8 +19,9 @@ import matplotlib.pyplot as plt
 import time
 import threading
 from AudioBuffer import *
+from BeatTracker import *
 
-class BeatNet_thread:
+class BeatNet_thread(BeatTracker):
 
     '''
     The main BeatNet handler class including different trained models, different modes for extracting the activation and causal and non-causal inferences
@@ -53,7 +54,8 @@ class BeatNet_thread:
         self.BUFFER = BUFFER
         self.plot= plot
         self.device = device
-        if plot and thread:
+        self.thread = False
+        if plot and self.thread:
             raise RuntimeError('Plotting cannot be accomplished in the threading mode')
         self.sample_rate = self.BUFFER.RATE
         self.log_spec_sample_rate = self.sample_rate
@@ -86,6 +88,15 @@ class BeatNet_thread:
         #                                    frames_per_buffer=self.log_spec_hop_length,)
 
         self.stop_request = False
+
+    def get_downbeats(self) -> int:
+        return self.estimator.downbeats
+    
+    def get_total_beats(self) -> int:
+        return self.estimator.beats
+    
+    def get_current_beats(self):
+        return self.estimator.path[1:]
                                              
     def process(self, audio_path=None):   
         if self.inference_model != "PF":
@@ -95,7 +106,7 @@ class BeatNet_thread:
         while self.BUFFER.stream is None:
             print('AThread stream is None')
             time.sleep(0.5)
-        self.BUFFER.sample_counter.add(key="beatnet_streaming_counter", start=2048)
+        self.BUFFER.mic_sample_counter.insert(key="beatnet_streaming_counter", start=2048)
         
         while self.BUFFER.stream.is_active() and not self.stop_request:
             self.activation_extractor_stream()  # Using BeatNet causal Neural network streaming mode to extract activations
@@ -107,8 +118,6 @@ class BeatNet_thread:
                 output = self.estimator.process(self.pred)
             self.counter += 1
             
-
-
     def activation_extractor_stream(self):
         # TODO: 
         ''' Streaming window
@@ -116,12 +125,12 @@ class BeatNet_thread:
         '''
         with torch.no_grad():
             # print("Expected buffer of %d samples" % self.log_spec_hop_length)
-            counter_val = self.BUFFER.sample_counter.get("beatnet_streaming_counter")
+            counter_val = self.BUFFER.mic_sample_counter.get("beatnet_streaming_counter")
             if counter_val < self.log_spec_hop_length:
                 time.sleep(self.BUFFER.FRAMES_PER_BUFFER / self.BUFFER.RATE)
             else:
                 hop = self.BUFFER.get_range_samples(counter_val, counter_val + self.log_spec_hop_length + 1) # changed here
-                self.BUFFER.sample_counter.add("beatnet_streaming_counter", self.log_spec_hop_length)
+                self.BUFFER.mic_sample_counter.modify("beatnet_streaming_counter", counter_val + self.log_spec_hop_length)
                 # print("Got a buffer of %d samples" % len(hop))
                 hop = hop.astype(dtype=np.float32, casting='safe')
                 self.stream_window = np.append(self.stream_window[self.log_spec_hop_length:], hop)
