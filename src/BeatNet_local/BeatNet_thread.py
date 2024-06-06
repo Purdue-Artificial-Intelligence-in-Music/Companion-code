@@ -48,6 +48,7 @@ class BeatNet_thread(BeatTracker):
     
     
     def __init__(self, model, BUFFER: AudioBuffer, plot=[], device='cpu'):
+        super().__init__()
         self.model = model
         self.mode = 'stream'
         self.inference_model = 'PF'
@@ -127,9 +128,12 @@ class BeatNet_thread(BeatTracker):
             # print("Expected buffer of %d samples" % self.log_spec_hop_length)
             counter_val = self.BUFFER.mic_sample_counter.get("beatnet_streaming_counter")
             if counter_val < self.log_spec_hop_length:
+                print("Sleeping due to no data")
                 time.sleep(self.BUFFER.FRAMES_PER_BUFFER / self.BUFFER.RATE)
             else:
                 hop = self.BUFFER.get_range_samples(counter_val, counter_val + self.log_spec_hop_length + 1) # changed here
+                if len(np.shape(hop))>1:
+                    hop = np.mean(hop ,axis=0)
                 self.BUFFER.mic_sample_counter.modify("beatnet_streaming_counter", counter_val + self.log_spec_hop_length)
                 # print("Got a buffer of %d samples" % len(hop))
                 hop = hop.astype(dtype=np.float32, casting='safe')

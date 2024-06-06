@@ -57,6 +57,7 @@ class AudioBuffer(threading.Thread):
         All params directly passed to PyAudio are in ALL CAPS.
         """
         super(AudioBuffer, self).__init__()  # initialize parent class
+        np.set_printoptions(suppress=True)
         self.name = name 
         self.FRAMES_PER_BUFFER = frames_per_buffer 
         self.process_func = process_func 
@@ -106,7 +107,7 @@ class AudioBuffer(threading.Thread):
         
         # a frame consists of samples across all channels at a certain point in time
         if debug_prints:
-            print("Audio init parameters:\nFormat = %s\ndtype = %s\nChannels = %d\nFrames per buffer = %d" % (self.FORMAT, self.dtype, self.CHANNELS, self.FRAMES_PER_BUFFER))
+            print("Audio init parameters:\nFormat = %s\ndtype = %s\nRate = %d\nChannels = %d\nFrames per buffer = %d" % (self.FORMAT, self.dtype, self.RATE, self.CHANNELS, self.FRAMES_PER_BUFFER))
             if wav_file is not None:
                 print("Shape of wav_data: ", self.wav_data.shape)
 
@@ -145,7 +146,7 @@ class AudioBuffer(threading.Thread):
             self.mic_sample_counter = Counter()
 
         if calc_beats:
-            estimator = BeatNet_for_audio_arr(1, mode='online', inference_model='PF', plot=[], thread=False)
+            estimator = BeatNet_for_audio_arr(1, mode='online', inference_model='PF', plot=[], thread=False, sample_rate=self.RATE)
             self.wav_beats = estimator.process(self.wav_data)
             for i in range(len(self.wav_beats)):
                 self.wav_beats[i][0] = int(self.wav_beats[i][0] * self.RATE)
@@ -203,7 +204,6 @@ class AudioBuffer(threading.Thread):
                                   output=True,  # output audio
                                   stream_callback=self.callback,
                                   frames_per_buffer=self.FRAMES_PER_BUFFER)
-        print(1)
         # Ensure that this is the expected size
         while not self.stop_request:
             time.sleep(1.0)

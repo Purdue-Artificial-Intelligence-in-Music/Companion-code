@@ -47,7 +47,8 @@ class BeatNet_for_audio_arr:
     '''
     
     
-    def __init__(self, model, mode='online', inference_model='PF', plot=[], thread=False, device='cpu'):
+    def __init__(self, model, mode='online', inference_model='PF', plot=[], thread=False, device='cpu', sample_rate=22050):
+        np.set_printoptions(suppress=True)
         self.model = model
         self.mode = mode
         self.inference_model = inference_model
@@ -56,7 +57,7 @@ class BeatNet_for_audio_arr:
         self.device = device
         if plot and thread:
             raise RuntimeError('Plotting cannot be accomplished in the threading mode')
-        self.sample_rate = 22050
+        self.sample_rate = sample_rate
         self.log_spec_sample_rate = self.sample_rate
         self.log_spec_hop_length = int(20 * 0.001 * self.log_spec_sample_rate)
         self.log_spec_win_length = int(64 * 0.001 * self.log_spec_sample_rate)
@@ -127,6 +128,8 @@ class BeatNet_for_audio_arr:
 
     def activation_extractor_online(self, audio: np.ndarray):
         with torch.no_grad():
+            if len(np.shape(audio))>1:
+                audio = np.mean(audio,axis=0)
             feats = self.proc.process_audio(audio).T
             feats = torch.from_numpy(feats)
             feats = feats.unsqueeze(0).to(self.device)

@@ -4,6 +4,7 @@ from BeatTracker import BeatTracker
 
 class WavBeatTracker(BeatTracker):
     def __init__(self, BUFFER: AudioBuffer):
+        super().__init__()
         self.BUFFER = BUFFER
         self.beats = BUFFER.wav_beats
         self.len_beats = len(self.beats)

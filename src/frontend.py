@@ -1,5 +1,6 @@
 
 from BeatNet_local.BeatNet_thread import BeatNet_thread
+from WavBeatTracker import *
 from AudioBuffer import *
 from VoiceCommandThread import *
 import pytsmod as tsm
@@ -27,7 +28,7 @@ def main():
 
     buffer = AudioBuffer(name="buffer", 
                          frames_per_buffer=FRAMES_PER_BUFFER,
-                         wav_file="new_src\hunt.wav",
+                         wav_file="C:\\Users\\TPNml\\OneDrive\\remix 11 x1.wav",
                          process_func=process_func,
                          process_func_args=(),
                          calc_beats=True,
@@ -35,22 +36,28 @@ def main():
                          time_stretch=True,
                          kill_after_finished=True,
                          output_path="./src/wav_output.wav")
-    # beat_detector = BeatNet_thread(model="PF", BUFFER=buffer, plot=[], thread = False, device='cpu')
+    beat_detector = BeatNet_thread(model=1, BUFFER=buffer, plot=[], device='cpu')
+    wav_beat_tracker = WavBeatTracker(BUFFER=buffer)
     voice_recognizer = VoiceAnalyzerThread(name="voice_recognizer",
                                            BUFFER=buffer,
                                            voice_length=3)
     buffer.daemon = True
-    # beat_detector = True
+    beat_detector.daemon = True
+    wav_beat_tracker.daemon = True
     voice_recognizer.daemon = True
     print("All thread objects initialized")
     buffer.start()
     print("Buffer started")
-    # beat_detector.start()
-    # print("Beat detector started")
+    beat_detector.start()
+    print("Beat detector started")
+    wav_beat_tracker.start()
+    print("Wav beat tracker started")
     voice_recognizer.start()
     print("Voice recognizer started")
     try:
         while not buffer.stop_request:
+            print("Mic beats: %d" % (beat_detector.get_total_beats()))
+            print("Wav beats: %d" % (wav_beat_tracker.get_total_beats()))
             time.sleep(0.5)
 
     except Exception:
