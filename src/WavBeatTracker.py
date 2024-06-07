@@ -19,7 +19,7 @@ class WavBeatTracker(BeatTracker):
             type = self.BUFFER.wav_beats[self.next_beat_idx][1]
             if type == 1:
                 self.downbeats += 1
-            self.total_beats = 0
+            self.total_beats += 1
             self.next_beat_idx += 1
             self.next_beat_sample_idx = self.BUFFER.wav_beats[self.next_beat_idx][0]
     

@@ -10,6 +10,7 @@ import pytsmod
 import soundfile
 import matplotlib.pyplot as plt
 import os
+from BeatSynchronizer import *
 
 '''
 This class is a template class for a thread that reads in audio fromxPyAudio and stores it in a buffer.
@@ -29,6 +30,7 @@ class AudioBuffer(threading.Thread):
                  run_counter = False,
                  kill_after_finished = True,
                  time_stretch = False,
+                 time_stretch_source: BeatSynchronizer = None,
                  playback_rate = 1,
                  sr_no_wav = 44100,
                  dtype_no_wav = np.float32,
@@ -72,6 +74,7 @@ class AudioBuffer(threading.Thread):
         self.run_counter = run_counter
         self.kill_after_finished = kill_after_finished 
         self.time_stretch = time_stretch
+        self.time_stretch_source = time_stretch_source
         self.playback_rate = playback_rate
         self.RATE = sr_no_wav
         self.dtype = dtype_no_wav
@@ -79,6 +82,10 @@ class AudioBuffer(threading.Thread):
         self.output_path = output_path
         self.paused = False
         self.debug_prints = debug_prints
+
+        self.mic_sample_counter = None
+        if run_counter:
+            self.mic_sample_counter = Counter()
 
         # initialize WAV file properites
         self.wav_data = None
@@ -88,9 +95,9 @@ class AudioBuffer(threading.Thread):
         
         # Get the audio data and sample rate from the wav file if one is provided
         if wav_file is not None:
-            self.wav_data, self.RATE = librosa.load(wav_file) 
+            self.wav_data, self.RATE = librosa.load(wav_file, sr=None, mono=False) 
             self.dtype = self.wav_data.dtype
-            
+
             # if there is a single channel, reshape it into the correct shape
             if len(self.wav_data.shape) == 1:
                 self.wav_data = self.wav_data.reshape(1, -1)
@@ -114,8 +121,9 @@ class AudioBuffer(threading.Thread):
             self.FORMAT = pyaudio.paFloat32
         
         # a frame consists of samples across all channels at a certain point in time
+        print("Audio init parameters: Rate = %d, Channels = %d, Frames per buffer = %d" % (self.RATE, self.CHANNELS, self.FRAMES_PER_BUFFER))
         if debug_prints:
-            print("Audio init parameters:\nFormat = %s\ndtype = %s\nRate = %d\nChannels = %d\nFrames per buffer = %d" % (self.FORMAT, self.dtype, self.RATE, self.CHANNELS, self.FRAMES_PER_BUFFER))
+            print("Format = %s, dtype = %s, Frames per buffer = %d" % (self.FORMAT, self.dtype))
             if wav_file is not None:
                 print("Shape of wav_data: ", self.wav_data.shape)
 
@@ -139,21 +147,19 @@ class AudioBuffer(threading.Thread):
         self.buffer_filled = False # True if buffer has been filled all the way, False otherwise
         self.buffer_length = len(self.audio_buffer)
 
-        # if debug_prints:
-        #     print("Buffer elements: %d\nBuffer size (in samples): %d\nBuffer size (in seconds): %.2f" % (self.buffer_elements, self.buffer_size, self.buffer_size / float(self.RATE)))
+        if debug_prints:
+            print("Buffer elements: %d\nBuffer size (in samples): %d\nBuffer size (in seconds): %.2f" % (self.buffer_elements, self.buffer_size, self.buffer_size / float(self.RATE)))
 
-        # if calc_transforms:
-        #     # Shape of transform buffer: Buffer elements * transform values * channels
-        #     self.transform_buffer = np.zeros((self.buffer_elements, *self.wav_transform.shape[1:]), dtype=self.dtype)
-        #     self.transform_buffer_index = 0
-        #     self.transform_buffer_filled = False
+        if calc_transforms:
+            # Shape of transform buffer: Buffer elements * transform values * channels
+            self.transform_buffer = np.zeros((self.buffer_elements, *self.wav_transform.shape[1:]), dtype=self.dtype)
+            self.transform_buffer_index = 0
+            self.transform_buffer_filled = False
 
-        #     if debug_prints:
-        #         print("Transform buffer shape = %s" % (str(self.transform_buffer.shape)))
+            if debug_prints:
+                print("Transform buffer shape = %s" % (str(self.transform_buffer.shape)))
 
-        self.mic_sample_counter = None
-        if run_counter:
-            self.mic_sample_counter = Counter()
+       
 
         
         self.wav_beats = None
@@ -290,8 +296,8 @@ class AudioBuffer(threading.Thread):
             n = self.buffer_index
         if n > self.buffer_index:
             n_from_end = n - self.buffer_index + 1
-            return np.concatenate((self.transform_buffer[self.buffer_elements - n_from_end:], self.transform_buffer[0:self.buffer_index]), axis=1)
-        return self.transform_buffer[self.buffer_index - n + 1:self.buffer_index]
+            return np.concatenate((self.transform_buffer[:, self.buffer_elements - n_from_end:], self.transform_buffer[:, 0:self.buffer_index]), axis=1)
+        return self.transform_buffer[:, self.buffer_index - n + 1:self.buffer_index]
     
     def get_range_samples(self, m: int, n: int):
         """
@@ -306,16 +312,26 @@ class AudioBuffer(threading.Thread):
             n = self.buffer_size
         if not self.buffer_filled and n > self.buffer_index:
             n = self.buffer_index
+        if not self.buffer_filled and m > self.buffer_index:
+            m = self.buffer_index
         if m >= n:
             return np.empty((self.CHANNELS,0), dtype=self.dtype)
+        output = None
         if n > self.buffer_index:
             n_from_end = n - self.buffer_index + 1
             if m > self.buffer_index:
                 m_from_end = m - self.buffer_index
-                return self.audio_buffer[self.buffer_size - n_from_end:self.buffer_size - m_from_end]
+                output = self.audio_buffer.T[self.buffer_size - n_from_end + 1:self.buffer_size - m_from_end - 1].T
             else:
-                return np.concatenate((self.audio_buffer[self.buffer_size - n_from_end:], self.audio_buffer[0:self.buffer_index - m]), axis=1)
-        return self.audio_buffer[self.buffer_index - n + 1:self.buffer_index - m] 
+                L = self.buffer_size - n_from_end + 1
+                R = self.buffer_index - m - 1
+                output = np.concatenate((self.audio_buffer.T[L:].T, self.audio_buffer.T[0:R].T), axis=1)
+        elif self.buffer_filled and self.buffer_index == 0:
+            output = self.audio_buffer.T[self.buffer_index - n + 1:].T 
+        else:
+            output = self.audio_buffer.T[self.buffer_index - n + 1:self.buffer_index - m].T 
+        assert len(output.T) == n - m - 1
+        return output
     
     def get_range_transforms(self, m: int, n: int):
         """
@@ -330,16 +346,18 @@ class AudioBuffer(threading.Thread):
             n = self.buffer_elements
         if not self.buffer_filled and n > self.buffer_index:
             n = self.buffer_index
+        if not self.buffer_filled and m > self.buffer_index:
+            m = self.buffer_index
         if m >= n:
             return np.empty((self.CHANNELS,0), dtype=self.dtype)
         if n > self.buffer_index:
             n_from_end = n - self.buffer_index + 1
             if m > self.buffer_index:
                 m_from_end = m - self.buffer_index
-                return self.transform_buffer[self.buffer_elements - n_from_end:self.buffer_elements - m_from_end]
+                return self.transform_buffer[:, self.buffer_elements - n_from_end:self.buffer_elements - m_from_end]
             else:
-                return np.concatenate((self.transform_buffer[self.buffer_elements - n_from_end:], self.transform_buffer[0:self.buffer_index - m]), axis=1)
-        return self.transform_buffer[self.buffer_index - n + 1:self.buffer_index - m] 
+                return np.concatenate((self.transform_buffer[:, self.buffer_elements - n_from_end:], self.transform_buffer[:, 0:self.buffer_index - m]), axis=0)
+        return self.transform_buffer[:, self.buffer_index - n + 1:self.buffer_index - m] 
     
     def pause(self):
         self.paused = True
@@ -359,11 +377,11 @@ class AudioBuffer(threading.Thread):
         Returns: new audio for PyAudio to play through speakers.
         """
         input_array = np.frombuffer(in_data, dtype=self.dtype)
-        L = len(input_array)
 
         # Reshaping code to correct channels
         input_array = np.reshape(input_array, (self.CHANNELS, -1))
-       
+        L = len(input_array[0])
+
         # Check if audio is on and update instance val
         self.audio_on(input_array)
 
@@ -371,14 +389,16 @@ class AudioBuffer(threading.Thread):
         if self.buffer_index + L > self.buffer_size: # If buffer will overflow
             self.audio_buffer[:, self.buffer_index:] = input_array[:, :self.buffer_length-self.buffer_index] # Add the first portion to the end
             self.audio_buffer[:, 0:L-(self.buffer_length-self.buffer_index)] = input_array[:, self.buffer_length-self.buffer_index:] # Add the rest at the front
-            self.buffer_filled = True
         else:
             self.audio_buffer[:, self.buffer_index:self.buffer_index + L] = input_array # Add it all at once
-        self.buffer_index = (self.buffer_index + L) % self.buffer_size # Increment the buffer counter
+        new_idx = (self.buffer_index + L) % self.buffer_size # Increment the buffer counter
+        if new_idx < self.buffer_index:
+            self.buffer_filled = True
+        self.buffer_index = new_idx
 
         # Counter
         if self.run_counter:
-            self.mic_sample_counter.subtract_all(L)  # Update sample counter
+            self.mic_sample_counter.add_all(L)  # Update sample counter
 
         # Transforms
         # if self.calc_transforms:
@@ -418,6 +438,8 @@ class AudioBuffer(threading.Thread):
             return np.zeros((self.CHANNELS, self.FRAMES_PER_BUFFER)), pyaudio.paContinue
         
         if self.wav_data is not None:
+            if self.time_stretch_source is not None:
+                self.playback_rate = self.time_stretch_source.playback_rate
             start = max(0, self.wav_index)
             end = min(self.wav_index + 5 * self.FRAMES_PER_BUFFER, self.wav_len)
             self.wav_index += self.playback_rate * self.FRAMES_PER_BUFFER

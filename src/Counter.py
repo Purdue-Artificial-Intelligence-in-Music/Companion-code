@@ -33,3 +33,5 @@ class Counter:
     
     def modify(self, key: str, val):
         self.array[self.entry_lookup[key]] = val
+
+        

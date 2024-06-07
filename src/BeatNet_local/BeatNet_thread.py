@@ -59,7 +59,7 @@ class BeatNet_thread(BeatTracker):
         if plot and self.thread:
             raise RuntimeError('Plotting cannot be accomplished in the threading mode')
         self.sample_rate = self.BUFFER.RATE
-        self.log_spec_sample_rate = self.sample_rate
+        self.log_spec_sample_rate = 22050
         self.log_spec_hop_length = int(20 * 0.001 * self.log_spec_sample_rate)
         self.log_spec_win_length = int(64 * 0.001 * self.log_spec_sample_rate)
         self.proc = LOG_SPECT(sample_rate=self.log_spec_sample_rate, win_length=self.log_spec_win_length,
@@ -90,6 +90,9 @@ class BeatNet_thread(BeatTracker):
 
         self.stop_request = False
 
+        self.loops_sleeping = 0
+        self.loops_running = 0
+
     def get_downbeats(self) -> int:
         return self.estimator.downbeats
     
@@ -98,17 +101,21 @@ class BeatNet_thread(BeatTracker):
     
     def get_current_beats(self):
         return self.estimator.path[1:]
+
+    def run(self):
+        self.process()
                                              
-    def process(self, audio_path=None):   
+    def process(self):   
+
         if self.inference_model != "PF":
                 raise RuntimeError('The inference model should be set to "PF" for the streaming mode!')
         self.counter = 0
 
-        while self.BUFFER.stream is None:
-            print('AThread stream is None')
-            time.sleep(0.5)
-        self.BUFFER.mic_sample_counter.insert(key="beatnet_streaming_counter", start=2048)
-        
+        while self.BUFFER.stream is None or self.BUFFER.buffer_index < self.log_spec_hop_length + 1:
+            time.sleep(0.2)
+
+        self.BUFFER.mic_sample_counter.insert(key="beatnet_streaming_counter", start=0)
+
         while self.BUFFER.stream.is_active() and not self.stop_request:
             self.activation_extractor_stream()  # Using BeatNet causal Neural network streaming mode to extract activations
             if self.thread:
@@ -125,26 +132,31 @@ class BeatNet_thread(BeatTracker):
         Given the training input window's origin set to center, this streaming data formation causes 0.084 (s) delay compared to the trained model that needs to be fixed. 
         '''
         with torch.no_grad():
-            # print("Expected buffer of %d samples" % self.log_spec_hop_length)
             counter_val = self.BUFFER.mic_sample_counter.get("beatnet_streaming_counter")
+            end_val = counter_val + self.log_spec_hop_length + 1
             if counter_val < self.log_spec_hop_length:
-                print("Sleeping due to no data")
-                time.sleep(self.BUFFER.FRAMES_PER_BUFFER / self.BUFFER.RATE)
+                self.loops_sleeping += 1
+                time.sleep(self.BUFFER.FRAMES_PER_BUFFER / self.BUFFER.RATE * 5)
             else:
-                hop = self.BUFFER.get_range_samples(counter_val, counter_val + self.log_spec_hop_length + 1) # changed here
-                if len(np.shape(hop))>1:
+                self.loops_running += 1
+                hop = self.BUFFER.get_range_samples(counter_val, end_val) # changed here
+                if len(np.shape(hop))>1: 
                     hop = np.mean(hop ,axis=0)
-                self.BUFFER.mic_sample_counter.modify("beatnet_streaming_counter", counter_val + self.log_spec_hop_length)
-                # print("Got a buffer of %d samples" % len(hop))
+                L = len(hop)
+                self.BUFFER.mic_sample_counter.modify("beatnet_streaming_counter", counter_val - L)
+                if L < self.log_spec_hop_length:
+                    hop = np.pad(hop, (self.log_spec_hop_length - L,0), mode="constant", constant_values=(0,0))
+                    print("Padded a hop of %d samples to a buffer of %d samples" % (L, len(hop)))
                 hop = hop.astype(dtype=np.float32, casting='safe')
                 self.stream_window = np.append(self.stream_window[self.log_spec_hop_length:], hop)
-                if self.counter < 5:
-                    self.pred = np.zeros([1,2])
-                else:
-                    feats = self.proc.process_audio(self.stream_window).T[-1]
-                    feats = torch.from_numpy(feats)
-                    feats = feats.unsqueeze(0).unsqueeze(0).to(self.device)
-                    pred = self.model(feats)[0]
-                    pred = self.model.final_pred(pred)
-                    pred = pred.cpu().detach().numpy()
-                    self.pred = np.transpose(pred[:2, :])
+            self.pred = np.zeros([1,2])
+            if self.counter < 5:
+                self.pred = np.zeros([1,2])
+            else:
+                feats = self.proc.process_audio(self.stream_window).T[-1]
+                feats = torch.from_numpy(feats)
+                feats = feats.unsqueeze(0).unsqueeze(0).to(self.device)
+                pred = self.model(feats)[0]
+                pred = self.model.final_pred(pred)
+                pred = pred.cpu().detach().numpy()
+                self.pred = np.transpose(pred[:2, :])
