@@ -9,7 +9,7 @@ from Counter import *
 import pytsmod
 import soundfile
 import matplotlib.pyplot as plt
-from noisereduce import reduce_noise
+import os
 
 '''
 This class is a template class for a thread that reads in audio fromxPyAudio and stores it in a buffer.
@@ -159,10 +159,27 @@ class AudioBuffer(threading.Thread):
         self.wav_beats = None
 
         if calc_beats:
-            estimator = BeatNet_for_audio_arr(1, mode='online', inference_model='PF', plot=[], thread=False, sample_rate=self.RATE)
-            self.wav_beats = estimator.process(self.wav_data)
-            for i in range(len(self.wav_beats)):
-                self.wav_beats[i][0] = int(self.wav_beats[i][0] * self.RATE)
+            cwd = os.getcwd()
+            if not os.path.exists(os.path.join(cwd, "beat_cache/")):
+                os.mkdir(os.path.join(cwd, "beat_cache/"))
+            modified_wav_file_name = wav_file.replace("\\", "/")
+            beat_path = os.path.join(cwd, "beat_cache/") + str(modified_wav_file_name.split("/")[-1]) + ".npy"
+            if debug_prints:
+                print("Beat path = \"%s\"" % (beat_path))
+            if os.path.exists(beat_path):
+                if debug_prints:
+                    print("Loading beats from file...")
+                self.wav_beats = np.load(beat_path)
+            else:
+                if debug_prints:
+                    print("Calculating beats...")
+                estimator = BeatNet_for_audio_arr(1, mode='online', inference_model='PF', plot=[], thread=False, sample_rate=self.RATE)
+                self.wav_beats = estimator.process(self.wav_data)
+                for i in range(len(self.wav_beats)):
+                    self.wav_beats[i][0] = int(self.wav_beats[i][0] * self.RATE)
+                self.wav_beats = np.array(self.wav_beats)
+                np.save(beat_path, self.wav_beats)
+
             if debug_prints:
                 print(self.wav_beats)
 

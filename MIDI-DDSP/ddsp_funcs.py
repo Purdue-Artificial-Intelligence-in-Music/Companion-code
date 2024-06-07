@@ -515,10 +515,7 @@ def mono_midi_to_note_sequence(midi_data, instrument_id, inst_num=0, pitch_offse
 
 def generate_audio_from_midi(synth_gen, express_gen, midi_path, instrument, inst_num=0):
     instrument_id = INST_NAME_TO_ID_DICT[instrument]
-    if isinstance(midi_path, str):
-        midi = pretty_midi.PrettyMIDI(midi_path)
-    else:
-        midi = midi_path
+    midi = pretty_midi.PrettyMIDI(midi_path)
     note_sequence = mono_midi_to_note_sequence(midi,
                                              tf.constant([instrument_id]),
                                              pitch_offset=0,
