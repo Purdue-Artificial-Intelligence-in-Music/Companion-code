@@ -164,5 +164,13 @@ cython_debug/
 
 */*.mp3
 */*.wav
+**/*/*.wav
 
 **/*/*.pt
+**/*/FluidR3_GM.zip
+**/*/*.mid
+**/*/*.midi
+**/*/*.musicxml
+**/*/*.mxl
+**/*/.idea
+beat_cache

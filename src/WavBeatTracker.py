@@ -16,7 +16,7 @@ class WavBeatTracker(BeatTracker):
     def update_beats(self):
         curr_sample_idx = self.BUFFER.wav_index
         while self.next_beat_idx < self.len_beats and curr_sample_idx > self.next_beat_sample_idx:
-            type = self.BUFFER.wav_beats[self.next_beat_sample_idx][1]
+            type = self.BUFFER.wav_beats[self.next_beat_idx][1]
             if type == 1:
                 self.downbeats += 1
             self.total_beats = 0
