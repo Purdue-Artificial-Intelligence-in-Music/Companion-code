@@ -31,6 +31,7 @@ def main():
                          channels_no_wav=1,
                          debug_prints=False,
                          output_path="./src/wav_output.wav")
+    
     beat_detector = BeatNet_thread(model=1, BUFFER=buffer, plot=[], device='cpu')
     wav_beat_tracker = WavBeatTracker(BUFFER=buffer)
     beat_sync = BeatSynchronizer(player_beat_thread=beat_detector, accomp_beat_thread=wav_beat_tracker)

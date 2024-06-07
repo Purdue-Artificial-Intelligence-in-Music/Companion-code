@@ -112,6 +112,7 @@ class AudioBuffer(threading.Thread):
 
             # self.wav_buffer = np.zeros_like(self.wav_data)  # set a zero array
 
+
         # set the pyaudio format
         if self.dtype == np.int16:
             self.FORMAT = pyaudio.paInt16
@@ -438,17 +439,17 @@ class AudioBuffer(threading.Thread):
             return np.zeros((self.CHANNELS, self.FRAMES_PER_BUFFER)), pyaudio.paContinue
         
         if self.wav_data is not None:
-            if self.time_stretch_source is not None:
-                self.playback_rate = self.time_stretch_source.playback_rate
             start = max(0, self.wav_index)
             end = min(self.wav_index + 5 * self.FRAMES_PER_BUFFER, self.wav_len)
             self.wav_index += self.playback_rate * self.FRAMES_PER_BUFFER
 
             stretched_audio = librosa.effects.time_stretch(y=self.wav_data[:, int(start):int(end)], rate=self.playback_rate)  # get audio
-            stretched_audio = stretched_audio.reshape((self.CHANNELS, -1))
-            wav_slice = stretched_audio[:, :self.FRAMES_PER_BUFFER]
+            stretched_audio = stretched_audio.reshape((self.CHANNELS, -1))  # reshape the stretched audio
+
+            # get the middle of the stretched window
+            offset = max(0, int((stretched_audio.shape[1]-self.FRAMES_PER_BUFFER)/2))
+            wav_slice = stretched_audio[:, offset:offset+self.FRAMES_PER_BUFFER]
             wav_slice = np.pad(wav_slice, ((0, 0), (0, self.FRAMES_PER_BUFFER - wav_slice.shape[1])), mode='constant', constant_values=((0, 0), (0, 0)))
-            # wav_slice = reduce_noise(wav_slice, sr=self.RATE)
 
             if self.wav_index < self.wav_len:  # If there is enough data in wav
                 self.output_array = self.process_func(self, input_array, wav_slice, *self.process_func_args)
