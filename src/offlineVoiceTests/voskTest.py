@@ -9,8 +9,8 @@ Pros:
 -Captures partials & text
 
 Cons: 
--Not the best I think, caught Tim & Dr. Lu's convo and wasn't very accurate
-    -Needs headphones basically *Test this
+-This is awful
+
 '''
 
 #!/usr/bin/env python3
