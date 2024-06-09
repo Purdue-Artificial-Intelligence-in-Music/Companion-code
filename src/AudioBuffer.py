@@ -6,8 +6,6 @@ import librosa
 from typing import Callable
 from BeatNet_local.BeatNet_files import BeatNet_for_audio_arr
 from Counter import *
-import pytsmod
-import soundfile
 import matplotlib.pyplot as plt
 import os
 from BeatSynchronizer import *
@@ -25,12 +23,11 @@ class AudioBuffer(threading.Thread):
                  process_func: Callable = None, 
                  wav_file: str = None, 
                  process_func_args=(), 
-                 calc_transforms = False, 
+                 calc_chroma = False, 
                  calc_beats = False, 
                  run_counter = False,
                  kill_after_finished = True,
                  time_stretch = False,
-                 time_stretch_source: BeatSynchronizer = None,
                  playback_rate = 1,
                  sr_no_wav = 44100,
                  dtype_no_wav = np.float32,
@@ -69,12 +66,11 @@ class AudioBuffer(threading.Thread):
         self.FRAMES_PER_BUFFER = frames_per_buffer 
         self.process_func = process_func 
         self.process_func_args = process_func_args
-        self.calc_transforms = calc_transforms
+        self.calc_chroma = calc_chroma
         self.calc_beats = calc_beats
         self.run_counter = run_counter
         self.kill_after_finished = kill_after_finished 
         self.time_stretch = time_stretch
-        self.time_stretch_source = time_stretch_source
         self.playback_rate = playback_rate
         self.RATE = sr_no_wav
         self.dtype = dtype_no_wav
@@ -91,8 +87,8 @@ class AudioBuffer(threading.Thread):
         self.wav_data = None
         self.wav_index = 0
         self.wav_len = 0
-        # self.wav_buffer = None
-        
+        self.prev_wav_slice = np.zeros((self.CHANNELS, self.FRAMES_PER_BUFFER))
+
         # Get the audio data and sample rate from the wav file if one is provided
         if wav_file is not None:
             self.wav_data, self.RATE = librosa.load(wav_file, sr=None, mono=False) 
@@ -104,29 +100,6 @@ class AudioBuffer(threading.Thread):
 
             # self.wav_data has shape (channels, # samples)
             self.CHANNELS, self.wav_len = self.wav_data.shape
-
-            # if calc_transforms:
-            #     self.wav_transform = self.transform_func(self.wav_data)
-            #     if debug_prints:
-            #         print("Wav transform shape = %s" % (str(self.wav_transform.shape)))
-
-            # self.wav_buffer = np.zeros_like(self.wav_data)  # set a zero array
-
-
-        # set the pyaudio format
-        if self.dtype == np.int16:
-            self.FORMAT = pyaudio.paInt16
-        elif self.dtype == np.int32:
-            self.FORMAT = pyaudio.paInt32
-        else:
-            self.FORMAT = pyaudio.paFloat32
-        
-        # a frame consists of samples across all channels at a certain point in time
-        print("Audio init parameters: Rate = %d, Channels = %d, Frames per buffer = %d" % (self.RATE, self.CHANNELS, self.FRAMES_PER_BUFFER))
-        if debug_prints:
-            print("Format = %s, dtype = %s, Frames per buffer = %d" % (self.FORMAT, self.dtype))
-            if wav_file is not None:
-                print("Shape of wav_data: ", self.wav_data.shape)
 
         # Helper function vals
         self.on_threshold = 0.5  # RMS threshold for audio_on
@@ -151,18 +124,34 @@ class AudioBuffer(threading.Thread):
         if debug_prints:
             print("Buffer elements: %d\nBuffer size (in samples): %d\nBuffer size (in seconds): %.2f" % (self.buffer_elements, self.buffer_size, self.buffer_size / float(self.RATE)))
 
-        if calc_transforms:
-            # Shape of transform buffer: Buffer elements * transform values * channels
-            self.transform_buffer = np.zeros((self.buffer_elements, *self.wav_transform.shape[1:]), dtype=self.dtype)
-            self.transform_buffer_index = 0
-            self.transform_buffer_filled = False
+        # Set the pyaudio format
+        if self.dtype == np.int16:
+            self.FORMAT = pyaudio.paInt16
+        elif self.dtype == np.int32:
+            self.FORMAT = pyaudio.paInt32
+        else:
+            self.FORMAT = pyaudio.paFloat32
+
+        # Calculate chroma features for wav file and mic audio
+        self.chroma_buffer = None
+        if calc_chroma:
+            if self.wav_data is not None:  # if wav file was provided, calculate its chroma features
+                self.wav_chroma = librosa.feature.chroma_cqt(y=self.wav_data, sr=self.RATE, hop_length=self.FRAMES_PER_BUFFER)
+
+            # chroma buffer for mic audio
+            # Shape of chroma buffer: (Buffer elements, channels, n_chroma)
+            self.chroma_buffer = np.zeros((self.buffer_elements, self.CHANNELS, 12), dtype=self.dtype)
+            self.chroma_buffer_index = 0
 
             if debug_prints:
-                print("Transform buffer shape = %s" % (str(self.transform_buffer.shape)))
-
-       
-
+                print("Transform buffer shape = %s" % (str(self.chroma_buffer.shape)))
         
+        # a frame consists of samples across all channels at a certain point in time
+        print("Audio init parameters: Rate = %d, Channels = %d, Frames per buffer = %d" % (self.RATE, self.CHANNELS, self.FRAMES_PER_BUFFER))
+        if debug_prints:
+            print("Format = %s, dtype = %s, Frames per buffer = %d" % (self.FORMAT, self.dtype))
+            if wav_file is not None:
+                print("Shape of wav_data: ", self.wav_data.shape)
         self.wav_beats = None
 
         if calc_beats:
@@ -190,28 +179,16 @@ class AudioBuffer(threading.Thread):
             if debug_prints:
                 print(self.wav_beats)
 
-    def transform_func(self, audio: np.ndarray) -> np.ndarray:
-        if len(audio) < self.FRAMES_PER_BUFFER:
-            audio = np.concatenate((audio, np.zeros((self.FRAMES_PER_BUFFER - audio.shape[0], audio.shape[1]), dtype=audio.dtype)), axis=0)
-        transform_output = librosa.feature.chroma_cqt(y=audio.T, sr=self.RATE, hop_length=self.FRAMES_PER_BUFFER)
-        if len(audio) % self.FRAMES_PER_BUFFER == 0:
-            transform_output = transform_output[:, :, :-1]
-        transform_output = transform_output.swapaxes(0, 2)
-        if transform_output.shape[0] == 1:
-            transform_output.reshape(transform_output.shape[1:])
-        return transform_output
-    
-    def time_stretch_func(self, audio: np.ndarray, rate: float) -> np.ndarray:
-        fourier_transform = np.fft.fft(audio.flatten())
-        inverse_fourier = np.real(np.fft.ifft(fourier_transform))
-        inverse_fourier = inverse_fourier.reshape((-1, self.CHANNELS))
-        print(np.isclose(audio, inverse_fourier, atol=0.001).all())
-        # plt.figure()
-        # plt.ylim(-1, 1)
-        # plt.plot(audio - inverse_fourier)
-        # plt.show()
-        return inverse_fourier
-        # return pytsmod.hptsm(audio.T, rate).reshape((-1, self.CHANNELS))
+    def to_chroma(self, audio: np.ndarray) -> np.ndarray:
+
+        # if there are not enough samples, pad with zeros
+        if audio.shape[1] < self.FRAMES_PER_BUFFER:
+            audio = np.pad(audio, ((0, 0), (0, self.FRAMES_PER_BUFFER - audio.shape[1])), mode='constant', constant_values=((0, 0), (0, 0)))
+        
+        # calculate chroma cqt - shape: (channels, n_chroma, time)
+        chroma_cqt = librosa.feature.chroma_cqt(y=audio, sr=self.RATE, hop_length=self.CHANNELS * self.FRAMES_PER_BUFFER)
+
+        return chroma_cqt.reshape((self.CHANNELS, 12))
 
     def set_process_func_args(self, a = ()):
         """
@@ -297,8 +274,8 @@ class AudioBuffer(threading.Thread):
             n = self.buffer_index
         if n > self.buffer_index:
             n_from_end = n - self.buffer_index + 1
-            return np.concatenate((self.transform_buffer[:, self.buffer_elements - n_from_end:], self.transform_buffer[:, 0:self.buffer_index]), axis=1)
-        return self.transform_buffer[:, self.buffer_index - n + 1:self.buffer_index]
+            return np.concatenate((self.chroma_buffer[:, self.buffer_elements - n_from_end:], self.chroma_buffer[:, 0:self.buffer_index]), axis=1)
+        return self.chroma_buffer[:, self.buffer_index - n + 1:self.buffer_index]
     
     def get_range_samples(self, m: int, n: int):
         """
@@ -355,10 +332,10 @@ class AudioBuffer(threading.Thread):
             n_from_end = n - self.buffer_index + 1
             if m > self.buffer_index:
                 m_from_end = m - self.buffer_index
-                return self.transform_buffer[:, self.buffer_elements - n_from_end:self.buffer_elements - m_from_end]
+                return self.chroma_buffer[:, self.buffer_elements - n_from_end:self.buffer_elements - m_from_end]
             else:
-                return np.concatenate((self.transform_buffer[:, self.buffer_elements - n_from_end:], self.transform_buffer[:, 0:self.buffer_index - m]), axis=0)
-        return self.transform_buffer[:, self.buffer_index - n + 1:self.buffer_index - m] 
+                return np.concatenate((self.chroma_buffer[:, self.buffer_elements - n_from_end:], self.chroma_buffer[:, 0:self.buffer_index - m]), axis=0)
+        return self.chroma_buffer[:, self.buffer_index - n + 1:self.buffer_index - m] 
     
     def pause(self):
         self.paused = True
@@ -368,6 +345,24 @@ class AudioBuffer(threading.Thread):
 
     def change_playback_rate(self, val: float):
         self.playback_rate = val
+
+    def fade_in(self, audio, num_samples):
+        num_samples = min(audio.shape[1], num_samples)
+        # fade_curve = np.linspace(0, 1, num_samples)
+        fade_curve = np.log(np.linspace(1, np.e, num_samples))
+
+        for channel in audio[:, :num_samples]:
+            channel *= fade_curve
+
+    def fade_out(self, audio, num_samples):
+        num_samples = min(audio.shape[1], num_samples)
+        start = audio.shape[1] - num_samples
+        # fade_curve = np.linspace(1, 0, num_samples)
+        fade_curve = np.log(np.linspace(np.e, 1, num_samples))
+
+        for channel in audio[:, start:]:
+            channel *= fade_curve
+        
         
     def callback(self, in_data, frame_count, time_info, flag):
         """
@@ -402,68 +397,73 @@ class AudioBuffer(threading.Thread):
             self.mic_sample_counter.add_all(L)  # Update sample counter
 
         # Transforms
-        # if self.calc_transforms:
-        #     self.transform_buffer[self.transform_buffer_index] = self.transform_func(input_array)  # Process the input info
-        #     if self.transform_buffer_index == self.buffer_elements - 1:  # Once the buffer is filled, mark it as filled
-        #         self.transform_buffer_filled = True
-        #     self.transform_buffer_index = (self.transform_buffer_index + 1) % self.buffer_elements  # Increment the buffer counter
+        if self.calc_chroma:
+            # Calculate chroma feature for microphone audio
+            chroma = self.to_chroma(input_array)
 
-        # Time stretching
-        # enough_wav_data = True
-        # if not self.time_stretch:
-        #     if self.wav_index + self.FRAMES_PER_BUFFER <= self.wav_len:  # If there is enough data in wav
-        #         current_wav_data = self.wav_data[self.wav_index:self.wav_index + self.FRAMES_PER_BUFFER]
-        #         self.wav_index += self.FRAMES_PER_BUFFER
-        #     else:  # Send the rest of the wav to process_func and kill the PyAudio stream
-        #         current_wav_data = self.wav_data[self.wav_index:]
-        #         self.wav_index = self.wav_len
-        #         enough_wav_data = False
-        # else:
-        #     num_samples_needed = int(self.FRAMES_PER_BUFFER / self.time_stretch_factor)
-        #     if self.wav_index + num_samples_needed <= self.wav_len:  # If there is enough data in wav
-        #         if self.wav_index + self.time_stretch_length <= self.wav_len:
-        #             wav_data_to_time_stretch = self.wav_data[self.wav_index:self.wav_index + self.time_stretch_length]
-        #         else: 
-        #             wav_data_to_time_stretch = self.wav_data[self.wav_index:]
-        #         self.wav_index += num_samples_needed
-        #     else:  # Send the rest of the wav to process_func and kill the PyAudio stream
-        #         wav_data_to_time_stretch = self.wav_data[self.wav_index:]
-        #         enough_wav_data = False
-        #         self.wav_index = self.wav_len
-        #     current_wav_data = self.time_stretch_func(wav_data_to_time_stretch, self.time_stretch_factor)
-        #     current_wav_data = current_wav_data[:num_samples_needed]
-        #     self.wav_buffer[self.wav_index : self.wav_index + len(current_wav_data)] = current_wav_data
-        #     print("current_wav_data shape", current_wav_data.shape)
-        # This is where process_func in threaded_parent_with_buffer.py is called from
+            # Store chroma feature in buffer
+            self.chroma_buffer[self.chroma_buffer_index] = chroma
+            # Increment the chroma buffer index
+            # Mod for circular buffer
+            self.chroma_buffer_index = (self.chroma_buffer_index + 1) % self.buffer_elements  # Increment the buffer counter
+
+        # If paused, play nothing
         if self.paused:
-            return np.zeros((self.CHANNELS, self.FRAMES_PER_BUFFER)), pyaudio.paContinue
+            self.output_array = np.zeros((self.CHANNELS, self.FRAMES_PER_BUFFER))
+            return self.output_array.flatten(order='F'), pyaudio.paContinue
         
-        if self.wav_data is not None:
-            start = max(0, self.wav_index)
-            end = min(self.wav_index + 5 * self.FRAMES_PER_BUFFER, self.wav_len)
-            self.wav_index += self.playback_rate * self.FRAMES_PER_BUFFER
+        if self.wav_data is None:
+            # Process only the microphone data
+            self.output_array = self.process_func(self, input_array, None, *self.process_func_args)
+            return self.output_array.flatten(order='F'), pyaudio.paContinue
+        
+        # If you reach this point, a WAV file was provided
 
-            stretched_audio = librosa.effects.time_stretch(y=self.wav_data[:, int(start):int(end)], rate=self.playback_rate)  # get audio
-            stretched_audio = stretched_audio.reshape((self.CHANNELS, -1))  # reshape the stretched audio
+        # Play the next self.FRAMES_PER_BUFFER samples from the WAV file
+        # Get twice the number of frames needed to fill the PyAudio buffer after time stretching
+        start = max(0, self.wav_index)
+        end = min(self.wav_index + 5 * self.playback_rate * self.FRAMES_PER_BUFFER, self.wav_len)
 
-            # get the middle of the stretched window
-            offset = max(0, int((stretched_audio.shape[1]-self.FRAMES_PER_BUFFER)/2))
-            wav_slice = stretched_audio[:, offset:offset+self.FRAMES_PER_BUFFER]
+        # Increment the wav_index based on the playback rate
+        self.wav_index += self.playback_rate * self.FRAMES_PER_BUFFER
+
+        # Time stretch the audio based on the playback rate
+        stretched_audio = librosa.effects.time_stretch(y=self.wav_data[:, int(start):int(end)], rate=self.playback_rate)  # get audio
+        
+        # Reshaped the stretched audio (necessary if there is only one channel)
+        stretched_audio = stretched_audio.reshape((self.CHANNELS, -1))
+
+        # Get exactly enough frames to fill the PyAudio buffer
+        wav_slice = stretched_audio[:, :self.FRAMES_PER_BUFFER]
+
+        # If there are not enough frames, pad with zeros
+        if wav_slice.shape[1] < self.FRAMES_PER_BUFFER:
             wav_slice = np.pad(wav_slice, ((0, 0), (0, self.FRAMES_PER_BUFFER - wav_slice.shape[1])), mode='constant', constant_values=((0, 0), (0, 0)))
-
-            if self.wav_index < self.wav_len:  # If there is enough data in wav
-                self.output_array = self.process_func(self, input_array, wav_slice, *self.process_func_args)
-            else:  # Send the rest of the wav to process_func and kill the PyAudio stream
-                self.output_array = self.process_func(self, input_array, self.wav_data, *self.process_func_args)
-                if self.kill_after_finished:
-                    self.stop()
-                    return self.output_array.flatten(order='F'), pyaudio.paAbort
-                else:
-                    self.pause()
-                    self.wav_index = 0
-        else:
-            self.output_array = self.process_func(self, input_array, 
-                                            None, 
-                                            *self.process_func_args) # Call process_func
         
-        return self.output_array.flatten(order='F'), pyaudio.paContinue
+        # Add the last frames from the previous wav_slice to the first frames of the current wav_slice
+        overlap_size = 128
+        wav_slice[:, :overlap_size] += self.prev_wav_slice[:, self.prev_wav_slice.shape[1]-overlap_size:]
+        self.prev_wav_slice = wav_slice
+
+        # Fade in and out of each wav_slice to eliminate popping noise
+        fade_size = 128
+        self.fade_in(wav_slice, num_samples=fade_size)
+        self.fade_out(wav_slice, num_samples=fade_size)
+
+        # If there is enough data in wav, process the microphone audio and WAV audio as normal
+        if self.wav_index < self.wav_len:
+            self.output_array = self.process_func(self, input_array, wav_slice, *self.process_func_args)
+            return self.output_array.flatten(order='F'), pyaudio.paContinue
+        
+        # Else if the thread is set to stop after the WAV file is finished, stop the thread
+        elif self.kill_after_finished:
+            self.stop()
+            self.output_array = np.zeros((self.CHANNELS, self.FRAMES_PER_BUFFER))
+            return self.output_array.flatten(order='F'), pyaudio.paAbort
+
+        # Else, pause, reset the wav index, and play nothing
+        else:
+            self.pause()
+            self.wav_index = 0
+            self.output_array = np.zeros((self.CHANNELS, self.FRAMES_PER_BUFFER))
+            return self.output_array, pyaudio.paContinue

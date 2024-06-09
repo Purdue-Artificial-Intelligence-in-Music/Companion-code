@@ -9,7 +9,8 @@ import sys
 
 FRAMES_PER_BUFFER = 1024
 # WAV_FILE = "C:\\Users\\TPNml\\OneDrive\\remix 11 x1.wav"
-WAV_FILE = "C:\\Users\\TPNml\Downloads\\bcr 22050.wav"
+# WAV_FILE = "C:\\Users\\TPNml\Downloads\\bcr 22050.wav"
+WAV_FILE = 'test_audio\mountain_king.mp3'
 
 def process_func(self, input_array, wav_data):
     return wav_data
@@ -20,12 +21,12 @@ def main():
                          wav_file=WAV_FILE,
                          process_func=process_func,
                          process_func_args=(),
-                         calc_transforms=False, 
+                         calc_chroma=False, 
                          calc_beats=True,
                          run_counter=True,
                          kill_after_finished=True,
                          time_stretch=True,
-                         playback_rate=2.0,
+                         playback_rate=1.0,
                          sr_no_wav=44100,
                          dtype_no_wav=np.float32,
                          channels_no_wav=1,
@@ -35,7 +36,6 @@ def main():
     beat_detector = BeatNet_thread(model=1, BUFFER=buffer, plot=[], device='cpu')
     wav_beat_tracker = WavBeatTracker(BUFFER=buffer)
     beat_sync = BeatSynchronizer(player_beat_thread=beat_detector, accomp_beat_thread=wav_beat_tracker)
-    buffer.time_stretch_source = beat_sync
     # voice_recognizer = VoiceAnalyzerThread(name="voice_recognizer",
     #                                       BUFFER=buffer,
     #                                       voice_length=3)

@@ -66,7 +66,8 @@ class BeatNet_thread(BeatTracker):
                              hop_size=self.log_spec_hop_length, n_bands=[24], mode = self.mode)
         
         self.estimator = particle_filter_cascade(beats_per_bar=[], fps=50, plot=self.plot, mode=self.mode) # instantiating a Particle Filter decoder - Is Chosen for online inference
-        
+        self.pred = np.zeros([1,2])
+
         script_dir = os.path.dirname(__file__)
         #assiging a BeatNet CRNN instance to extract joint beat and downbeat activations
         self.model = BDA(272, 150, 2, self.device)   #Beat Downbeat Activation detector

@@ -28,6 +28,7 @@ class BeatSynchronizer(threading.Thread):
             accomp_beats = self.accomp_beat_thread.get_total_beats()
             error = accomp_beats - player_beats
             self.playback_rate = self.PID(error)
+            self.player_beat_thread.playback_rate = self.playback_rate
             time.sleep(self.PID.sample_time)
 
 
