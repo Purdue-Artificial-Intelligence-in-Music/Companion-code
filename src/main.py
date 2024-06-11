@@ -6,11 +6,10 @@ from VoiceCommandThread import *
 from BeatSynchronizer import *
 import traceback
 import sys
+import torch
 
 FRAMES_PER_BUFFER = 1024
-# WAV_FILE = "C:\\Users\\TPNml\\OneDrive\\remix 11 x1.wav"
-# WAV_FILE = "C:\\Users\\TPNml\Downloads\\bcr 22050.wav"
-WAV_FILE = 'test_audio\mountain_king.mp3'
+WAV_FILE = 'test_audio\imperial_march.wav'
 
 def process_func(self, input_array, wav_data):
     return wav_data
@@ -33,15 +32,17 @@ def main():
                          debug_prints=False,
                          output_path="./src/wav_output.wav")
     
-    beat_detector = BeatNet_thread(model=1, BUFFER=buffer, plot=[], device='cpu')
+    if torch.cuda.is_available():
+        device = 'cuda'
+    else:
+        device = 'cpu'
+
+    beat_detector = BeatNet_thread(model=1, BUFFER=buffer, plot=[], device=device)
     wav_beat_tracker = WavBeatTracker(BUFFER=buffer)
     beat_sync = BeatSynchronizer(player_beat_thread=beat_detector, accomp_beat_thread=wav_beat_tracker)
     # voice_recognizer = VoiceAnalyzerThread(name="voice_recognizer",
     #                                       BUFFER=buffer,
     #                                       voice_length=3)
-    buffer.daemon = True
-    beat_detector.daemon = True
-    wav_beat_tracker.daemon = True
     # voice_recognizer.daemon = True
     print("All thread objects initialized")
     buffer.start()
@@ -63,12 +64,13 @@ def main():
             elapsed_time = time.time() - start_time
             minutes_elapsed_in_wav = int(buffer.wav_index / buffer.RATE / 60)
             seconds_elapsed_in_wav = int(buffer.wav_index / buffer.RATE) % 60
+            buffer.playback_rate = beat_sync.playback_rate
             print("\r(%.2fs) Mic beats: %d, Wav beats: %d, playback speed = %.2f | Wav playback: %d:%02d out of %d:%02d" % 
-                  (elapsed_time, beat_detector.get_total_beats(), wav_beat_tracker.get_total_beats(), beat_sync.playback_rate, 
+                  (elapsed_time, beat_detector.get_total_beats(), wav_beat_tracker.get_total_beats(), buffer.playback_rate, 
                    minutes_elapsed_in_wav, seconds_elapsed_in_wav, minutes_long, seconds_long),
                   end="",
                   flush=True)
-            time.sleep(0.5)
+            time.sleep(0.1)
 
     except Exception as e:
         print("Detected interrupt")

@@ -56,6 +56,7 @@ class BeatNet_thread(BeatTracker):
         self.plot= plot
         self.device = device
         self.thread = False
+        self.daemon = True
         if plot and self.thread:
             raise RuntimeError('Plotting cannot be accomplished in the threading mode')
         self.sample_rate = self.BUFFER.RATE
@@ -150,7 +151,6 @@ class BeatNet_thread(BeatTracker):
                     print("Padded a hop of %d samples to a buffer of %d samples" % (L, len(hop)))
                 hop = hop.astype(dtype=np.float32, casting='safe')
                 self.stream_window = np.append(self.stream_window[self.log_spec_hop_length:], hop)
-            self.pred = np.zeros([1,2])
             if self.counter < 5:
                 self.pred = np.zeros([1,2])
             else:

@@ -16,6 +16,11 @@ This class is a template class for a thread that reads in audio fromxPyAudio and
 This is version 2 of the code.
 '''
 
+# mic_data, _ = librosa.load('test_audio/imperial_march.wav', sr=None, mono=False, dtype=np.float32)
+# if len(mic_data.shape) == 1:
+#     mic_data = mic_data.reshape(1, -1)
+# mic_data = librosa.effects.time_stretch(mic_data, rate=2)
+# mic_index = 0
 
 class AudioBuffer(threading.Thread):
     def __init__(self, name: str, 
@@ -119,7 +124,7 @@ class AudioBuffer(threading.Thread):
         self.audio_buffer = np.zeros((self.CHANNELS, self.buffer_size), dtype=self.dtype)  # set a zero array
         self.buffer_index = 0  # current last sample stored in buffer
         self.buffer_filled = False # True if buffer has been filled all the way, False otherwise
-        self.buffer_length = len(self.audio_buffer)
+        self.buffer_length = self.audio_buffer.shape[1]
 
         if debug_prints:
             print("Buffer elements: %d\nBuffer size (in samples): %d\nBuffer size (in seconds): %.2f" % (self.buffer_elements, self.buffer_size, self.buffer_size / float(self.RATE)))
@@ -373,6 +378,10 @@ class AudioBuffer(threading.Thread):
         Returns: new audio for PyAudio to play through speakers.
         """
         input_array = np.frombuffer(in_data, dtype=self.dtype)
+        # global mic_data
+        # global mic_index
+        # input_array = mic_data[:, int(mic_index):int(mic_index+self.FRAMES_PER_BUFFER)]
+        # mic_index += self.FRAMES_PER_BUFFER
 
         # Reshaping code to correct channels
         input_array = np.reshape(input_array, (self.CHANNELS, -1))

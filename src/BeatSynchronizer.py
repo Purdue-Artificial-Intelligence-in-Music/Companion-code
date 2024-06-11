@@ -10,7 +10,7 @@ class BeatSynchronizer(threading.Thread):
                  Ki = 0.004,
                  Kd = 0.01,
                  sample_time = 0.1,
-                 min_tempo = 0.2,
+                 min_tempo = 0.5,
                  max_tempo = 2.5):
         super().__init__()
         self.daemon = True
@@ -28,7 +28,6 @@ class BeatSynchronizer(threading.Thread):
             accomp_beats = self.accomp_beat_thread.get_total_beats()
             error = accomp_beats - player_beats
             self.playback_rate = self.PID(error)
-            self.player_beat_thread.playback_rate = self.playback_rate
             time.sleep(self.PID.sample_time)
 
 

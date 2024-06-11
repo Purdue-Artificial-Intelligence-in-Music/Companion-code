@@ -12,6 +12,7 @@ class WavBeatTracker(BeatTracker):
         self.total_beats = 0
         self.next_beat_idx = 0
         self.next_beat_sample_idx = BUFFER.wav_beats[0][0]
+        self.daemon = True
 
     def update_beats(self):
         curr_sample_idx = self.BUFFER.wav_index
