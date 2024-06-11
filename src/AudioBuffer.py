@@ -10,7 +10,7 @@ import os
 from BeatSynchronizer import *
 
 '''
-This class is a template class for a thread that reads in audio fromxPyAudio and stores it in a buffer.
+This class is a template class for a thread that reads in audio from PyAudio and stores it in a buffer.
 
 This is version 2 of the code.
 '''

@@ -9,7 +9,7 @@ import sys
 import torch
 
 FRAMES_PER_BUFFER = 1024  # number of frames in PyAudio buffer
-WAV_FILE = 'test_audio\imperial_march.wav'  # accompaniment WAV file
+WAV_FILE = 'audio_files\imperial_march.wav'  # accompaniment WAV file
 
 # the data returned by this function is played by PyAudio
 def process_func(self, input_array, wav_data):
@@ -28,9 +28,9 @@ def main():
                          kill_after_finished=True,
                          time_stretch=True,
                          playback_rate=1.0,
-                         sr_no_wav=44100,
-                         dtype_no_wav=np.float32,
-                         channels_no_wav=1,
+                         sample_rate=None,
+                         dtype=np.float32,
+                         channels=1,
                          debug_prints=False)
     
     # use CUDA if available
