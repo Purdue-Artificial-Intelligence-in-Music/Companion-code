@@ -73,7 +73,7 @@ def main():
             args.samplerate = int(device_info["default_samplerate"])
             
         if args.model is None:
-            model = Model(lang="en-us")
+            model = Model(model_name="vosk-model-en-us-0.22-lgraph")
         else:
             model = Model(lang=args.model)
 
