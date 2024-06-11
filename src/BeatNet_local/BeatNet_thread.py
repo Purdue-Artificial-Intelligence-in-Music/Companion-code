@@ -11,11 +11,7 @@ import numpy as np
 from madmom.features import DBNDownBeatTrackingProcessor
 from BeatNet_local.particle_filtering_cascade import particle_filter_cascade
 from BeatNet_local.log_spect import LOG_SPECT
-import librosa
-import sys
 from BeatNet_local.model import BDA
-import pyaudio
-import matplotlib.pyplot as plt
 import time
 import threading
 from AudioBuffer import *

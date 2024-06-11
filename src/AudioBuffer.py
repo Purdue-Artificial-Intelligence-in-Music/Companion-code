@@ -6,7 +6,6 @@ import librosa
 from typing import Callable
 from BeatNet_local.BeatNet_files import BeatNet_for_audio_arr
 from Counter import *
-import matplotlib.pyplot as plt
 import os
 from BeatSynchronizer import *
 
@@ -15,12 +14,6 @@ This class is a template class for a thread that reads in audio fromxPyAudio and
 
 This is version 2 of the code.
 '''
-
-# mic_data, _ = librosa.load('test_audio/imperial_march.wav', sr=None, mono=False, dtype=np.float32)
-# if len(mic_data.shape) == 1:
-#     mic_data = mic_data.reshape(1, -1)
-# mic_data = librosa.effects.time_stretch(mic_data, rate=2)
-# mic_index = 0
 
 class AudioBuffer(threading.Thread):
     def __init__(self, name: str, 
@@ -353,7 +346,6 @@ class AudioBuffer(threading.Thread):
 
     def fade_in(self, audio, num_samples):
         num_samples = min(audio.shape[1], num_samples)
-        # fade_curve = np.linspace(0, 1, num_samples)
         fade_curve = np.log(np.linspace(1, np.e, num_samples))
 
         for channel in audio[:, :num_samples]:
@@ -362,7 +354,6 @@ class AudioBuffer(threading.Thread):
     def fade_out(self, audio, num_samples):
         num_samples = min(audio.shape[1], num_samples)
         start = audio.shape[1] - num_samples
-        # fade_curve = np.linspace(1, 0, num_samples)
         fade_curve = np.log(np.linspace(np.e, 1, num_samples))
 
         for channel in audio[:, start:]:
@@ -378,10 +369,6 @@ class AudioBuffer(threading.Thread):
         Returns: new audio for PyAudio to play through speakers.
         """
         input_array = np.frombuffer(in_data, dtype=self.dtype)
-        # global mic_data
-        # global mic_index
-        # input_array = mic_data[:, int(mic_index):int(mic_index+self.FRAMES_PER_BUFFER)]
-        # mic_index += self.FRAMES_PER_BUFFER
 
         # Reshaping code to correct channels
         input_array = np.reshape(input_array, (self.CHANNELS, -1))
@@ -421,6 +408,7 @@ class AudioBuffer(threading.Thread):
             self.output_array = np.zeros((self.CHANNELS, self.FRAMES_PER_BUFFER))
             return self.output_array.flatten(order='F'), pyaudio.paContinue
         
+        # If a WAV file was not provided
         if self.wav_data is None:
             # Process only the microphone data
             self.output_array = self.process_func(self, input_array, None, *self.process_func_args)

@@ -2,7 +2,6 @@ from BeatNet_local.BeatNet_thread import BeatNet_thread
 from WavBeatTracker import *
 from AudioBuffer import *
 from VoiceCommandThread import *
-import pytsmod as tsm
 from process_funcs import *
 from xml2midi_conversion import process_score
 from ddsp_funcs import generate_audio_from_midi

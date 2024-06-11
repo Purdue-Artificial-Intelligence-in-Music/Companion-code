@@ -8,13 +8,15 @@ import traceback
 import sys
 import torch
 
-FRAMES_PER_BUFFER = 1024
-WAV_FILE = 'test_audio\imperial_march.wav'
+FRAMES_PER_BUFFER = 1024  # number of frames in PyAudio buffer
+WAV_FILE = 'test_audio\imperial_march.wav'  # accompaniment WAV file
 
+# the data returned by this function is played by PyAudio
 def process_func(self, input_array, wav_data):
     return wav_data
 
 def main():
+    # create AudioBuffer
     buffer = AudioBuffer(name="buffer", 
                          frames_per_buffer=FRAMES_PER_BUFFER,
                          wav_file=WAV_FILE,
@@ -32,6 +34,7 @@ def main():
                          debug_prints=False,
                          output_path="./src/wav_output.wav")
     
+    # use CUDA if available
     if torch.cuda.is_available():
         device = 'cuda'
     else:
@@ -40,21 +43,20 @@ def main():
     beat_detector = BeatNet_thread(model=1, BUFFER=buffer, plot=[], device=device)
     wav_beat_tracker = WavBeatTracker(BUFFER=buffer)
     beat_sync = BeatSynchronizer(player_beat_thread=beat_detector, accomp_beat_thread=wav_beat_tracker)
-    # voice_recognizer = VoiceAnalyzerThread(name="voice_recognizer",
-    #                                       BUFFER=buffer,
-    #                                       voice_length=3)
-    # voice_recognizer.daemon = True
     print("All thread objects initialized")
+
     buffer.start()
     print("Buffer started")
+
     beat_detector.start()
     print("Beat detector started")
+
     wav_beat_tracker.start()
     print("Wav beat tracker started")
+
     beat_sync.start()
     print("Beat synchronizer started")
-    # voice_recognizer.start()
-    # print("Voice recognizer started")
+
     minutes_long = int(buffer.wav_len / buffer.RATE / 60)
     seconds_long = int(buffer.wav_len / buffer.RATE) % 60
     try:
@@ -75,8 +77,10 @@ def main():
     except Exception as e:
         print("Detected interrupt")
         print(traceback.format_exception(None, # <- type(e) by docs, but ignored 
-                                    e, e.__traceback__),
-        file=sys.stderr, flush=True)
+                                         e, e.__traceback__),
+                                         file=sys.stderr, flush=True)
+        beat_sync.stop()
+        beat_sync.join()
         buffer.stop()
         buffer.join()
 
