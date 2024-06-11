@@ -20,16 +20,19 @@ class BeatSynchronizer(threading.Thread):
         self.PID.output_limits = (min_tempo, max_tempo)
         self.PID.sample_time = sample_time
         self.playback_rate = 1
+        self.enabled = True
 
     def run(self):
         _ = self.PID(0)
-        while True:
+        while self.enabled:
             player_beats = self.player_beat_thread.get_total_beats()
             accomp_beats = self.accomp_beat_thread.get_total_beats()
             error = accomp_beats - player_beats
             self.playback_rate = self.PID(error)
             time.sleep(self.PID.sample_time)
 
+    def stop(self):
+        self.enabled = False
 
         
     

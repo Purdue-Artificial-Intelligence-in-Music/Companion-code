@@ -1,7 +1,8 @@
-def process_func(self, input_array, wav_data):
-    if wav_data is not None:
-        output = wav_data[self.wav_index, self.wav_index+self.FRAMES_PER_BUFFER]
-        self.wav_index += self.FRAMES_PER_BUFFER
-    else:
-        output = input_array
-    return output
+def play_mic_data(self, mic_data, wav_data):
+    return mic_data
+
+def play_wav_data(self, mic_data, wav_data):
+    return wav_data
+
+def play_all(self, mic_data, wav_data):
+    return mic_data + wav_data
