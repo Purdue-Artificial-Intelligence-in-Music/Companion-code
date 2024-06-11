@@ -4,6 +4,7 @@ import argparse
 import queue
 import sys
 import numpy as np
+import time
 
 q = queue.Queue()
 
@@ -67,7 +68,10 @@ def main():
                 # Clamp the audio stream frequency to a PCM wavelength compatible default of 32768hz max.
                 audio_np = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
                 result = model.transcribe(audio_np)
+                print("Test to see if the 30 sec padding is a problem")
+                print(result)
                 print(result["text"])
+                time.sleep(0.25)
 
     except KeyboardInterrupt:
         print("\nDone")
