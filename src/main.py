@@ -31,8 +31,7 @@ def main():
                          sr_no_wav=44100,
                          dtype_no_wav=np.float32,
                          channels_no_wav=1,
-                         debug_prints=False,
-                         output_path="./src/wav_output.wav")
+                         debug_prints=False)
     
     # use CUDA if available
     if torch.cuda.is_available():

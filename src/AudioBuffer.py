@@ -16,6 +16,47 @@ This is version 2 of the code.
 '''
 
 class AudioBuffer(threading.Thread):
+    """
+    Thread for storing and processing audio data.
+
+    ...
+
+    Attributes
+    ----------
+    name : str
+        Name of the thread.
+    frames_per_buffer : int, optional
+        Number of frames in the PyAudio buffer.
+    process_func : Callable, optional
+        Function to process audio data before it is played.
+    calc_chroma : bool, optional
+        Calculate chroma features for WAV and microphone audio.
+    calc_beats : bool, optional
+        Calculate beats for WAV audio
+    run_counter : bool, optional
+        Create a Counter object to synchronize buffer with beat detection
+    kill_after_finished : bool, optional
+        Stop the thread when the WAV audio finishes playing
+    time_stretch : bool, optional
+        Time stretch the WAV audio according to the playback rate
+    playback_rate : float, optional
+        Multiplier for WAV audio speed
+    sample_rate : int, optional
+        Sample rate for microphone audio if no WAV file is provided
+    dtype : numeric type, optional
+        Data type to use when loading 
+    channels : int, optional
+        Number of channels in WAV audio
+    debug_prints : bool, optional
+        Print debug information
+    
+
+    Methods
+    -------
+    to_chroma(audio)
+        Generate chroma features from audio data
+
+    """
     def __init__(self, name: str, 
                  frames_per_buffer: int = 1024, 
                  process_func: Callable = None, 
@@ -27,10 +68,9 @@ class AudioBuffer(threading.Thread):
                  kill_after_finished = True,
                  time_stretch = False,
                  playback_rate = 1,
-                 sr_no_wav = 44100,
-                 dtype_no_wav = np.float32,
-                 channels_no_wav = 1,
-                 output_path = "",
+                 sample_rate = None,
+                 dtype = np.float32,
+                 channels = 1,
                  debug_prints = False):
         """
         Initializes an AudioThreadWithBuffer object (a thread that takes audio, stores it in a buffer,
@@ -70,13 +110,12 @@ class AudioBuffer(threading.Thread):
         self.kill_after_finished = kill_after_finished 
         self.time_stretch = time_stretch
         self.playback_rate = playback_rate
-        self.RATE = sr_no_wav
-        self.dtype = dtype_no_wav
-        self.CHANNELS = channels_no_wav
-        self.output_path = output_path
-        self.paused = False
+        self.RATE = sample_rate
+        self.dtype = dtype
+        self.CHANNELS = channels
         self.debug_prints = debug_prints
 
+        self.paused = False
         self.mic_sample_counter = None
         if run_counter:
             self.mic_sample_counter = Counter()
@@ -89,11 +128,11 @@ class AudioBuffer(threading.Thread):
 
         # Get the audio data and sample rate from the wav file if one is provided
         if wav_file is not None:
-            self.wav_data, self.RATE = librosa.load(wav_file, sr=None, mono=False) 
-            self.dtype = self.wav_data.dtype
+            mono = channels == 1
+            self.wav_data, self.RATE = librosa.load(wav_file, sr=self.RATE, mono=mono, dtype=dtype)
 
-            # if there is a single channel, reshape it into the correct shape
-            if len(self.wav_data.shape) == 1:
+            # if there is a single channel, reshape the WAV data into the correct shape
+            if mono:
                 self.wav_data = self.wav_data.reshape(1, -1)
 
             # self.wav_data has shape (channels, # samples)
@@ -178,6 +217,19 @@ class AudioBuffer(threading.Thread):
                 print(self.wav_beats)
 
     def to_chroma(self, audio: np.ndarray) -> np.ndarray:
+        """
+
+        Parameters
+        ----------
+        audio: np.ndarray 
+            an array containing audio data with shape (channels, number_of_frames)
+
+        Returns
+        -------
+        np.ndarray
+            chroma feature with shape (channels, 12)
+
+        """
 
         # if there are not enough samples, pad with zeros
         if audio.shape[1] < self.FRAMES_PER_BUFFER:
@@ -189,19 +241,33 @@ class AudioBuffer(threading.Thread):
         return chroma_cqt.reshape((self.CHANNELS, 12))
 
     def set_process_func_args(self, a = ()):
-        """
-        Changes the arguments after the sound array when process_func is called.
-        Parameters: a: the arguments
-        Returns: nothing
+        """Changes the arguments after the sound array when process_func is called.
+
+        Parameters
+        ----------
+        a :
+             (Default value = ())
+
+        Returns
+        -------
+        type
+            
+
         """
         self.process_func_args = a
 
     def run(self):
-        """
-        When the thread is started, this function is called which opens the PyAudio object
+        """When the thread is started, this function is called which opens the PyAudio object
         and keeps the thread alive.
-        Parameters: nothing
-        Returns: nothing
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        type
+            
+
         """
         self.p = pyaudio.PyAudio()
         self.stream = self.p.open(format=self.FORMAT,
@@ -216,11 +282,7 @@ class AudioBuffer(threading.Thread):
             time.sleep(1.0)
 
     def stop(self):
-        """
-        When the thread is stopped, this function is called which closes the PyAudio object
-        Parameters: nothing
-        Returns: nothing
-        """
+        """When the thread is stopped, this function is called which closes the PyAudio object"""
         # self.stream.stop_stream()
         print("Stopping")
         self.stream.close()
@@ -228,10 +290,18 @@ class AudioBuffer(threading.Thread):
         self.stop_request = True
 
     def audio_on(self, audio: np.array):
-        """
-        Takes an audio input array and sets an instance variable saying whether the input is playing or not.
-        Parameters: audio: the audio input
-        Returns: nothing
+        """Takes an audio input array and sets an instance variable saying whether the input is playing or not.
+
+        Parameters
+        ----------
+        audio: np.array :
+            
+
+        Returns
+        -------
+        type
+            
+
         """
         audio = audio.astype(np.float64)
         val_sum = 0.0
@@ -245,10 +315,18 @@ class AudioBuffer(threading.Thread):
             self.input_on = False
 
     def get_last_samples(self, n: int):
-        """
-        Returns the last n samples from the buffer, or the maximum possible elements if there aren't enough recorded yet.
-        Parameters: n: number of samples
-        Returns: the last n samples from the buffer (as a numpy array)
+        """Returns the last n samples from the buffer, or the maximum possible elements if there aren't enough recorded yet.
+
+        Parameters
+        ----------
+        n: int :
+            
+
+        Returns
+        -------
+        type
+            
+
         """
         # return self.audio_buffer[max(self.buffer_index - n, 0):self.buffer_index]
         if n > self.buffer_size:
@@ -261,10 +339,18 @@ class AudioBuffer(threading.Thread):
         return self.audio_buffer[self.buffer_index - n + 1:self.buffer_index]
 
     def get_last_transform(self, n: int):
-        """
-        Returns the last n transform frames from the buffer, or the maximum possible elements if there aren't enough recorded yet.
-        Parameters: n: number of samples
-        Returns: the last n samples from the buffer (as a numpy array)
+        """Returns the last n transform frames from the buffer, or the maximum possible elements if there aren't enough recorded yet.
+
+        Parameters
+        ----------
+        n: int :
+            
+
+        Returns
+        -------
+        type
+            
+
         """
         if n > self.buffer_elements:
             n = self.buffer_elements
@@ -276,13 +362,25 @@ class AudioBuffer(threading.Thread):
         return self.chroma_buffer[:, self.buffer_index - n + 1:self.buffer_index]
     
     def get_range_samples(self, m: int, n: int):
-        """
-        Returns the range of samples from the mth most recent sample (inclusive) to the nth most recent sample (exclusive), where n > m, or the maximum possible elements
+        """Returns the range of samples from the mth most recent sample (inclusive) to the nth most recent sample (exclusive), where n > m, or the maximum possible elements
         if there aren't enough recorded yet.
-        Parameters: 
-        m: the last sample you want the function to return from the buffer
-        n: the first sample you want the function to return from the buffer
-        Returns: see above (a numpy array)
+
+        Parameters
+        ----------
+        m :
+            the last sample you want the function to return from the buffer
+        n :
+            the first sample you want the function to return from the buffer
+        m: int :
+            
+        n: int :
+            
+
+        Returns
+        -------
+        type
+            
+
         """
         if n > self.buffer_size:
             n = self.buffer_size
@@ -310,13 +408,25 @@ class AudioBuffer(threading.Thread):
         return output
     
     def get_range_transforms(self, m: int, n: int):
-        """
-        Returns the range of transforms from the mth most recent transform (inclusive) to the nth most recent transform (exclusive), where n > m, or the maximum possible elements
+        """Returns the range of transforms from the mth most recent transform (inclusive) to the nth most recent transform (exclusive), where n > m, or the maximum possible elements
         if there aren't enough recorded yet.
-        Parameters: 
-        m: the last sample you want the function to return from the buffer
-        n: the first sample you want the function to return from the buffer
-        Returns: see above (a numpy array)
+
+        Parameters
+        ----------
+        m :
+            the last sample you want the function to return from the buffer
+        n :
+            the first sample you want the function to return from the buffer
+        m: int :
+            
+        n: int :
+            
+
+        Returns
+        -------
+        type
+            
+
         """
         if n > self.buffer_elements:
             n = self.buffer_elements
@@ -336,15 +446,41 @@ class AudioBuffer(threading.Thread):
         return self.chroma_buffer[:, self.buffer_index - n + 1:self.buffer_index - m] 
     
     def pause(self):
+        """ """
         self.paused = True
 
     def unpause(self):
+        """ """
         self.paused = False
 
     def change_playback_rate(self, val: float):
+        """
+
+        Parameters
+        ----------
+        val: float :
+            
+
+        Returns
+        -------
+
+        """
         self.playback_rate = val
 
     def fade_in(self, audio, num_samples):
+        """
+
+        Parameters
+        ----------
+        audio :
+            
+        num_samples :
+            
+
+        Returns
+        -------
+
+        """
         num_samples = min(audio.shape[1], num_samples)
         fade_curve = np.log(np.linspace(1, np.e, num_samples))
 
@@ -352,6 +488,19 @@ class AudioBuffer(threading.Thread):
             channel *= fade_curve
 
     def fade_out(self, audio, num_samples):
+        """
+
+        Parameters
+        ----------
+        audio :
+            
+        num_samples :
+            
+
+        Returns
+        -------
+
+        """
         num_samples = min(audio.shape[1], num_samples)
         start = audio.shape[1] - num_samples
         fade_curve = np.log(np.linspace(np.e, 1, num_samples))
@@ -361,12 +510,26 @@ class AudioBuffer(threading.Thread):
         
         
     def callback(self, in_data, frame_count, time_info, flag):
-        """
-        This function is called whenever PyAudio recieves new audio. It calls process_func to process the sound data
+        """This function is called whenever PyAudio recieves new audio. It calls process_func to process the sound data
         and stores the result in the field "data".
         This function should never be called directly.
-        Parameters: none user-exposed
-        Returns: new audio for PyAudio to play through speakers.
+
+        Parameters
+        ----------
+        in_data :
+            
+        frame_count :
+            
+        time_info :
+            
+        flag :
+            
+
+        Returns
+        -------
+        type
+            
+
         """
         input_array = np.frombuffer(in_data, dtype=self.dtype)
 
