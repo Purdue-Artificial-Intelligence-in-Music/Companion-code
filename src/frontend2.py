@@ -2,7 +2,6 @@ from BeatNet_local.BeatNet_thread import BeatNet_thread
 from WavBeatTracker import *
 from AudioBuffer import *
 from VoiceCommandThread import *
-import pytsmod as tsm
 from process_funcs import *
 from xml2midi_conversion import process_score
 from ddsp_funcs import generate_audio_from_midi
@@ -11,6 +10,7 @@ import sys
 import midi_ddsp
 import pretty_midi
 import os
+import subprocess
 
 FRAMES_PER_BUFFER = 1024
 
@@ -98,7 +98,7 @@ def main():
                 if not os.path.exists(expected_file_path):
                     print("Downloading model weights...")
                     # Execute the script to download model weights
-                    %run download_model_weights.py
+                    subprocess.run(['python', 'download_model_weights.py'])
                 else:
                     print("Model weights already exist. No need to download.")
 
@@ -119,9 +119,9 @@ def main():
                 # !!! Run these once
                 if not os.path.exists('./midi-ddsp') or not os.path.exists('./FluidR3_GM.zip'):
                     # Your commands
-                    !git clone -q https://github.com/magenta/midi-ddsp.git
-                    !wget -q https://keymusician01.s3.amazonaws.com/FluidR3_GM.zip
-                    !unzip -q FluidR3_GM.zip
+                    subprocess.run(['git', 'clone', '-q', 'https://github.com/magenta/midi-ddsp.git'])
+                    subprocess.run(['wget', '-q', 'https://keymusician01.s3.amazonaws.com/FluidR3_GM.zip'])
+                    subprocess.run(['unzip', '-q', 'FluidR3_GM.zip'])
                 else:
                     print('The required resources are already present.')
 

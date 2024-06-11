@@ -40,4 +40,3 @@ class LOG_SPECT(FeatureModule):
     def process_audio(self, audio):
         feats = self.pipe(audio)
         return feats.T
-
