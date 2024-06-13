@@ -3,7 +3,7 @@ Companion is an app that not only plays along with a human player during a chamb
 
 ## System requirements
 - Windows 10/11 or Linux (macOS may work but is untested and unsupported)
-- An Nvidia GPU (RTX 3050 mobile or better preferred)
+- An Nvidia GPU with >=4GB VRAM (RTX 3050 mobile and above tested + working)
 - 16GB of system RAM (probably)
 - 10GB of space for installation of libraries
 - A microphone
