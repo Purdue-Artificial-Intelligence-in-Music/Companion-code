@@ -4,7 +4,7 @@ Companion is an app that not only plays along with a human player during a chamb
 ## Getting Started
 1. Clone the repository at https://github.com/Purdue-Artificial-Intelligence-in-Music/Companion-code
 2. Make sure conda is installed. 
-3. Run the following commands to create a conda environment for the project (the ipywidgets line is NOT a typo):
+3. Run the following commands in-order to create a conda environment for the project (the ipywidgets line is NOT a typo):
 ```
 conda create -n companion_env
 conda activate companion_env
