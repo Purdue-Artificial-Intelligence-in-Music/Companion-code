@@ -2,9 +2,9 @@
 Companion is an app that not only plays along with a human player during a chamber music piece, but actively responds to their playing habits and voice commands like a real human would. 
 
 ## System requirements
-- Windows 10/11 or Linux
+- Windows 10/11 or Linux (macOS may work but is untested and unsupported)
 - An Nvidia GPU (RTX 3050 mobile or better preferred)
-- 16GB of RAM (probably)
+- 16GB of system RAM (probably)
 - 10GB of space for installation of libraries
 - A microphone
 - Headphones (to avoid feedback with the microphone)
