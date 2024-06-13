@@ -24,7 +24,6 @@ def main():
                          process_func_args=(),
                          calc_chroma=False, 
                          calc_beats=True,
-                         run_counter=True,
                          kill_after_finished=True,
                          time_stretch=True,
                          playback_rate=1.0,

@@ -14,10 +14,11 @@ This class is a template class for a thread that reads in audio from PyAudio and
 
 This is version 2 of the code.
 '''
-# mic_data, _ = librosa.load('test_audio/imperial_march.wav', sr=None, mono=False, dtype=np.float32)
+
+# mic_data, _ = librosa.load('audio_files/imperial_march.wav', sr=22050, mono=True, dtype=np.float32)
 # if len(mic_data.shape) == 1:
 #     mic_data = mic_data.reshape(1, -1)
-# mic_data = librosa.effects.time_stretch(mic_data, rate=2)
+# # mic_data = librosa.effects.time_stretch(mic_data, rate=2)
 # mic_index = 0
 
 class AudioBuffer(threading.Thread):
@@ -85,7 +86,6 @@ class AudioBuffer(threading.Thread):
                  process_func_args=(), 
                  calc_chroma: bool = False, 
                  calc_beats: bool = False, 
-                 run_counter: bool = False,
                  kill_after_finished: bool = True,
                  time_stretch: bool = False,
                  playback_rate: int = 1,
@@ -109,8 +109,6 @@ class AudioBuffer(threading.Thread):
             Calculate chroma features for WAV and microphone audio.
         calc_beats : bool, optional
             Calculate beats for WAV audio
-        run_counter : bool, optional
-            Create a Counter object to synchronize buffer with beat detection
         kill_after_finished : bool, optional
             Stop the thread when the WAV audio finishes playing
         time_stretch : bool, optional
@@ -131,17 +129,20 @@ class AudioBuffer(threading.Thread):
         None
 
         """
-        super(AudioBuffer, self).__init__()  # initialize parent class
-        np.set_printoptions(suppress=True)
+        # PARENT CLASS
+        super(AudioBuffer, self).__init__()
         self.daemon = True
 
+        # PRINT OPTIONS
+        np.set_printoptions(suppress=True)
+
+        # PARAMS
         self.name = name 
         self.FRAMES_PER_BUFFER = frames_per_buffer 
-        self.process_func = process_func 
+        self.process_func = process_func
         self.process_func_args = process_func_args
         self.calc_chroma = calc_chroma
         self.calc_beats = calc_beats
-        self.run_counter = run_counter
         self.kill_after_finished = kill_after_finished 
         self.time_stretch = time_stretch
         self.playback_rate = playback_rate
@@ -150,51 +151,98 @@ class AudioBuffer(threading.Thread):
         self.CHANNELS = channels
         self.debug_prints = debug_prints
 
+        # THREAD ATTRIBUTES
+        self.stop_request = False   # True if AudioBuffer needs to be killed, False otherwise
         self.paused = False
-        self.mic_sample_counter = None
-        if run_counter:
-            self.mic_sample_counter = Counter()
 
-        # initialize WAV file properites
+        # WAV FILE
         self.wav_data = None
         self.wav_index = 0
         self.wav_len = 0
-        self.prev_wav_slice = np.zeros((self.CHANNELS, self.FRAMES_PER_BUFFER))
+        self.wav_chroma = None
+        self.wav_beats = None
 
-        # Get the audio data and sample rate from the wav file if one is provided
+        # If a WAV file was provided
         if wav_file is not None:
+            # Load the audio data
             mono = channels == 1
             self.wav_data, self.RATE = librosa.load(wav_file, sr=self.RATE, mono=mono, dtype=dtype)
 
-            # if there is a single channel, reshape the WAV data into the correct shape
+            # For mono audio, reshape the WAV data into the correct shape
             if mono:
                 self.wav_data = self.wav_data.reshape(1, -1)
 
             # self.wav_data has shape (channels, # samples)
             self.CHANNELS, self.wav_len = self.wav_data.shape
 
-        # Helper function vals
-        self.on_threshold = 0.5  # RMS threshold for audio_on
+            # Calculate croma 
+            if calc_chroma:
+                self.wav_chroma = librosa.feature.chroma_cqt(y=self.wav_data, sr=self.RATE, hop_length=self.FRAMES_PER_BUFFER)
 
-        # PyAudio
+            # Calculate beat locations
+            if calc_beats:
+                cwd = os.getcwd()
+                if not os.path.exists(os.path.join(cwd, "beat_cache/")):
+                    os.mkdir(os.path.join(cwd, "beat_cache/"))
+                modified_wav_file_name = wav_file.replace("\\", "/")
+                beat_path = os.path.join(cwd, "beat_cache/") + str(modified_wav_file_name.split("/")[-1]) + ".npy"
+                if debug_prints:
+                    print("Beat path = \"%s\"" % (beat_path))
+                if os.path.exists(beat_path):
+                    if debug_prints:
+                        print("Loading beats from file...")
+                    self.wav_beats = np.load(beat_path)
+                else:
+                    if debug_prints:
+                        print("Calculating beats...")
+                    estimator = BeatNet_for_audio_arr(1, mode='online', inference_model='PF', plot=[], thread=False, sample_rate=self.RATE)
+                    self.wav_beats = estimator.process(self.wav_data)
+                    for i in range(len(self.wav_beats)):
+                        self.wav_beats[i][0] = int(self.wav_beats[i][0] * self.RATE)
+                    self.wav_beats = np.array(self.wav_beats)
+                    np.save(beat_path, self.wav_beats)
+
+            if debug_prints:
+                print(self.wav_beats)
+
+        # MICROPHONE
+        # Create audio buffer to store microphone input (not the same as pyaudio buffer).
+        self.num_chunks = 50  # number of CHUNKs the buffer should store
+        self.buffer_length = self.num_chunks * self.FRAMES_PER_BUFFER  # desired buffer length in frames
+        self.buffer = np.zeros((self.CHANNELS, self.buffer_length), dtype=self.dtype)  # set a zero array
+        self.buffer_index = 0  # index of next frame to be filled in buffer
+        self.buffer_filled = False # True if buffer has been filled at least once, False otherwise
+        self.mic_frame_count = 0  # Number of frames of mic data that have been processed
+
+        self.on_threshold = 0.5  # RMS threshold for audio_on
+        self.input_on = False  # True if audio is being played into PyAudio, False otherwise, set by audio_on()
+        
+        if debug_prints:
+            print("Buffer elements: %d\nBuffer size (in samples): %d\nBuffer size (in seconds): %.2f" % (self.num_chunks, self.buffer_length, self.buffer_length / float(self.RATE)))
+
+        # Calculate chroma features for mic audio
+        self.chroma_buffer = None
+        self.chroma_buffer_index = 0
+
+        if calc_chroma:
+            # chroma buffer for mic audio
+            # Shape of chroma buffer: (num chunks, channels, n_chroma)
+            self.chroma_buffer = np.zeros((self.num_chunks, self.CHANNELS, 12), dtype=self.dtype)
+
+            if debug_prints:
+                print("Transform buffer shape = %s" % (str(self.chroma_buffer.shape)))
+
+        print("Audio init parameters: Rate = %d, Channels = %d, Frames per buffer = %d" % (self.RATE, self.CHANNELS, self.FRAMES_PER_BUFFER))
+        if debug_prints:
+            print("Format = %s, dtype = %s, Frames per buffer = %d" % (self.FORMAT, self.dtype))
+            if wav_file is not None:
+                print("Shape of wav_data: ", self.wav_data.shape)
+
+
+        ################ PyAudio ##################
         self.p = None  # PyAudio object
         self.stream = None  # PyAudio stream
-
-        # Instance vals
         self.output_array = None  # Audio data that the audio stream will play next
-        self.input_on = False  # True if audio is being played into PyAudio, False otherwise, set by audio_on()
-        self.stop_request = False   # True if AudioThreadWithBuffer needs to be killed, False otherwise
-
-        # create audio buffer to store microphone input (not the same as pyaudio buffer)
-        self.buffer_elements = 50  # number of CHUNKs the buffer should store
-        self.buffer_size = self.buffer_elements * self.FRAMES_PER_BUFFER  # desired buffer size in samples
-        self.audio_buffer = np.zeros((self.CHANNELS, self.buffer_size), dtype=self.dtype)  # set a zero array
-        self.buffer_index = 0  # current last sample stored in buffer
-        self.buffer_filled = False # True if buffer has been filled all the way, False otherwise
-        self.buffer_length = self.audio_buffer.shape[1]
-
-        if debug_prints:
-            print("Buffer elements: %d\nBuffer size (in samples): %d\nBuffer size (in seconds): %.2f" % (self.buffer_elements, self.buffer_size, self.buffer_size / float(self.RATE)))
 
         # Set the pyaudio format
         if self.dtype == np.int16:
@@ -204,52 +252,6 @@ class AudioBuffer(threading.Thread):
         else:
             self.FORMAT = pyaudio.paFloat32
 
-        # Calculate chroma features for wav file and mic audio
-        self.chroma_buffer = None
-        if calc_chroma:
-            if self.wav_data is not None:  # if wav file was provided, calculate its chroma features
-                self.wav_chroma = librosa.feature.chroma_cqt(y=self.wav_data, sr=self.RATE, hop_length=self.FRAMES_PER_BUFFER)
-
-            # chroma buffer for mic audio
-            # Shape of chroma buffer: (Buffer elements, channels, n_chroma)
-            self.chroma_buffer = np.zeros((self.buffer_elements, self.CHANNELS, 12), dtype=self.dtype)
-            self.chroma_buffer_index = 0
-
-            if debug_prints:
-                print("Transform buffer shape = %s" % (str(self.chroma_buffer.shape)))
-        
-        # a frame consists of samples across all channels at a certain point in time
-        print("Audio init parameters: Rate = %d, Channels = %d, Frames per buffer = %d" % (self.RATE, self.CHANNELS, self.FRAMES_PER_BUFFER))
-        if debug_prints:
-            print("Format = %s, dtype = %s, Frames per buffer = %d" % (self.FORMAT, self.dtype))
-            if wav_file is not None:
-                print("Shape of wav_data: ", self.wav_data.shape)
-        self.wav_beats = None
-
-        if calc_beats:
-            cwd = os.getcwd()
-            if not os.path.exists(os.path.join(cwd, "beat_cache/")):
-                os.mkdir(os.path.join(cwd, "beat_cache/"))
-            modified_wav_file_name = wav_file.replace("\\", "/")
-            beat_path = os.path.join(cwd, "beat_cache/") + str(modified_wav_file_name.split("/")[-1]) + ".npy"
-            if debug_prints:
-                print("Beat path = \"%s\"" % (beat_path))
-            if os.path.exists(beat_path):
-                if debug_prints:
-                    print("Loading beats from file...")
-                self.wav_beats = np.load(beat_path)
-            else:
-                if debug_prints:
-                    print("Calculating beats...")
-                estimator = BeatNet_for_audio_arr(1, mode='online', inference_model='PF', plot=[], thread=False, sample_rate=self.RATE)
-                self.wav_beats = estimator.process(self.wav_data)
-                for i in range(len(self.wav_beats)):
-                    self.wav_beats[i][0] = int(self.wav_beats[i][0] * self.RATE)
-                self.wav_beats = np.array(self.wav_beats)
-                np.save(beat_path, self.wav_beats)
-
-            if debug_prints:
-                print(self.wav_beats)
 
     def to_chroma(self, audio: np.ndarray) -> np.ndarray:
         """
@@ -326,13 +328,12 @@ class AudioBuffer(threading.Thread):
         Parameters
         ----------
         audio : np.array
-            
-
+            An array containing audio data
+        
         Returns
         -------
         None
             
-
         """
         audio = audio.astype(np.float64)
         val_sum = 0.0
@@ -345,54 +346,70 @@ class AudioBuffer(threading.Thread):
         else:
             self.input_on = False
 
-    def get_last_samples(self, n: int):
-        """Returns the last n samples from the buffer, or the maximum possible elements if there aren't enough recorded yet.
+    def get_last_frames(self, num_frames: int):
+        """Returns the last n frames from the buffer, or the maximum possible elements if there aren't enough recorded yet.
 
         Parameters
         ----------
-        n: int :
-            
+        num_frames: int
+            Number of frames to get from the buffer
 
         Returns
         -------
         np.ndarray
-            Array containing the n most recent samples from the audio buffer.
+            Array containing the n most recent frames from the audio buffer.
 
         """
-        # return self.audio_buffer[max(self.buffer_index - n, 0):self.buffer_index]
-        if n > self.buffer_size:
-            n = self.buffer_size
-        if not self.buffer_filled and n > self.buffer_index:
-            n = self.buffer_index
-        if n > self.buffer_index:
-            n_from_end = n - self.buffer_index + 1
-            return np.concatenate((self.audio_buffer[self.buffer_size - n_from_end:], self.audio_buffer[0:self.buffer_index]), axis=1)
-        return self.audio_buffer[self.buffer_index - n + 1:self.buffer_index]
 
-    def get_last_transform(self, n: int):
+        # n cannot be greater than the size of the buffer
+        num_frames = max(num_frames, self.buffer_length)
+
+        # if n is greater than the buffer index
+        if num_frames > self.buffer_index:
+            # If the buffer has been filled, wrap around to the end of the array
+            if self.buffer_filled:
+                # calculate the number of frames needed from the end of the array
+                frames_from_end = num_frames - self.buffer_index
+                # concatenate the fromaes from the end with the frames from the start to the buffer index
+                return np.concatenate((self.buffer[:, -frames_from_end:], self.buffer[:, :self.buffer_index]), axis=1)
+            # if the buffer has not been filled at least once, the frames on the end are not valid
+            return self.buffer[:, :self.buffer_index]
+        
+        # if n is less than the buffer index
+        return self.buffer[:, self.buffer_index - num_frames:self.buffer_index]
+
+    def get_last_chroma(self, num_features: int):
         """Returns the last n transform frames from the buffer, or the maximum possible elements if there aren't enough recorded yet.
 
         Parameters
         ----------
-        n : int
-           Number of transform frames from the buffer 
+        num_features : int
+           Number of chroma
 
         Returns
         -------
         np.ndarray
-            Array containing the n most recent transfroms from the transform buffer
+            Array containing the n most recent chroma features
 
         """
-        if n > self.buffer_elements:
-            n = self.buffer_elements
-        if not self.buffer_filled and n > self.buffer_index:
-            n = self.buffer_index
-        if n > self.buffer_index:
-            n_from_end = n - self.buffer_index + 1
-            return np.concatenate((self.chroma_buffer[:, self.buffer_elements - n_from_end:], self.chroma_buffer[:, 0:self.buffer_index]), axis=1)
-        return self.chroma_buffer[:, self.buffer_index - n + 1:self.buffer_index]
+        # num_features cannot be greater than the size of the buffer
+        num_features = max(num_features, self.num_chunks)
+
+        # if num_features is greater than the buffer index
+        if num_features > self.buffer_index:
+            # If the buffer has been filled, wrap around to the end of the array
+            if self.buffer_filled:
+                # calculate the number of features needed from the end of the array
+                features_from_end = num_features - self.buffer_index
+                # concatenate the features from the end with the features from the start to the buffer index
+                return np.concatenate((self.chroma_buffer[:, -features_from_end:], self.buffer[:, :self.buffer_index]), axis=1)
+            # if the buffer has not been filled at least once, the features on the end are not valid
+            return self.chroma_buffer[:, :self.buffer_index]
+        
+        # if n is less than the buffer index
+        return self.chroma_buffer[:, self.buffer_index - num_features:self.buffer_index]
     
-    def get_range_samples(self, m: int, n: int):
+    def get_frames(self, start: int, end: int):
         """Returns the range of samples from the mth most recent sample (inclusive) to the nth most recent sample (exclusive), where n > m, or the maximum possible elements
         if there aren't enough recorded yet.
 
@@ -410,30 +427,26 @@ class AudioBuffer(threading.Thread):
             Array containing the slice of the audio buffer from index m to index n
 
         """
-        if n > self.buffer_size:
-            n = self.buffer_size
-        if not self.buffer_filled and n > self.buffer_index:
-            n = self.buffer_index
-        if not self.buffer_filled and m > self.buffer_index:
-            m = self.buffer_index
-        if m >= n:
-            return np.empty((self.CHANNELS,0), dtype=self.dtype)
-        output = None
-        if n > self.buffer_index:
-            n_from_end = n - self.buffer_index + 1
-            if m > self.buffer_index:
-                m_from_end = m - self.buffer_index
-                output = self.audio_buffer.T[self.buffer_size - n_from_end + 1:self.buffer_size - m_from_end - 1].T
-            else:
-                L = self.buffer_size - n_from_end + 1
-                R = self.buffer_index - m - 1
-                output = np.concatenate((self.audio_buffer.T[L:].T, self.audio_buffer.T[0:R].T), axis=1)
-        elif self.buffer_filled and self.buffer_index == 0:
-            output = self.audio_buffer.T[self.buffer_index - n + 1:].T 
-        else:
-            output = self.audio_buffer.T[self.buffer_index - n + 1:self.buffer_index - m].T 
-        assert len(output.T) == n - m - 1
-        return output
+        if start >= self.buffer_length or end > self.buffer_length:
+            raise Exception ('Error: Index out of bounds')
+
+        # If the buffer is not filled
+        if not self.buffer_filled:
+            # Any of these scenarios would result in accessing invalid frames
+            if start >= self.buffer_index or end > self.buffer_index or start > end:
+                raise Exception('Error: Attempted to read invalid frames from audio buffer')
+            
+            # start <= end <= self.buff_index and start < self.buffer_index
+            return self.buffer[:, start:end]
+        
+        # At this point, the buffer is filled
+
+        # If start index is greater than end index, wrap around
+        if start > end:
+            return np.concatenate((self.buffer[:, start:], self.buffer[:, end:]), axis=1)
+        
+        # If start <= end
+        return self.buffer[:, start:end]
     
     def get_range_transforms(self, m: int, n: int):
         """Returns the range of transforms from the mth most recent transform (inclusive) to the nth most recent transform (exclusive), where n > m, or the maximum possible elements
@@ -453,8 +466,8 @@ class AudioBuffer(threading.Thread):
             Array containing the slice of the transform buffer from index m to index n
 
         """
-        if n > self.buffer_elements:
-            n = self.buffer_elements
+        if n > self.num_chunks:
+            n = self.num_chunks
         if not self.buffer_filled and n > self.buffer_index:
             n = self.buffer_index
         if not self.buffer_filled and m > self.buffer_index:
@@ -465,9 +478,9 @@ class AudioBuffer(threading.Thread):
             n_from_end = n - self.buffer_index + 1
             if m > self.buffer_index:
                 m_from_end = m - self.buffer_index
-                return self.chroma_buffer[:, self.buffer_elements - n_from_end:self.buffer_elements - m_from_end]
+                return self.chroma_buffer[:, self.num_chunks - n_from_end:self.num_chunks - m_from_end]
             else:
-                return np.concatenate((self.chroma_buffer[:, self.buffer_elements - n_from_end:], self.chroma_buffer[:, 0:self.buffer_index - m]), axis=0)
+                return np.concatenate((self.chroma_buffer[:, self.num_chunks - n_from_end:], self.chroma_buffer[:, 0:self.buffer_index - m]), axis=0)
         return self.chroma_buffer[:, self.buffer_index - n + 1:self.buffer_index - m] 
     
     def pause(self):
@@ -565,25 +578,24 @@ class AudioBuffer(threading.Thread):
 
         # Reshaping code to correct channels
         input_array = np.reshape(input_array, (self.CHANNELS, -1))
-        L = len(input_array[0])
+        L = frame_count
 
         # Check if audio is on and update instance val
         self.audio_on(input_array)
 
         # Add audio to buffer
-        if self.buffer_index + L > self.buffer_size: # If buffer will overflow
-            self.audio_buffer[:, self.buffer_index:] = input_array[:, :self.buffer_length-self.buffer_index] # Add the first portion to the end
-            self.audio_buffer[:, 0:L-(self.buffer_length-self.buffer_index)] = input_array[:, self.buffer_length-self.buffer_index:] # Add the rest at the front
+        if self.buffer_index + L > self.buffer_length: # If buffer will overflow
+            self.buffer[:, self.buffer_index:] = input_array[:, :self.buffer_length-self.buffer_index] # Add the first portion to the end
+            self.buffer[:, 0:L-(self.buffer_length-self.buffer_index)] = input_array[:, self.buffer_length-self.buffer_index:] # Add the rest at the front
         else:
-            self.audio_buffer[:, self.buffer_index:self.buffer_index + L] = input_array # Add it all at once
-        new_idx = (self.buffer_index + L) % self.buffer_size # Increment the buffer counter
+            self.buffer[:, self.buffer_index:self.buffer_index + L] = input_array # Add it all at once
+        new_idx = (self.buffer_index + L) % self.buffer_length # Increment the buffer counter
         if new_idx < self.buffer_index:
             self.buffer_filled = True
         self.buffer_index = new_idx
 
-        # Counter
-        if self.run_counter:
-            self.mic_sample_counter.add_all(L)  # Update sample counter
+        # Update the frame count
+        self.mic_frame_count += frame_count
 
         # Transforms
         if self.calc_chroma:
@@ -594,7 +606,7 @@ class AudioBuffer(threading.Thread):
             self.chroma_buffer[self.chroma_buffer_index] = chroma
             # Increment the chroma buffer index
             # Mod for circular buffer
-            self.chroma_buffer_index = (self.chroma_buffer_index + 1) % self.buffer_elements  # Increment the buffer counter
+            self.chroma_buffer_index = (self.chroma_buffer_index + 1) % self.num_chunks  # Increment the buffer counter
 
         # If paused, play nothing
         if self.paused:
@@ -629,11 +641,6 @@ class AudioBuffer(threading.Thread):
         # If there are not enough frames, pad with zeros
         if wav_slice.shape[1] < self.FRAMES_PER_BUFFER:
             wav_slice = np.pad(wav_slice, ((0, 0), (0, self.FRAMES_PER_BUFFER - wav_slice.shape[1])), mode='constant', constant_values=((0, 0), (0, 0)))
-        
-        # Add the last frames from the previous wav_slice to the first frames of the current wav_slice
-        overlap_size = 128
-        wav_slice[:, :overlap_size] += self.prev_wav_slice[:, self.prev_wav_slice.shape[1]-overlap_size:]
-        self.prev_wav_slice = wav_slice
 
         # Fade in and out of each wav_slice to eliminate popping noise
         fade_size = 128

@@ -3,6 +3,7 @@ from BeatTracker import *
 import time
 
 class BeatSynchronizer(threading.Thread):
+    """Synchronize the beats from two BeatTracker threads using PID contrl """
     def __init__(self, 
                  player_beat_thread: BeatTracker, 
                  accomp_beat_thread: BeatTracker,
@@ -23,6 +24,7 @@ class BeatSynchronizer(threading.Thread):
         self.enabled = True
 
     def run(self):
+        """Set self.playback_rate using PID control to synchronize the beats """
         _ = self.PID(0)
         while self.enabled:
             player_beats = self.player_beat_thread.get_total_beats()
@@ -32,6 +34,7 @@ class BeatSynchronizer(threading.Thread):
             time.sleep(self.PID.sample_time)
 
     def stop(self):
+        """Stop the thread """
         self.enabled = False
 
         

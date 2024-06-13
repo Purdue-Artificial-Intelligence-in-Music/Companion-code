@@ -185,7 +185,7 @@ class VoiceAnalyzerThread(threading.Thread):
     def run(self):
         time.sleep(0.5)
         while not self.stop_request:
-            smp = self.BUFFER.get_last_samples(self.BUFFER.RATE * self.voice_length)
+            smp = self.BUFFER.get_last_frames(self.BUFFER.RATE * self.voice_length)
             if len(smp) >= self.BUFFER.RATE * self.voice_length / 2.0:
                 self.getSpeech(self.convert_to_AudioData(smp))
             time.sleep(self.voice_length)
