@@ -15,11 +15,11 @@ This class is a template class for a thread that reads in audio from PyAudio and
 This is version 2 of the code.
 '''
 
-# mic_data, _ = librosa.load('audio_files/imperial_march.wav', sr=22050, mono=True, dtype=np.float32)
-# if len(mic_data.shape) == 1:
-#     mic_data = mic_data.reshape(1, -1)
-# # mic_data = librosa.effects.time_stretch(mic_data, rate=2)
-# mic_index = 0
+mic_data, _ = librosa.load('audio_files/cello_suite1_piano.wav', sr=22050, mono=True)
+if len(mic_data.shape) == 1:
+    mic_data = mic_data.reshape(1, -1)
+# mic_data = librosa.effects.time_stretch(mic_data, rate=0.75)
+mic_index = 0
 
 class AudioBuffer(threading.Thread):
     """
@@ -43,8 +43,6 @@ class AudioBuffer(threading.Thread):
         Create a Counter object to synchronize buffer with beat detection
     kill_after_finished : bool, optional
         Stop the thread when the WAV audio finishes playing
-    time_stretch : bool, optional
-        Time stretch the WAV audio according to the playback rate
     playback_rate : float, optional
         Multiplier for WAV audio speed
     sample_rate : int, optional
@@ -55,6 +53,7 @@ class AudioBuffer(threading.Thread):
         Number of channels in WAV audio
     debug_prints : bool, optional
         Print debug information
+    stop_request : bool, 
     
 
     Methods
@@ -87,7 +86,6 @@ class AudioBuffer(threading.Thread):
                  calc_chroma: bool = False, 
                  calc_beats: bool = False, 
                  kill_after_finished: bool = True,
-                 time_stretch: bool = False,
                  playback_rate: int = 1,
                  sample_rate: int = None,
                  dtype = np.float32,
@@ -111,8 +109,6 @@ class AudioBuffer(threading.Thread):
             Calculate beats for WAV audio
         kill_after_finished : bool, optional
             Stop the thread when the WAV audio finishes playing
-        time_stretch : bool, optional
-            Time stretch the WAV audio according to the playback rate
         playback_rate : float, optional
             Multiplier for WAV audio speed
         sample_rate : int, optional
@@ -144,7 +140,6 @@ class AudioBuffer(threading.Thread):
         self.calc_chroma = calc_chroma
         self.calc_beats = calc_beats
         self.kill_after_finished = kill_after_finished 
-        self.time_stretch = time_stretch
         self.playback_rate = playback_rate
         self.RATE = sample_rate
         self.dtype = dtype
@@ -232,12 +227,6 @@ class AudioBuffer(threading.Thread):
             if debug_prints:
                 print("Transform buffer shape = %s" % (str(self.chroma_buffer.shape)))
 
-        print("Audio init parameters: Rate = %d, Channels = %d, Frames per buffer = %d" % (self.RATE, self.CHANNELS, self.FRAMES_PER_BUFFER))
-        if debug_prints:
-            print("Format = %s, dtype = %s, Frames per buffer = %d" % (self.FORMAT, self.dtype))
-            if wav_file is not None:
-                print("Shape of wav_data: ", self.wav_data.shape)
-
 
         ################ PyAudio ##################
         self.p = None  # PyAudio object
@@ -251,6 +240,12 @@ class AudioBuffer(threading.Thread):
             self.FORMAT = pyaudio.paInt32
         else:
             self.FORMAT = pyaudio.paFloat32
+
+        print("Audio init parameters: Rate = %d, Channels = %d, Frames per buffer = %d" % (self.RATE, self.CHANNELS, self.FRAMES_PER_BUFFER))
+        if debug_prints:
+            print("Format = %s, dtype = %s, Frames per buffer = %d" % (self.FORMAT, self.dtype, self.FRAMES_PER_BUFFER))
+            if wav_file is not None:
+                print("Shape of wav_data: ", self.wav_data.shape)
 
 
     def to_chroma(self, audio: np.ndarray) -> np.ndarray:
@@ -570,11 +565,12 @@ class AudioBuffer(threading.Thread):
             
 
         """
-        input_array = np.frombuffer(in_data, dtype=self.dtype)
-        # global mic_data
-        # global mic_index
-        # input_array = mic_data[:, int(mic_index):int(mic_index+self.FRAMES_PER_BUFFER)]
-        # mic_index += self.FRAMES_PER_BUFFER
+        # input_array = np.frombuffer(in_data, dtype=self.dtype)
+        global mic_data
+        global mic_index
+        input_array = mic_data[:, int(mic_index):int(mic_index+self.FRAMES_PER_BUFFER)]
+        mic_index += self.FRAMES_PER_BUFFER
+        mic_index %= mic_data.shape[1] - self.FRAMES_PER_BUFFER
 
         # Reshaping code to correct channels
         input_array = np.reshape(input_array, (self.CHANNELS, -1))
