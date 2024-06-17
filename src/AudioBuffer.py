@@ -22,6 +22,7 @@ if len(mic_data.shape) == 1:
 # mic_data = librosa.effects.time_stretch(mic_data, rate=0.75)
 mic_index = 0
 
+
 class AudioBuffer(threading.Thread):
     """
     Thread for storing and processing audio data.
@@ -249,6 +250,18 @@ class AudioBuffer(threading.Thread):
             if wav_file is not None:
                 print("Shape of wav_data: ", self.wav_data.shape)
 
+        ################ PyAudio ##################
+        self.p = None  # PyAudio object
+        self.stream = None  # PyAudio stream
+        self.output_array = None  # Audio data that the audio stream will play next
+
+        # Set the pyaudio format
+        if self.dtype == np.int16:
+            self.FORMAT = pyaudio.paInt16
+        elif self.dtype == np.int32:
+            self.FORMAT = pyaudio.paInt32
+        else:
+            self.FORMAT = pyaudio.paFloat32
 
     def to_chroma(self, audio: np.ndarray) -> np.ndarray:
         """
@@ -415,7 +428,7 @@ class AudioBuffer(threading.Thread):
         start : int
             the oldest frame to be returned from the audio buffer
         end : int
-            the most recent frame
+            the most recent frames
             
 
         Returns
