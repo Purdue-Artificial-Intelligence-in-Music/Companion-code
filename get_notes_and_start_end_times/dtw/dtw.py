@@ -4,4 +4,4 @@ import librosa
 
 def xml2MIDI(filename: str) -> music.midi.MidiFile:
     xml_score = music.converter.parse(filename)
-    return music.midi.streamToMidiFile(xml_score)
+    return music.midi.translate.streamToMidiFile(xml_score)
