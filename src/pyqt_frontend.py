@@ -52,22 +52,23 @@ class WorkerThread(QThread):
     def pause(self):
         self.buffer.pause()
 
+    @Slot()
+    def unpause(self):
+        self.buffer.unpause()
+
+
 class Demo(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.volume = 50
         self.speed = 1
 
         self.start_button = QPushButton("Start")
         self.stop_button = QPushButton("Stop")
         self.pause_button = QPushButton("Pause")
+        self.unpause_button = QPushButton("Unpause")
 
-        self.volume_text = QLabel(f"Volume: {self.volume}", alignment=Qt.AlignCenter)
         self.speed_text = QLabel(f"Speed: {self.speed}", alignment=Qt.AlignCenter)
-        
-        self.volume_slider = QSlider(orientation=Qt.Orientation.Horizontal)
-        self.volume_slider.setValue(self.volume)
 
         self.speed_slider = QSlider(orientation=Qt.Orientation.Horizontal, )
         self.speed_slider.setValue(self.speed * 100)
@@ -75,36 +76,26 @@ class Demo(QWidget):
         self.speed_slider.setMaximum(200)
 
         self.layout = QVBoxLayout(self)
-        self.layout.addWidget(self.volume_text)
         self.layout.addWidget(self.speed_text)
-        self.layout.addWidget(self.volume_slider)
         self.layout.addWidget(self.speed_slider)
         self.layout.addWidget(self.start_button)
         self.layout.addWidget(self.stop_button)
         self.layout.addWidget(self.pause_button)
+        self.layout.addWidget(self.unpause_button)
 
-        self.volume_slider.sliderMoved.connect(self.set_volume)
         self.speed_slider.sliderMoved.connect(self.set_speed)
         self.start_button.clicked.connect(self.start_task)
         self.stop_button.clicked.connect(self.stop_task)
         self.pause_button.clicked.connect(self.pause_task)
-
+        self.unpause_button.clicked.connect(self.unpause_task)
 
         self.thread = WorkerThread()
-
-
-    @Slot()
-    def set_volume(self):
-        self.volume = self.volume_slider.value()
-        self.speed = self.speed_slider.value()
-        self.volume_text.setText(f"Volume: {self.volume}")
 
     @Slot()
     def set_speed(self):
         self.speed = self.speed_slider.value() / 100
         self.speed_text.setText(f"Speed: {self.speed}")
         self.thread.set_playback_rate(self.speed)
-
 
     @Slot()
     def start_task(self):
@@ -113,18 +104,15 @@ class Demo(QWidget):
     @Slot()
     def stop_task(self):
         self.thread.stop()
+        self.close()
 
     @Slot()
     def pause_task(self):
         self.thread.pause()
 
-    # @Slot(int)
-    # def update_label(self, value):
-    #     self.label.setText(f"Current progress: {value}%")
-
-    # @Slot()
-    # def task_finished(self):
-    #     self.label.setText("Task completed!")
+    @Slot()
+    def unpause_task(self):
+        self.thread.unpause()
 
 
 if __name__ == "__main__":
