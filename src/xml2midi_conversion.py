@@ -395,8 +395,4 @@ def add_extra_notes(midi, time, lambda_occur, stdev_pitch_delta, stdev_dur):
             dur = abs(min(rn().normal(loc=0, scale=stdev_dur)))
             time = rn().uniform(low=time_before, high=time_after-dur)
             pitch_delta = int(np.round(rn().normal(loc=0, scale=stdev_pitch_delta)))
-<<<<<<< HEAD
             inst.notes.append(pm.Note(velocity=note.velocity, pitch=note.pitch+pitch_delta, start = time, end=time+dur))
-=======
-            inst.notes.append(pm.Note(velocity=note.velocity, pitch=note.pitch+pitch_delta, start = time, end=time+dur))
->>>>>>> main
