@@ -1,11 +1,12 @@
 import sys
-import random
 from PySide6.QtCore import * 
 from PySide6.QtWidgets import * 
 from PySide6.QtGui import *
 from AudioBuffer import AudioBuffer
 from process_funcs import *
 import numpy as np
+import matplotlib.pyplot as plt
+from audioflux.display import fill_spec
 
 
 class WorkerThread(QThread):
@@ -20,7 +21,7 @@ class WorkerThread(QThread):
                          wav_file='audio_files\cello_suite1_cello.wav',
                          process_func=play_wav_data,
                          process_func_args=(),
-                         calc_chroma=False, 
+                         calc_chroma=True, 
                          calc_beats=False,
                          kill_after_finished=True,
                          playback_rate=1.0,
@@ -34,7 +35,6 @@ class WorkerThread(QThread):
         try:
             while not self.buffer.stop_request:
                 QThread.sleep(0.1)
-                self.finished_signal.emit()  # Emit finished signal when done
         except Exception as e:
             print("Detected interrupt")
             self.buffer.stop()
@@ -55,6 +55,10 @@ class WorkerThread(QThread):
     @Slot()
     def unpause(self):
         self.buffer.unpause()
+
+    @Slot(int)
+    def get_last_chroma(self, num_features):
+        return self.buffer.get_last_chroma(num_features)
 
 
 class Demo(QWidget):
@@ -88,8 +92,16 @@ class Demo(QWidget):
         self.stop_button.clicked.connect(self.stop_task)
         self.pause_button.clicked.connect(self.pause_task)
         self.unpause_button.clicked.connect(self.unpause_task)
-
+        
         self.thread = WorkerThread()
+
+        self.chroma_display = QLabel(alignment=Qt.AlignCenter)
+
+        self.layout.addWidget(self.chroma_display)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_chroma)
+        self.timer.start(100)  # 100 milliseconds
 
     @Slot()
     def set_speed(self):
@@ -113,6 +125,27 @@ class Demo(QWidget):
     @Slot()
     def unpause_task(self):
         self.thread.unpause()
+
+    @Slot()
+    def update_chroma(self):
+        num_features = 200
+        chroma = self.thread.get_last_chroma(num_features)
+        chroma = np.sum(chroma, axis=0)
+        chroma = chroma.reshape((12, -1))
+
+        img_data = np.zeros((12, num_features))
+
+        if chroma.size > 0:
+            img_data[:, -chroma.shape[-1]:] = chroma
+
+        image_filepath = 'chroma_buffer.png'
+        plt.imsave(image_filepath, img_data, cmap='plasma')
+
+        # Load the image using QPixmap
+        pixmap = QPixmap(image_filepath)
+        pixmap = pixmap.scaled(800, 400, Qt.KeepAspectRatio)
+
+        self.chroma_display.setPixmap(pixmap)
 
 
 if __name__ == "__main__":
