@@ -10,7 +10,7 @@ import torch
 from process_funcs import play_all
 
 FRAMES_PER_BUFFER = 1024  # number of frames in PyAudio buffer
-WAV_FILE = 'audio_files\cello_suite1_cello.wav'  # accompaniment WAV file
+WAV_FILE = 'audio_files\imperial_march.wav'  # accompaniment WAV file
 
 def main():
     # create AudioBuffer
@@ -19,7 +19,7 @@ def main():
                          wav_file=WAV_FILE,
                          process_func=play_all,
                          process_func_args=(),
-                         calc_chroma=False, 
+                         calc_chroma=True, 
                          calc_beats=True,
                          kill_after_finished=True,
                          playback_rate=1.0,
