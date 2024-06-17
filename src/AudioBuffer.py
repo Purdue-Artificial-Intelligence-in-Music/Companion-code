@@ -16,7 +16,7 @@ This class is a template class for a thread that reads in audio from PyAudio and
 This is version 2 of the code.
 '''
 
-mic_data, _ = librosa.load('audio_files/imperial_march.wav', sr=22050, mono=False)
+mic_data, _ = librosa.load('audio_files/cello_suite1_cello.wav', sr=22050, mono=False)
 if len(mic_data.shape) == 1:
     mic_data = mic_data.reshape(1, -1)
 # mic_data = librosa.effects.time_stretch(mic_data, rate=0.75)
@@ -204,7 +204,7 @@ class AudioBuffer(threading.Thread):
 
         # MICROPHONE
         # Create audio buffer to store microphone input (not the same as pyaudio buffer).
-        self.num_chunks = 50  # number of CHUNKs the buffer should store
+        self.num_chunks = 1000  # number of CHUNKs the buffer should store
         self.buffer_length = self.num_chunks * self.FRAMES_PER_BUFFER  # desired buffer length in frames
         self.buffer = np.zeros((self.CHANNELS, self.buffer_length), dtype=self.dtype)  # set a zero array
         self.buffer_index = 0  # index of next frame to be filled in buffer
@@ -373,7 +373,7 @@ class AudioBuffer(threading.Thread):
         """
 
         # n cannot be greater than the size of the buffer
-        num_frames = max(num_frames, self.buffer_length)
+        num_frames = min(num_frames, self.buffer_length)
 
         # if n is greater than the buffer index
         if num_frames > self.buffer_index:
@@ -404,21 +404,20 @@ class AudioBuffer(threading.Thread):
 
         """
         # num_features cannot be greater than the size of the buffer
-        num_features = max(num_features, self.num_chunks)
+        num_features = min(num_features, self.num_chunks)
 
         # if num_features is greater than the buffer index
-        if num_features > self.buffer_index:
+        if num_features > self.chroma_buffer_index:
             # If the buffer has been filled, wrap around to the end of the array
             if self.buffer_filled:
                 # calculate the number of features needed from the end of the array
-                features_from_end = num_features - self.buffer_index
+                features_from_end = num_features - self.chroma_buffer_index
                 # concatenate the features from the end with the features from the start to the buffer index
-                return np.concatenate((self.chroma_buffer[:, :, -features_from_end:], self.chroma_buffer[:, :, :self.buffer_index]), axis=1)
+                return np.concatenate((self.chroma_buffer[:, :, -features_from_end:], self.chroma_buffer[:, :, :self.chroma_buffer_index]), axis=2)
             # if the buffer has not been filled at least once, the features on the end are not valid
-            return self.chroma_buffer[:, :, :self.buffer_index]
-        
-        # if n is less than the buffer index
-        return self.chroma_buffer[:, :, self.buffer_index - num_features:self.buffer_index]
+            return self.chroma_buffer[:, :, :self.chroma_buffer_index]
+        # if num_features is less than the buffer index
+        return self.chroma_buffer[:, :, self.chroma_buffer_index - num_features:self.chroma_buffer_index]
     
     def get_frames(self, start: int, end: int):
         """Returns a slice of the audio buffer from the frame at the start index (inclusive) to the frame at the end index (exclusive).
@@ -437,6 +436,7 @@ class AudioBuffer(threading.Thread):
             Array containing the slice of the audio buffer from start to end indices
 
         """
+
         if start >= self.buffer_length or end > self.buffer_length:
             raise Exception ('Error: Index out of bounds')
 
@@ -475,13 +475,15 @@ class AudioBuffer(threading.Thread):
             Array containing the slice of the audio buffer from start to end indices
 
         """
+        start = max(0, start)
+
         if start >= self.num_chunks or end > self.num_chunks:
             raise Exception ('Error: Index out of bounds')
 
         # If the buffer is not filled
         if not self.chroma_filled:
             # Any of these scenarios would result in accessing invalid frames
-            if start >= self.chroma_index or end > self.chroma_index or start > end:
+            if start >= self.chroma_buffer_index or end > self.chroma_buffer_index or start > end:
                 raise Exception('Error: Attempted to read invalid frames from audio buffer')
             
             # start <= end <= self.buff_index and start < self.buffer_index
@@ -491,7 +493,7 @@ class AudioBuffer(threading.Thread):
 
         # If start index is greater than end index, wrap around
         if start > end:
-            return np.concatenate((self.chroma_buffer[:, :, start:], self.chroma_buffer[:, :, end:]), axis=1)
+            return np.concatenate((self.chroma_buffer[:, :, start:], self.chroma_buffer[:, :, end:]), axis=2)
         
         # If start <= end
         return self.chroma_buffer[:, :, start:end]
