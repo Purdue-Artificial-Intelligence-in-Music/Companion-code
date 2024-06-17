@@ -7,30 +7,26 @@ from BeatSynchronizer import *
 import traceback
 import sys
 import torch
+from process_funcs import play_all
 
 FRAMES_PER_BUFFER = 1024  # number of frames in PyAudio buffer
 WAV_FILE = 'audio_files\imperial_march.wav'  # accompaniment WAV file
-
-# the data returned by this function is played by PyAudio
-def process_func(self, input_array, wav_data):
-    return wav_data
 
 def main():
     # create AudioBuffer
     buffer = AudioBuffer(name="buffer", 
                          frames_per_buffer=FRAMES_PER_BUFFER,
                          wav_file=WAV_FILE,
-                         process_func=process_func,
+                         process_func=play_all,
                          process_func_args=(),
-                         calc_chroma=False, 
+                         calc_chroma=True, 
                          calc_beats=True,
                          kill_after_finished=True,
-                         time_stretch=True,
                          playback_rate=1.0,
                          sample_rate=None,
                          dtype=np.float32,
                          channels=1,
-                         debug_prints=False)
+                         debug_prints=True)
     
     # use CUDA if available
     if torch.cuda.is_available():

@@ -174,3 +174,4 @@ cython_debug/
 **/*/*.mxl
 **/*/.idea
 beat_cache
+*.mid
