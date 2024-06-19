@@ -1,5 +1,5 @@
 import numpy as np
-import midi_ddsp_local
+import midi_ddsp
 import pretty_midi
 import numpy as np
 import librosa

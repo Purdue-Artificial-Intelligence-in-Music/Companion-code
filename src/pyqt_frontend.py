@@ -6,7 +6,6 @@ from AudioBuffer import AudioBuffer
 from process_funcs import *
 import numpy as np
 import matplotlib.pyplot as plt
-from audioflux.display import fill_spec
 
 
 class WorkerThread(QThread):
