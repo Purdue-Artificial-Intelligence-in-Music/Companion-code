@@ -1,23 +1,10 @@
-import midi_ddsp
-import pretty_midi
-import os
-import librosa
-import matplotlib.pyplot as plt
-import numpy as np
-# import tensorflow.compat.v2 as tf
-import pandas as pd
-import qgrid
-import music21
-from IPython.display import Javascript
-import IPython.display as ipd
 from midi_ddsp import load_pretrained_model
 from midi_ddsp.utils.training_utils import set_seed, get_hp
 import soundfile as sf
-
 from ddsp_funcs import *
 
-import sys
-sys.path.append('./midi-ddsp')
+# import sys
+# sys.path.append('./midi-ddsp')
 import warnings
 warnings.filterwarnings("ignore")
 
