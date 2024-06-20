@@ -1,5 +1,4 @@
 import numpy as np
-import midi_ddsp_local
 import pretty_midi
 import numpy as np
 import librosa
@@ -10,16 +9,16 @@ import IPython.display as ipd
 import pandas as pd
 import music21
 
-from midi_ddsp_local import load_pretrained_model
-from midi_ddsp_local.utils.training_utils import set_seed, get_hp
-from midi_ddsp_local.hparams_synthesis_generator import hparams as hp
-from midi_ddsp_local.modules.get_synthesis_generator import get_synthesis_generator, get_fake_data_synthesis_generator
-from midi_ddsp_local.modules.expression_generator import ExpressionGenerator, get_fake_data_expression_generator
-from midi_ddsp_local.utils.audio_io import save_wav
-from midi_ddsp_local.utils.midi_synthesis_utils import synthesize_mono_midi, synthesize_bach, note_list_to_sequence
-from midi_ddsp_local.midi_ddsp_synthesize import synthesize_midi
-from midi_ddsp_local.utils.inference_utils import ensure_same_length, expression_generator_output_to_conditioning_df, conditioning_df_to_audio, get_process_group
-from midi_ddsp_local.data_handling.instrument_name_utils import INST_NAME_TO_ID_DICT, INST_NAME_LIST, INST_NAME_TO_MIDI_PROGRAM_DICT,MIDI_PROGRAM_TO_INST_ID_DICT,MIDI_PROGRAM_TO_INST_NAME_DICT
+from midi_ddsp import load_pretrained_model
+from midi_ddsp.utils.training_utils import set_seed, get_hp
+from midi_ddsp.hparams_synthesis_generator import hparams as hp
+from midi_ddsp.modules.get_synthesis_generator import get_synthesis_generator, get_fake_data_synthesis_generator
+from midi_ddsp.modules.expression_generator import ExpressionGenerator, get_fake_data_expression_generator
+from midi_ddsp.utils.audio_io import save_wav
+from midi_ddsp.utils.midi_synthesis_utils import synthesize_mono_midi, synthesize_bach, note_list_to_sequence
+from midi_ddsp.midi_ddsp_synthesize import synthesize_midi
+from midi_ddsp.utils.inference_utils import ensure_same_length, expression_generator_output_to_conditioning_df, conditioning_df_to_audio, get_process_group
+from midi_ddsp.data_handling.instrument_name_utils import INST_NAME_TO_ID_DICT, INST_NAME_LIST, INST_NAME_TO_MIDI_PROGRAM_DICT,MIDI_PROGRAM_TO_INST_ID_DICT,MIDI_PROGRAM_TO_INST_NAME_DICT
 
 EDIT_DF_NAME_ORDER = ['volume', 'vol_fluc', 'vol_peak_pos', 'vibrato', 'brightness', 'attack', 'pitch', 'note_length']
 

@@ -164,7 +164,9 @@ cython_debug/
 .vscode/
 *.png
 
+
 */*.mp3
+*.wav
 */*.wav
 **/*/*.wav
 
