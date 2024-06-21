@@ -16,7 +16,7 @@ class WorkerThread(QThread):
     def __init__(self):
         super().__init__()
         self.buffer = AudioBuffer(name="buffer", 
-                         frames_per_buffer=1024,
+                         frames_per_buffer=4096,
                          wav_file='audio_files\cello_suite1_cello.wav',
                          process_func=play_wav_data,
                          process_func_args=(),
@@ -131,6 +131,7 @@ class Demo(QWidget):
         chroma = self.thread.get_last_chroma(num_features)
         chroma = np.sum(chroma, axis=0)
         chroma = chroma.reshape((12, -1))
+        chroma = np.flip(chroma, axis=0)
 
         img_data = np.zeros((12, num_features))
 

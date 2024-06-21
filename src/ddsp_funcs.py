@@ -4,9 +4,9 @@ import numpy as np
 import librosa
 import matplotlib.pyplot as plt
 import tensorflow.compat.v2 as tf
-from IPython.display import Javascript
 import IPython.display as ipd
 import pandas as pd
+<<<<<<< HEAD
 import music21
 
 from midi_ddsp import load_pretrained_model
@@ -17,6 +17,9 @@ from midi_ddsp.modules.expression_generator import ExpressionGenerator, get_fake
 from midi_ddsp.utils.audio_io import save_wav
 from midi_ddsp.utils.midi_synthesis_utils import synthesize_mono_midi, synthesize_bach, note_list_to_sequence
 from midi_ddsp.midi_ddsp_synthesize import synthesize_midi
+=======
+from midi_ddsp.utils.midi_synthesis_utils import note_list_to_sequence
+>>>>>>> origin/main
 from midi_ddsp.utils.inference_utils import ensure_same_length, expression_generator_output_to_conditioning_df, conditioning_df_to_audio, get_process_group
 from midi_ddsp.data_handling.instrument_name_utils import INST_NAME_TO_ID_DICT, INST_NAME_LIST, INST_NAME_TO_MIDI_PROGRAM_DICT,MIDI_PROGRAM_TO_INST_ID_DICT,MIDI_PROGRAM_TO_INST_NAME_DICT
 
@@ -105,7 +108,7 @@ def gen_pitch_bend(f0_ori, midi, inst=0):
     out = out[tf.newaxis, ..., tf.newaxis]
     return out
 
-def resynth_audio(midi, midi_synth_params, synthesis_generator):
+def resynth_audio(midi, midi_synth_params, synthesis_generator, instrument_id):
     f0_ori = midi_synth_params['f0_hz'][0,...,0]
     amps_ori = midi_synth_params['amplitudes'].numpy()[0,...,0]
     noise_ori = midi_synth_params['noise_magnitudes'].numpy()
