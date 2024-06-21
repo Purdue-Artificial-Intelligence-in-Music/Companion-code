@@ -179,3 +179,4 @@ cython_debug/
 **/*/.idea
 beat_cache
 *.mid
+madmom/

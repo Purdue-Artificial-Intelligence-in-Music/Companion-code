@@ -16,11 +16,11 @@ This class is a template class for a thread that reads in audio from PyAudio and
 This is version 2 of the code.
 '''
 
-mic_data, _ = librosa.load('audio_files/cello_suite1_cello.wav', sr=22050, mono=False)
-if len(mic_data.shape) == 1:
-    mic_data = mic_data.reshape(1, -1)
-# mic_data = librosa.effects.time_stretch(mic_data, rate=0.75)
-mic_index = 0
+# mic_data, _ = librosa.load('/home/shay/a/jorda227/Documents/Companion-code/audio_files/mountain_king.wav', sr=22050, mono=False)
+# if len(mic_data.shape) == 1:
+#     mic_data = mic_data.reshape(1, -1)
+# # mic_data = librosa.effects.time_stretch(mic_data, rate=0.75)
+# mic_index = 0
 
 
 class AudioBuffer(threading.Thread):

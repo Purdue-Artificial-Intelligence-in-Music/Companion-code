@@ -2,7 +2,7 @@
 from BeatNet_local.BeatNet_thread import BeatNet_thread
 from WavBeatTracker import *
 from AudioBuffer import *
-from VoiceCommandThread import *
+# from VoiceCommandThread import *
 from BeatSynchronizer import *
 import traceback
 import sys
@@ -10,7 +10,7 @@ import torch
 from process_funcs import play_all
 
 FRAMES_PER_BUFFER = 1024  # number of frames in PyAudio buffer
-WAV_FILE = 'audio_files\imperial_march.wav'  # accompaniment WAV file
+WAV_FILE = '/home/shay/a/jorda227/Documents/Companion-code/audio_files/mountain_king.wav'  # accompaniment WAV file
 
 def main():
     # create AudioBuffer
