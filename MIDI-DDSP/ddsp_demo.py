@@ -60,20 +60,20 @@ from ddsp_funcs import *
 import scipy
 
 set_seed(1234)
-sample_rate = 16000
+sample_rate = 22050
 
 synthesis_generator, expression_generator = load_pretrained_model()
 
 print('Done!')
 
-midi_path = "pirate.mid"
+midi_path = "lamb.mid"
 midi = pretty_midi.PrettyMIDI(midi_path)
 inst = "violin"
 
 print('Generating audio from MIDI')
 midi_audio_changed, conditioning_df, midi_synth_params = generate_audio_from_midi(synthesis_generator, expression_generator, midi_path, inst, inst_num=0)
 plt.figure(figsize=(15,5))
-plot_spec(midi_audio_changed[0].numpy(), sr=16000, title='Add pitch bend')
+# plot_spec(midi_audio_changed[0].numpy(), sr=16000, title='Add pitch bend')
 plt.show()
 
 y = midi_audio_changed.numpy()

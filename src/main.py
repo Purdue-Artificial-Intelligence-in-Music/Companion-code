@@ -7,20 +7,20 @@ from BeatSynchronizer import *
 import traceback
 import sys
 import torch
-from process_funcs import play_all
+from process_funcs import *
 
 FRAMES_PER_BUFFER = 1024  # number of frames in PyAudio buffer
-WAV_FILE = '/home/shay/a/jorda227/Documents/Companion-code/audio_files/mountain_king.wav'  # accompaniment WAV file
+WAV_FILE = 'audio_files/mountain_king.wav'  # accompaniment WAV file
 
 def main():
     # create AudioBuffer
     buffer = AudioBuffer(name="buffer", 
                          frames_per_buffer=FRAMES_PER_BUFFER,
                          wav_file=WAV_FILE,
-                         process_func=play_all,
+                         process_func=play_wav_data,
                          process_func_args=(),
                          calc_chroma=True, 
-                         calc_beats=True,
+                         calc_beats=False,
                          kill_after_finished=True,
                          playback_rate=1.0,
                          sample_rate=None,
