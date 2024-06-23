@@ -17,7 +17,7 @@ class WorkerThread(QThread):
         super().__init__()
         self.buffer = AudioBuffer(name="buffer", 
                          frames_per_buffer=4096,
-                         wav_file='audio_files\cello_suite1_cello.wav',
+                         midi_path='buns.mid',
                          process_func=play_wav_data,
                          process_func_args=(),
                          calc_chroma=True, 

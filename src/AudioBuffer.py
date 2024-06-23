@@ -9,6 +9,12 @@ from Counter import *
 import os
 from BeatSynchronizer import *
 import audioflux as af
+import warnings
+warnings.filterwarnings("ignore")
+from midi_ddsp import load_pretrained_model
+from midi_ddsp.utils.training_utils import set_seed
+from ddsp_funcs import *
+import scipy
 
 '''
 This class is a template class for a thread that reads in audio from PyAudio and stores it in a buffer.
@@ -22,6 +28,12 @@ This is version 2 of the code.
 # # mic_data = librosa.effects.time_stretch(mic_data, rate=0.75)
 # mic_index = 0
 
+def save_as_wav(filepath, sample_rate, audio):
+    audio = audio.reshape((-1,))
+    audio = (audio/np.max(audio) * (2 ** 31 - 1))
+
+    audio = audio.astype(np.int32)
+    scipy.io.wavfile.write(filepath, sample_rate, audio)
 
 class AudioBuffer(threading.Thread):
     """
@@ -80,16 +92,16 @@ class AudioBuffer(threading.Thread):
         Returns the last n samples from the buffer, or the maximum possible elements if there aren't enough recorded yet.
 
     """
-    def __init__(self, name: str, 
+    def __init__(self, name: str,
+                 midi_path: str = None,
                  frames_per_buffer: int = 1024, 
                  process_func: Callable = None, 
-                 wav_file: str = None,
                  process_func_args=(), 
                  calc_chroma: bool = False, 
                  calc_beats: bool = False, 
                  kill_after_finished: bool = True,
                  playback_rate: int = 1,
-                 sample_rate: int = None,
+                 sample_rate: int = 22050,
                  dtype = np.float32,
                  channels: int = 1,
                  debug_prints: bool = False):
@@ -136,6 +148,7 @@ class AudioBuffer(threading.Thread):
 
         # PARAMS
         self.name = name 
+        self.midi_path = midi_path
         self.FRAMES_PER_BUFFER = frames_per_buffer 
         self.process_func = process_func
         self.process_func_args = process_func_args
@@ -153,54 +166,63 @@ class AudioBuffer(threading.Thread):
         self.paused = False
 
         # WAV FILE
-        self.wav_data = None
-        self.wav_index = 0
-        self.wav_len = 0
-        self.wav_chroma = None
-        self.wav_beats = None
+        self.comp_data = None
+        self.comp_index = 0
+        self.comp_len = 0
+        self.comp_chroma = None
+        self.comp_beats = None
 
-        # If a WAV file was provided
-        if wav_file is not None:
+        
+        # If a midi file was provided
+        if self.midi_path is not None:
+            inst = "violin"
+            synthesis_generator, expression_generator = load_pretrained_model()
+            audio, conditioning_df, midi_synth_params = generate_audio_from_midi(synthesis_generator, expression_generator, midi_path, inst, inst_num=1)
+            
+            self.comp_data = audio.numpy()
+            print(self.comp_data.shape)
+            save_as_wav('accompaniment.wav', 16000, self.comp_data)
+
             # Load the audio data
             mono = channels == 1
-            self.wav_data, self.RATE = librosa.load(wav_file, sr=self.RATE, mono=mono, dtype=dtype)
+            self.comp_data, self.RATE = librosa.load('accompaniment.wav', sr=self.RATE, mono=mono, dtype=dtype)
 
             # For mono audio, reshape the WAV data into the correct shape
             if mono:
-                self.wav_data = self.wav_data.reshape(1, -1)
+                self.comp_data = self.comp_data.reshape(1, -1)
 
             # self.wav_data has shape (channels, # samples)
-            self.CHANNELS, self.wav_len = self.wav_data.shape
+            self.CHANNELS, self.comp_len = self.comp_data.shape
 
             # Calculate croma 
             if calc_chroma:
-                self.wav_chroma = librosa.feature.chroma_cqt(y=self.wav_data, sr=self.RATE, hop_length=self.FRAMES_PER_BUFFER)
+                self.comp_chroma = librosa.feature.chroma_cqt(y=self.comp_data, sr=self.RATE, hop_length=self.FRAMES_PER_BUFFER)
 
             # Calculate beat locations
             if calc_beats:
                 cwd = os.getcwd()
                 if not os.path.exists(os.path.join(cwd, "beat_cache/")):
                     os.mkdir(os.path.join(cwd, "beat_cache/"))
-                modified_wav_file_name = wav_file.replace("\\", "/")
+                modified_wav_file_name = midi_path.replace("\\", "/")
                 beat_path = os.path.join(cwd, "beat_cache/") + str(modified_wav_file_name.split("/")[-1]) + ".npy"
                 if debug_prints:
                     print("Beat path = \"%s\"" % (beat_path))
                 if os.path.exists(beat_path):
                     if debug_prints:
                         print("Loading beats from file...")
-                    self.wav_beats = np.load(beat_path)
+                    self.comp_beats = np.load(beat_path)
                 else:
                     if debug_prints:
                         print("Calculating beats...")
                     estimator = BeatNet_for_audio_arr(1, mode='online', inference_model='PF', plot=[], thread=False, sample_rate=self.RATE)
-                    self.wav_beats = estimator.process(self.wav_data)
-                    for i in range(len(self.wav_beats)):
-                        self.wav_beats[i][0] = int(self.wav_beats[i][0] * self.RATE)
-                    self.wav_beats = np.array(self.wav_beats)
-                    np.save(beat_path, self.wav_beats)
+                    self.comp_beats = estimator.process(self.comp_data)
+                    for i in range(len(self.comp_beats)):
+                        self.comp_beats[i][0] = int(self.comp_beats[i][0] * self.RATE)
+                    self.comp_beats = np.array(self.comp_beats)
+                    np.save(beat_path, self.comp_beats)
 
             if debug_prints:
-                print(self.wav_beats)
+                print(self.comp_beats)
 
         # MICROPHONE
         # Create audio buffer to store microphone input (not the same as pyaudio buffer).
@@ -247,8 +269,8 @@ class AudioBuffer(threading.Thread):
         print("Audio init parameters: Rate = %d, Channels = %d, Frames per buffer = %d" % (self.RATE, self.CHANNELS, self.FRAMES_PER_BUFFER))
         if debug_prints:
             print("Format = %s, dtype = %s, Frames per buffer = %d" % (self.FORMAT, self.dtype, self.FRAMES_PER_BUFFER))
-            if wav_file is not None:
-                print("Shape of wav_data: ", self.wav_data.shape)
+            if self.comp_data is not None:
+                print("Shape of wav_data: ", self.comp_data.shape)
 
         ################ PyAudio ##################
         self.p = None  # PyAudio object
@@ -629,7 +651,7 @@ class AudioBuffer(threading.Thread):
             return self.output_array.flatten(order='F'), pyaudio.paContinue
         
         # If a WAV file was not provided
-        if self.wav_data is None:
+        if self.comp_data is None:
             # Process only the microphone data
             self.output_array = self.process_func(self, input_array, None, *self.process_func_args)
             return self.output_array.flatten(order='F'), pyaudio.paContinue
@@ -638,14 +660,14 @@ class AudioBuffer(threading.Thread):
 
         # Play the next self.FRAMES_PER_BUFFER samples from the WAV file
         # Get twice the number of frames needed to fill the PyAudio buffer after time stretching
-        start = max(0, self.wav_index)
-        end = min(self.wav_index + 5 * self.playback_rate * self.FRAMES_PER_BUFFER, self.wav_len)
+        start = max(0, self.comp_index)
+        end = min(self.comp_index + 5 * self.playback_rate * self.FRAMES_PER_BUFFER, self.comp_len)
 
         # Increment the wav_index based on the playback rate
-        self.wav_index += self.playback_rate * self.FRAMES_PER_BUFFER
+        self.comp_index += self.playback_rate * self.FRAMES_PER_BUFFER
 
         # Time stretch the audio based on the playback rate
-        stretched_audio = librosa.effects.time_stretch(y=self.wav_data[:, int(start):int(end)], rate=self.playback_rate)  # get audio
+        stretched_audio = librosa.effects.time_stretch(y=self.comp_data[:, int(start):int(end)], rate=self.playback_rate)  # get audio
         
         # Reshaped the stretched audio (necessary if there is only one channel)
         stretched_audio = stretched_audio.reshape((self.CHANNELS, -1))
@@ -663,7 +685,7 @@ class AudioBuffer(threading.Thread):
         self.fade_out(wav_slice, num_frames=fade_size)
 
         # If there is enough data in wav, process the microphone audio and WAV audio as normal
-        if self.wav_index < self.wav_len:
+        if self.comp_index < self.comp_len:
             self.output_array = self.process_func(self, input_array, wav_slice, *self.process_func_args)
             return self.output_array.flatten(order='F'), pyaudio.paContinue
         
@@ -676,6 +698,6 @@ class AudioBuffer(threading.Thread):
         # Else, pause, reset the wav index, and play nothing
         else:
             self.pause()
-            self.wav_index = 0
+            self.comp_index = 0
             self.output_array = np.zeros((self.CHANNELS, self.FRAMES_PER_BUFFER))
             return self.output_array, pyaudio.paContinue
