@@ -2,6 +2,7 @@
 from BeatNet_local.BeatNet_thread import BeatNet_thread
 from WavBeatTracker import *
 from AudioBuffer import *
+from AudioGenerator import *
 # from VoiceCommandThread import *
 from BeatSynchronizer import *
 import traceback
@@ -13,9 +14,13 @@ FRAMES_PER_BUFFER = 1024  # number of frames in PyAudio buffer
 WAV_FILE = 'audio_files/mountain_king.wav'  # accompaniment WAV file
 
 def main():
+    generator = AudioGenerator(midi_file='buns.mid')
+    generator.generate_audio(output_path='soloist.wav', instrument='violin', inst_num=0)
+    generator.generate_audio(output_path='accompanist.wav', instrument='viola', inst_num=1)
+
     # create AudioBuffer
     buffer = AudioBuffer(name="buffer", 
-                         midi_path="buns.mid",
+                         wav_file="accompanist.wav",
                          frames_per_buffer=FRAMES_PER_BUFFER,
                          process_func=play_wav_data,
                          process_func_args=(),

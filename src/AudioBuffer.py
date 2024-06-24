@@ -93,7 +93,7 @@ class AudioBuffer(threading.Thread):
 
     """
     def __init__(self, name: str,
-                 midi_path: str = None,
+                 wav_file: str = None,
                  frames_per_buffer: int = 1024, 
                  process_func: Callable = None, 
                  process_func_args=(), 
@@ -148,7 +148,7 @@ class AudioBuffer(threading.Thread):
 
         # PARAMS
         self.name = name 
-        self.midi_path = midi_path
+        self.wav_file = wav_file
         self.FRAMES_PER_BUFFER = frames_per_buffer 
         self.process_func = process_func
         self.process_func_args = process_func_args
@@ -174,18 +174,11 @@ class AudioBuffer(threading.Thread):
 
         
         # If a midi file was provided
-        if self.midi_path is not None:
-            inst = "violin"
-            synthesis_generator, expression_generator = load_pretrained_model()
-            audio, conditioning_df, midi_synth_params = generate_audio_from_midi(synthesis_generator, expression_generator, midi_path, inst, inst_num=1)
-            
-            self.comp_data = audio.numpy()
-            print(self.comp_data.shape)
-            save_as_wav('accompaniment.wav', 16000, self.comp_data)
+        if self.wav_file is not None:
 
             # Load the audio data
             mono = channels == 1
-            self.comp_data, self.RATE = librosa.load('accompaniment.wav', sr=self.RATE, mono=mono, dtype=dtype)
+            self.comp_data, self.RATE = librosa.load(wav_file, sr=self.RATE, mono=mono, dtype=dtype)
 
             # For mono audio, reshape the WAV data into the correct shape
             if mono:
@@ -203,7 +196,7 @@ class AudioBuffer(threading.Thread):
                 cwd = os.getcwd()
                 if not os.path.exists(os.path.join(cwd, "beat_cache/")):
                     os.mkdir(os.path.join(cwd, "beat_cache/"))
-                modified_wav_file_name = midi_path.replace("\\", "/")
+                modified_wav_file_name = wav_file.replace("\\", "/")
                 beat_path = os.path.join(cwd, "beat_cache/") + str(modified_wav_file_name.split("/")[-1]) + ".npy"
                 if debug_prints:
                     print("Beat path = \"%s\"" % (beat_path))
