@@ -1,14 +1,42 @@
 import numpy as np
+import midi_ddsp_local
 import pretty_midi
 import numpy as np
 import librosa
 import matplotlib.pyplot as plt
 import tensorflow.compat.v2 as tf
+from IPython.display import Javascript
 import IPython.display as ipd
 import pandas as pd
-from midi_ddsp.utils.midi_synthesis_utils import note_list_to_sequence
-from midi_ddsp.utils.inference_utils import ensure_same_length, expression_generator_output_to_conditioning_df, conditioning_df_to_audio, get_process_group
-from midi_ddsp.data_handling.instrument_name_utils import INST_NAME_TO_ID_DICT, INST_NAME_LIST, INST_NAME_TO_MIDI_PROGRAM_DICT,MIDI_PROGRAM_TO_INST_ID_DICT,MIDI_PROGRAM_TO_INST_NAME_DICT
+import music21
+import os
+
+from midi_ddsp_local import load_pretrained_model
+from midi_ddsp_local.utils.training_utils import set_seed, get_hp
+from midi_ddsp_local.hparams_synthesis_generator import hparams as hp
+from midi_ddsp_local.modules.get_synthesis_generator import get_synthesis_generator, get_fake_data_synthesis_generator
+from midi_ddsp_local.modules.expression_generator import ExpressionGenerator, get_fake_data_expression_generator
+from midi_ddsp_local.utils.audio_io import save_wav
+from midi_ddsp_local.utils.midi_synthesis_utils import synthesize_mono_midi, synthesize_bach, note_list_to_sequence
+from midi_ddsp_local.midi_ddsp_synthesize import synthesize_midi
+from midi_ddsp_local.utils.inference_utils import ensure_same_length, expression_generator_output_to_conditioning_df, conditioning_df_to_audio, get_process_group
+from midi_ddsp_local.data_handling.instrument_name_utils import INST_NAME_TO_ID_DICT, INST_NAME_LIST, INST_NAME_TO_MIDI_PROGRAM_DICT,MIDI_PROGRAM_TO_INST_ID_DICT,MIDI_PROGRAM_TO_INST_NAME_DICT
+from midi_ddsp_local.data_handling.instrument_name_utils import \
+  INST_NAME_TO_MIDI_PROGRAM_DICT, MIDI_PROGRAM_TO_INST_ID_DICT, \
+  MIDI_PROGRAM_TO_INST_NAME_DICT
+from midi_ddsp_local.utils.midi_synthesis_utils import note_list_to_sequence, \
+  expression_generator_output_to_conditioning_df, batch_conditioning_df_to_audio
+from midi_ddsp_local.utils.audio_io import save_wav
+from midi_ddsp_local.utils.training_utils import get_hp
+from midi_ddsp_local.utils.inference_utils import ensure_same_length
+from midi_ddsp_local.utils.file_utils import pickle_dump
+from midi_ddsp_local.hparams_synthesis_generator import hparams as hp
+from midi_ddsp_local.modules.get_synthesis_generator import get_synthesis_generator, \
+  get_fake_data_synthesis_generator
+from midi_ddsp_local.modules.expression_generator import ExpressionGenerator, \
+  get_fake_data_expression_generator
+
+import sys
 
 EDIT_DF_NAME_ORDER = ['volume', 'vol_fluc', 'vol_peak_pos', 'vibrato', 'brightness', 'attack', 'pitch', 'note_length']
 
@@ -35,6 +63,70 @@ GAIN_ADJUST_DB_DICT = {
     },
 
 }
+
+DDSP_SAMPLE_RATE = 16000
+
+def init_ddsp():
+    #sys.path.append('./midi-ddsp/')
+
+    # Define the path or paths of the model weights or relevant files you expect after downloading
+    expected_file_path = './midi_ddsp_model_weights_urmp_9_10'  # Adjust this to your file's expected location
+
+    # Save the current working directory
+    original_dir = os.getcwd()
+
+    # Get the path to the midi_ddsp package
+    package_path = os.path.dirname(midi_ddsp_local.__file__)
+    print(f"Package directory: {package_path}")
+
+    # Change to the package directory
+    os.chdir(package_path)
+
+    # Check if the model weights or relevant files already exist
+    if not os.path.exists(expected_file_path):
+        print("Run the following in your terminal to download model weights:")
+        print("run download_model_weights.py")
+        # Execute the script to download model weights
+        
+    else:
+        # print("Model weights already exist. No need to download.")
+        print()
+
+    # Return to the original directory
+    # os.chdir(original_dir)
+    # print(f"Returned to original directory: {os.getcwd()}")
+
+    #@title #Install Dependencies, Import Code and Setup Models
+
+    #@markdown Run this cell to install dependencies, import codes, 
+    #@markdown setup utility functions and load MIDI-DDSP model weights.
+    #@markdown Running this cell could take a while.
+    # %pip install -q git+https://github.com/lukewys/qgrid.git
+
+    # # !pip install -q git+https://github.com/magenta/midi-ddsp
+
+    # !!! Run these once
+    if not os.path.exists('./midi-ddsp') or not (os.path.exists('./FluidR3_GM.zip') or os.path.exists('./FluidR3_GM.sf2')):
+        # Your commands
+        print("Run the following in your terminal to download midi-ddsp and FluidR3:\n \
+              !git clone -q https://github.com/magenta/midi-ddsp.git\n \
+              !wget -q https://keymusician01.s3.amazonaws.com/FluidR3_GM.zip\n \
+              !unzip -q FluidR3_GM.zip\n")
+        raise Exception("MIDI-DDSP init error")
+    else:
+        # print('The required resources are already present.')
+        print()
+
+    # Ignore a bunch of deprecation warnings
+    sys.path.append('./midi-ddsp')
+    import warnings
+    warnings.filterwarnings("ignore")
+
+    set_seed(1234)
+
+    synthesis_generator, expression_generator = load_pretrained_model()
+
+    return synthesis_generator, expression_generator
 
 def plot_spec(wav, sr, title='', play=True, vmin=-8, vmax=1, save_path=None):
     D = np.log(np.abs(librosa.stft(wav, n_fft=512 + 256)))
@@ -95,7 +187,7 @@ def gen_pitch_bend(f0_ori, midi, inst=0):
     out = out[tf.newaxis, ..., tf.newaxis]
     return out
 
-def resynth_audio(midi, midi_synth_params, synthesis_generator, instrument_id):
+def resynth_audio(midi, midi_synth_params, synthesis_generator):
     f0_ori = midi_synth_params['f0_hz'][0,...,0]
     amps_ori = midi_synth_params['amplitudes'].numpy()[0,...,0]
     noise_ori = midi_synth_params['noise_magnitudes'].numpy()
@@ -502,8 +594,8 @@ def mono_midi_to_note_sequence(midi_data, instrument_id, inst_num=0, pitch_offse
   note_sequence['instrument_id'] = instrument_id
   return note_sequence
 
-def generate_audio_from_midi(synth_gen, express_gen, midi_path, instrument, inst_num=0):
-    instrument_id = INST_NAME_TO_ID_DICT[instrument]
+def generate_audio_from_midi(synth_gen, express_gen, midi_path, midi_program, inst_num=0):
+    instrument_id = MIDI_PROGRAM_TO_INST_ID_DICT[midi_program]
     if isinstance(midi_path, str):
         midi = pretty_midi.PrettyMIDI(midi_path)
     else:
@@ -519,12 +611,13 @@ def generate_audio_from_midi(synth_gen, express_gen, midi_path, instrument, inst
     _, _, conditioning_df, midi_synth_params, f0_changed = modify_params_with_artic_full(midi, conditioning_df, instrument_id, synth_gen, inst=inst_num)
     midi_audio_changed = apply_cresc_desc(midi, midi_synth_params, synth_gen, instrument_id, f0_changed=f0_changed, inst_num=inst_num)
     return midi_audio_changed, conditioning_df, midi_synth_params
+    
 
 def modify_vibrato(df, idx, new_vib):
     df.loc[idx, "vibrato"] = new_vib
 
 def synthesize_fluid(midi_file,
-                    sf2_path='/usr/share/sounds/sf2/FluidR3_GM.sf2', SAMPLE_RATE=16000):
+                    sf2_path='/usr/share/sounds/sf2/FluidR3_GM.sf2', SAMPLE_RATE=DDSP_SAMPLE_RATE):
   """
   Synthesize a midi file using MIDI-DDSP.
   Args:
@@ -552,5 +645,42 @@ def synthesize_fluid(midi_file,
         [a.astype(np.float64) for a in midi_audio_all.values()], axis=0),
         axis=-1),
       axis=-1)
+
+    return midi_audio_mix
+  
+def synthesize_midi_using_artics(synthesis_generator, expression_generator, midi_file,
+                    sf2_path='/usr/share/sounds/sf2/FluidR3_GM.sf2',
+                    display_progressbar=True):
+    use_fluidsynth=True
+    # Get all the midi program in URMP dataset excluding guitar.
+    allowed_midi_program = list(INST_NAME_TO_MIDI_PROGRAM_DICT.values())[:-1]
+    midi_data = pretty_midi.PrettyMIDI(midi_file)
+    midi_audio_all = {}
+
+    # For each part, predict expressions using MIDI-DDSP,
+    # or synthesize using FluidSynth.
+    for part_number, instrument in enumerate(midi_data.instruments):
+        midi_program = instrument.program
+        if midi_program in allowed_midi_program:
+            one_part_midi = pretty_midi.PrettyMIDI()
+            one_part_midi.instruments.append(instrument)
+            midi_audio_changed, _, _ = generate_audio_from_midi(synthesis_generator, expression_generator, one_part_midi, midi_program)
+            midi_audio_all[part_number] = midi_audio_changed
+        elif use_fluidsynth:
+            instrument_name = MIDI_PROGRAM_TO_INST_NAME_DICT[midi_program]
+            print(
+                f'Part {part_number} in {midi_file} has {instrument_name} as '
+                f'instrument which cannot be synthesized by model. '
+                f'Using fluidsynth instead.')
+
+            fluidsynth_wav_r3 = instrument.fluidsynth(DDSP_SAMPLE_RATE, sf2_path=sf2_path)
+            fluidsynth_wav_r3 *= 0.25  # * 0.25 for lower volume
+            midi_audio_all[part_number] = fluidsynth_wav_r3
+
+    midi_audio_mix = np.sum(
+        np.stack(ensure_same_length(
+            [a.numpy().astype(np.float64) for a in midi_audio_all.values()], axis=0),
+            axis=-1),
+        axis=-1)
 
     return midi_audio_mix
