@@ -7,7 +7,7 @@ from madmom.audio.spectrogram import (
     FilteredSpectrogramProcessor, LogarithmicSpectrogramProcessor,
     SpectrogramDifferenceProcessor)
 from madmom.processors import ParallelProcessor, SequentialProcessor
-from BeatNet.common import *
+from BeatNet_local.common import *
 
 
 # feature extractor that extracts magnitude spectrogoram and its differences  
