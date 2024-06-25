@@ -161,13 +161,12 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-.vscode/
-*.png
 
 */*.mp3
 */*.wav
 **/*/*.wav
 
+**/*/*.pt
 **/*/FluidR3_GM.zip
 **/*/*.mid
 **/*/*.midi
@@ -175,4 +174,12 @@ cython_debug/
 **/*/*.mxl
 **/*/.idea
 beat_cache
-*.mid
+
+**/*/*.yml
+
+src/midi_ddsp_local/midi_ddsp_model_weights_urmp_9_10/*
+src/midi_ddsp_local/*.sf2
+
+*.wav
+*.musicxml
+*.midi
