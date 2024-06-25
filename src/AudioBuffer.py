@@ -325,7 +325,6 @@ class AudioBuffer(threading.Thread):
         Returns
         -------
         None
-            
 
         """
         self.p = pyaudio.PyAudio()
