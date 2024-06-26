@@ -2,6 +2,9 @@
 import music21 as music
 import librosa
 
+
 def xml2MIDI(filename: str) -> music.midi.MidiFile:
+    """this function returns a MidiFile object from given filename"""
     xml_score = music.converter.parse(filename)
     return music.midi.translate.streamToMidiFile(xml_score)
+
