@@ -25,7 +25,7 @@ class VoiceAnalyzerThread(threading.Thread):
         self.r = sr.Recognizer()        #Defunct?
         self.ps = PorterStemmer()       #Defunct?
         self.output = ""
-        self.voice_length = voice_length
+        self.voice_length = voice_length #Defunct?
         # Initialize whatever stuff you need here
 
         #The following are all related to the use of Vosk and voice commanding
@@ -33,9 +33,14 @@ class VoiceAnalyzerThread(threading.Thread):
 
         # Define the list of possible commands along with hypothesis templates
         self.commands = {
+            "speed up": "The action involves increasing speed.",
+            "slow down": "The action involves decreasing speed.",
+            "volume up": "The action involves increasing volume.",
+            "volume down": "The action involves decreasing volume.",
             "stop": "The action involves bringing something to a halt.",
             "start": "The action involves beginning something.",
             "exit": "The action involves the termination of something.",
+            #"edit": "The action involves changing something."
         }
 
         # Initialize the zero-shot classification pipeline with the Roberta model
