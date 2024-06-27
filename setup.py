@@ -6,3 +6,5 @@ with open('requirements.txt') as f:
 
 for package in packages:
     run(['pip', 'install', package])
+
+run(['midi_ddsp_download_model_weights'])
