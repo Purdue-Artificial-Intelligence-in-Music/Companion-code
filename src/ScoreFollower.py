@@ -9,12 +9,13 @@ from features import ChromaMaker, audio_to_np_cens
 
 
 class ScoreFollower(Thread):
-    def __init__(self, midi_file, sample_rate=22050, channels=1, frames_per_buffer=1024, c=30, max_run_count=3, diag_weight=0.4):
+    def __init__(self, midi_file, sample_rate=22050, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
         super(ScoreFollower, self).__init__()
 
         self.sample_rate = sample_rate
         self.channels = channels
         self.frames_per_buffer = frames_per_buffer
+        self.window_length = window_length
         self.daemon = True
         
         self.mic = AudioBuffer(sample_rate=sample_rate,
@@ -23,9 +24,9 @@ class ScoreFollower(Thread):
                                num_chunks=100)
 
         ref_audio, _ = librosa.load('audio_files/buns_violin.wav', sr=22050)
-        self.chroma_maker = ChromaMaker(sr=sample_rate, n_fft=frames_per_buffer)
+        self.chroma_maker = ChromaMaker(sr=sample_rate, n_fft=window_length)
 
-        self.ref = audio_to_np_cens(y=ref_audio, sr=sample_rate, n_fft=frames_per_buffer, hop_len=frames_per_buffer)
+        self.ref = audio_to_np_cens(y=ref_audio, sr=sample_rate, n_fft=window_length, hop_len=window_length)
 
         params = {
         "c": c,
@@ -37,17 +38,20 @@ class ScoreFollower(Thread):
         self.path = []
 
     def get_chroma(self, audio):
-        if audio.shape[-1] < self.frames_per_buffer:
-            audio = np.pad(audio, ((0, 0), (0, self.frames_per_buffer - audio.shape[-1])), mode='constant', constant_values=((0, 0), (0, 0)))
+        if audio.shape[-1] < self.window_length:
+            audio = np.pad(audio, ((0, 0), (0, self.window_length - audio.shape[-1])), mode='constant', constant_values=((0, 0), (0, 0)))
         
         return self.chroma_maker.insert(audio)
 
     def step(self):
-        # TODO: find better way to get frames
-        audio = self.mic.read(self.frames_per_buffer)
+        while self.mic.count < self.window_length:
+            if not self.mic.is_active():
+                return self.otw.j
+            time.sleep(0.01)
+        audio = self.mic.read(self.window_length)
+        # print(f'Read index: {self.mic.read_index}, Write index: {self.mic.write_index}, Count: {self.mic.count}')
         chroma = self.get_chroma(audio)
         j = self.otw.insert(chroma)
-        print(j, self.otw.t)
         self.path.append((j, self.otw.t))
         return j
 
@@ -72,7 +76,6 @@ if __name__ == '__main__':
     try:
         while follower.is_active():
             follower.step()
-            time.sleep(0.05)
     except KeyboardInterrupt:
         follower.stop()
 

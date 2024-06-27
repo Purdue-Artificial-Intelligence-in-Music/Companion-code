@@ -6,7 +6,7 @@ import librosa
 
 
 mic_audio, sr = librosa.load('audio_files/buns_violin.wav', sr=22050, mono=True)
-# mic_audio = librosa.effects.time_stretch(y=mic_audio, rate=0.5)
+mic_audio = librosa.effects.time_stretch(y=mic_audio, rate=0.8)
 mic_audio = mic_audio.reshape((1, -1))
 index = 0
     
@@ -31,7 +31,7 @@ class AudioBuffer(Thread):
         self.daemon=True
         self.filled = False
 
-    def insert(self, frames):
+    def write(self, frames):
         L = frames.shape[-1]
 
         # If buffer will overflow
@@ -56,8 +56,8 @@ class AudioBuffer(Thread):
         self.count = min(self.count + L, self.length)
 
     def read(self, num_frames):
-        if num_frames > self.length:
-            raise Exception(f'Error: Attempted to read {num_frames} frames from buffer of length {self.length}')
+        if num_frames > self.count:
+            raise Exception(f'Error: Attempted to read {num_frames} frames but count is {self.count}')
         
         if self.read_index + num_frames > self.length:
             temp = self.read_index
@@ -108,10 +108,10 @@ class AudioBuffer(Thread):
         audio = np.frombuffer(in_data, dtype=np.float32)
 
         global mic_audio, index
-        audio = mic_audio[:, index:index+self.frames_per_buffer]
-        index += self.frames_per_buffer
+        audio = mic_audio[:, index:index+frame_count]
+        index += frame_count
         audio = audio.reshape((self.channels, -1))
-        self.insert(audio)
+        self.write(audio)
         if audio.shape[-1] != frame_count:
             return audio, pyaudio.paComplete
         return audio, pyaudio.paContinue
