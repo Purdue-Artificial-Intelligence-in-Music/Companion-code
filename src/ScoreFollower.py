@@ -9,7 +9,7 @@ from features import ChromaMaker, audio_to_np_cens
 
 
 class ScoreFollower(Thread):
-    def __init__(self, midi_file, sample_rate=22050, channels=1, frames_per_buffer=8192, c=300, max_run_count=3, diag_weight=0.4):
+    def __init__(self, midi_file, sample_rate=22050, channels=1, frames_per_buffer=1024, c=30, max_run_count=3, diag_weight=0.4):
         super(ScoreFollower, self).__init__()
 
         self.sample_rate = sample_rate
@@ -36,19 +36,18 @@ class ScoreFollower(Thread):
         self.otw = OTW(ref=self.ref, params=params)
         self.path = []
 
-
     def get_chroma(self, audio):
         if audio.shape[-1] < self.frames_per_buffer:
             audio = np.pad(audio, ((0, 0), (0, self.frames_per_buffer - audio.shape[-1])), mode='constant', constant_values=((0, 0), (0, 0)))
         
         return self.chroma_maker.insert(audio)
 
-    
     def step(self):
         # TODO: find better way to get frames
-        audio = self.mic.get_last_frames(self.frames_per_buffer)
+        audio = self.mic.read(self.frames_per_buffer)
         chroma = self.get_chroma(audio)
         j = self.otw.insert(chroma)
+        print(j, self.otw.t)
         self.path.append((j, self.otw.t))
         return j
 

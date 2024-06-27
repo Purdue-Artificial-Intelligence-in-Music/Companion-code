@@ -24,8 +24,7 @@ class Synchronizer(Thread):
         self.PID = PID(Kp=0.05, Ki=0.0, Kd=0.0, setpoint=0)
         self.PID.output_limits = (0.5, 2)
         self.PID.sample_time = 0.1
-
-    
+        
     def run(self):
         self.score_follower.start()
         self.player.start()
@@ -41,7 +40,7 @@ class Synchronizer(Thread):
 
         # if musician_pos > 20:
         #     self.player.playback_rate = self.PID(error)
-        print(f'Musician position: {musician_pos}, Player position {player_pos}, Plyback rate: {self.player.playback_rate}')
+        # print(f'Musician position: {musician_pos}, Player position {player_pos}, Plyback rate: {self.player.playback_rate}')
 
     def is_active(self):
         return self.score_follower.is_active() and self.player.is_active()
