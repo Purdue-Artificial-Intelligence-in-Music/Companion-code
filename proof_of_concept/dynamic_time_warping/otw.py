@@ -176,7 +176,7 @@ if __name__ == '__main__':
 
     params = {
         "c": 100,
-        "max_run_count": 2,
+        "max_run_count": 3,
         "diag_weight": 2
     }
     path = []

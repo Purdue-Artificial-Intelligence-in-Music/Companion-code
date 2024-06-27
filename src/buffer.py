@@ -2,9 +2,16 @@ from threading import Thread
 import pyaudio
 import numpy as np
 import time
+import librosa
+
+
+mic_audio, sr = librosa.load('audio_files/buns_violin.wav', sr=22050, mono=True)
+# mic_audio = librosa.effects.time_stretch(y=mic_audio, rate=0.5)
+mic_audio = mic_audio.reshape((1, -1))
+index = 0
 
 class AudioBuffer(Thread):
-    def __init__(self, sample_rate=22050, channels=1, frames_per_buffer=1024, num_chunks=50):
+    def __init__(self, sample_rate=22050, channels=1, frames_per_buffer=1024, num_chunks=100):
         super(AudioBuffer, self).__init__()
 
         self.sample_rate = sample_rate
@@ -15,14 +22,14 @@ class AudioBuffer(Thread):
         self.buffer = np.zeros((channels, self.length))
         self.index = 0
         self.filled = False
-        self.stop_request = False
 
-        self.p = None
+        self.p = pyaudio.PyAudio()
         self.stream = None
+
+        self.daemon=True
 
     def insert(self, frames):
         L = frames.shape[-1]
-
         # If buffer will overflow
         if self.index + L > self.length:
             # Add the first portion to the end
@@ -34,6 +41,9 @@ class AudioBuffer(Thread):
         else:
             # Add it all at once
             self.buffer[:, self.index:self.index + L] = frames
+        
+        if self.index + L == self.length:
+            self.filled = True
 
         # Increment the index
         self.index = (self.index + L) % self.length
@@ -55,7 +65,6 @@ class AudioBuffer(Thread):
 
         # n cannot be greater than the size of the buffer
         num_frames = min(num_frames, self.length)
-
         # if n is greater than the buffer index
         if num_frames > self.index:
             # If the buffer has been filled, wrap around to the end of the array
@@ -71,35 +80,48 @@ class AudioBuffer(Thread):
         return self.buffer[:, self.index - num_frames:self.index]
 
     def callback(self, in_data, frame_count, time_info, status):
-        audio = np.frombuffer(in_data)
+        audio = np.frombuffer(in_data, dtype=np.float32)
+
+        global mic_audio, index
+        audio = mic_audio[:, index:index+self.frames_per_buffer]
+        index += self.frames_per_buffer
+        audio = audio.reshape((self.channels, frame_count))
         self.insert(audio)
         return audio, pyaudio.paContinue
 
     def run(self):
-        self.p = pyaudio.PyAudio()
         self.stream = self.p.open(format=pyaudio.paFloat32,
-                                 channels=self.channels,
-                                 rate=44100,
-                                 input=True,
-                                 output=False,
-                                 stream_callback=self.callback,
-                                 frames_per_buffer=1024)
+                                  channels=self.channels,
+                                  rate=self.sample_rate,
+                                  input=True,
+                                  output=False,
+                                  stream_callback=self.callback,
+                                  frames_per_buffer=self.frames_per_buffer)
         
-        while not self.stop_request:
-            time.sleep(0.1)
-        
+
+    def is_active(self):
+        if self.stream is None:
+            return False
+        return self.stream.is_active()
+    
     def stop(self):
         self.stream.close()
         self.p.terminate()
-        self.stop_request = True
         
 if __name__ == '__main__':
-    buffer = AudioBuffer()
+    buffer = AudioBuffer(sample_rate=22050,
+                         channels=1,
+                         frames_per_buffer=1024,
+                         num_chunks=100)
     buffer.start()
 
+    while not buffer.is_active():
+        time.sleep(0.01)
+
     try:
-        while not buffer.stop_request:
+        while buffer.is_active():
             time.sleep(0.1)
+            print(buffer.get_last_frames(1024).shape)
     except KeyboardInterrupt:
         buffer.stop()
         buffer.join()

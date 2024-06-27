@@ -4,6 +4,7 @@ import pyaudio
 import time
 import numpy as np
 
+
 class AudioPlayer(Thread):
     def __init__(self, filepath, sample_rate=22050, channels=1, frames_per_buffer=1024, playback_rate=1.0):
         super(AudioPlayer, self).__init__()
@@ -26,7 +27,7 @@ class AudioPlayer(Thread):
         self.audio_len = self.audio.shape[-1]
 
         # PYAUDIO
-        self.p = None
+        self.p = pyaudio.PyAudio()
 
         # Open an output stream
         self.stream = None
@@ -34,10 +35,8 @@ class AudioPlayer(Thread):
         self.index = 0
         self.frames_per_buffer = frames_per_buffer
         self.playback_rate = playback_rate
-
-        self.stop_request = False
         self.paused = False
-
+        self.daemon=True
 
     def fade_in(self, audio, num_frames):
         """Fades in an audio segment.
@@ -107,19 +106,13 @@ class AudioPlayer(Thread):
         self.fade_in(audio_segment, num_frames=fade_size)
         self.fade_out(audio_segment, num_frames=fade_size)
         
-        # stop request
-        if self.stop_request:
-            return audio_segment, pyaudio.paAbort
-        
         # no more audio to read
         if audio_segment.shape[-1] < frame_count:
-            self.stop()
             return audio_segment, pyaudio.paComplete
         
         return audio_segment, pyaudio.paContinue
     
     def run(self):
-        self.p = pyaudio.PyAudio()
 
         # Open an output stream
         self.stream = self.p.open(format=pyaudio.paFloat32,
@@ -130,20 +123,24 @@ class AudioPlayer(Thread):
                                   stream_callback=self.callback,
                                   frames_per_buffer=self.frames_per_buffer)
         
-        while not self.stop_request:
-            time.sleep(0.1)
-    
+    def is_active(self):
+        if self.stream is None:
+            return False
+        return self.stream.is_active()
+
     def stop(self):
         self.stream.close()
         self.p.terminate()
-        self.stop_request = True
 
 if __name__ == '__main__':
     player = AudioPlayer(filepath='audio_files/buns_viola.wav')
     player.start()
+    
+    while not player.is_active():
+        time.sleep(0.01)
 
     try:
-        while not player.stop_request:
+        while player.is_active():
             time.sleep(0.1)
     except KeyboardInterrupt:
         player.stop()

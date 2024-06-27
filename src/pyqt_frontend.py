@@ -17,7 +17,7 @@ class WorkerThread(QThread):
         super().__init__()
         self.buffer = AudioBuffer(name="buffer", 
                          frames_per_buffer=4096,
-                         midi_path='buns.mid',
+                         wav_file='accompaniment.wav',
                          process_func=play_wav_data,
                          process_func_args=(),
                          calc_chroma=True, 
