@@ -29,6 +29,7 @@ class ScoreFollower(Thread):
 
         self.ref = audio_to_np_cens(y=ref_audio, sr=sample_rate, n_fft=window_length, hop_len=window_length)
 
+        print(self.ref.shape)
         params = {
         "c": c,
         "max_run_count": max_run_count,
@@ -37,7 +38,6 @@ class ScoreFollower(Thread):
 
         self.otw = OTW(ref=self.ref, params=params)
         self.path = []
-        print(self.otw.live.shape)
 
     def get_chroma(self, audio):
         """
@@ -64,7 +64,7 @@ class ScoreFollower(Thread):
                 return self.otw.j
             time.sleep(0.01)
         audio = self.mic.read(self.window_length)
-        # print(f'Read index: {self.mic.read_index}, Write index: {self.mic.write_index}, Count: {self.mic.count}')
+        print(f'Read index: {self.mic.read_index}, Write index: {self.mic.write_index}, Count: {self.mic.count}')
         chroma = self.get_chroma(audio)
         j = self.otw.insert(chroma)
         self.path.append((j, self.otw.t))
@@ -79,12 +79,19 @@ class ScoreFollower(Thread):
         self.mic.stop()
 
     def is_active(self):
-        """Return true if the microphone input stream is active """
-        return self.mic.is_active()
+        """Return True if the microphone input stream is active and we have not reached the end of the otw buffer"""
+        return self.mic.is_active() and self.otw.t < self.otw.live.shape[-1] - 1
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    follower = ScoreFollower(path='soloist.wav')
+    follower = ScoreFollower(path='soloist.wav', 
+                             sample_rate=22050,
+                             channels=1,
+                             frames_per_buffer=1024,
+                             window_length=4096,
+                             c=10,
+                             max_run_count=3,
+                             diag_weight=2)
 
     follower.start()
 
@@ -98,6 +105,6 @@ if __name__ == '__main__':
         follower.stop()
 
     indices = np.asarray(follower.path).T
-    follower.otw.D[(indices[1], indices[0])] = np.inf
+    follower.otw.D[(indices[0], indices[1])] = np.inf
     plt.imshow(follower.otw.D)
     plt.show()

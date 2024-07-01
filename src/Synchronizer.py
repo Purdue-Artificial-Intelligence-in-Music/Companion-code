@@ -5,6 +5,7 @@ from simple_pid import PID
 from threading import Thread
 import os
 
+
 class Synchronizer(Thread):
     def __init__(self, midi_file, sample_rate=22050, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
         super(Synchronizer, self).__init__()
@@ -36,7 +37,7 @@ class Synchronizer(Thread):
                                   frames_per_buffer=frames_per_buffer,
                                   playback_rate=1.0)
         
-        self.PID = PID(Kp=0.04, Ki=0.001, Kd=0.001, setpoint=0, starting_output=0.8)
+        self.PID = PID(Kp=0.04, Ki=0.001, Kd=0.001, setpoint=0, starting_output=1.0)
         self.PID.output_limits = (0.33, 3)
         self.PID.sample_time = window_length / sample_rate
         
@@ -71,7 +72,7 @@ if __name__ == '__main__':
                                 channels=1,
                                 frames_per_buffer=1024,
                                 window_length=4096,
-                                c=100,
+                                c=10,
                                 max_run_count=3,
                                 diag_weight=2)
 

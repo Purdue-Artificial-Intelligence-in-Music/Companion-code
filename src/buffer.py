@@ -6,7 +6,7 @@ import librosa
 
 
 mic_audio, sr = librosa.load('soloist.wav', sr=22050, mono=True)
-# mic_audio = librosa.effects.time_stretch(y=mic_audio, rate=0.5)
+mic_audio = librosa.effects.time_stretch(y=mic_audio, rate=0.5)
 mic_audio = mic_audio.reshape((1, -1))
 index = 0
 
@@ -70,8 +70,6 @@ class AudioBuffer(Thread):
         self.p = pyaudio.PyAudio()
         self.stream = None
 
-        self.filled = False
-
     def write(self, frames: np.ndarray):
         """
 
@@ -93,14 +91,10 @@ class AudioBuffer(Thread):
             self.buffer[:, self.write_index:] = frames[:, :self.length-self.write_index]
             # Add the rest at the front
             self.buffer[:, :L-(self.length-self.write_index)] = frames[:, self.length-self.write_index:]
-            self.filled = True
         # If the buffer will not overflow
         else:
             # Add it all at once
             self.buffer[:, self.write_index:self.write_index + L] = frames
-
-        if self.write_index == self.length:
-            self.filled = True
             
         # Increment the write index
         self.write_index = (self.write_index + L) % self.length
@@ -138,37 +132,6 @@ class AudioBuffer(Thread):
         self.count -= num_frames
         return frames
 
-
-    def get_last_frames(self, num_frames: int) -> np.ndarray:
-        """Returns the last n frames from the buffer, or the maximum possible elements if there aren't enough recorded yet.
-
-        Parameters
-        ----------
-        num_frames : int
-            Number of frames to get from the buffer
-
-        Returns
-        -------
-        np.ndarray
-            Most recent frames written to the audio buffer
-        """
-
-        # n cannot be greater than the size of the buffer
-        num_frames = min(num_frames, self.length)
-        # if n is greater than the buffer index
-        if num_frames > self.write_index:
-            # If the buffer has been filled, wrap around to the end of the array
-            if self.filled:
-                # calculate the number of frames needed from the end of the array
-                frames_from_end = num_frames - self.write_index
-                # concatenate the fromaes from the end with the frames from the start to the buffer index
-                return np.concatenate((self.buffer[:, -frames_from_end:], self.buffer[:, :self.write_index]), axis=1)
-            # if the buffer has not been filled at least once, the frames on the end are not valid
-            return self.buffer[:, :self.write_index]
-        
-        # if n is less than the buffer index
-        return self.buffer[:, self.write_index - num_frames:self.write_index]
-
     def callback(self, in_data, frame_count, time_info, status):
         """Called whenever PyAudio stream
 
@@ -193,7 +156,7 @@ class AudioBuffer(Thread):
         # global mic_audio, index
         # audio = mic_audio[:, index:index+frame_count]
         # index += frame_count
-        # audio = audio.reshape((self.channels, -1))
+        audio = audio.reshape((self.channels, -1))
         self.write(audio)
         if audio.shape[-1] != frame_count:
             return audio, pyaudio.paComplete
