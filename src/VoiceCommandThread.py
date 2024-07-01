@@ -1,10 +1,10 @@
 import threading
 import time
 from AudioBuffer import AudioBuffer
-import speech_recognition as sr
-import pyttsx3
+import speech_recognition as sr         #Defunct?
+import pyttsx3                          #Defunct?
 import numpy as np
-from nltk.stem import PorterStemmer
+from nltk.stem import PorterStemmer     #Defunct?
 from transformers import pipeline
 
 import argparse
@@ -22,10 +22,10 @@ class VoiceAnalyzerThread(threading.Thread):
         self.name = name
         self.BUFFER = BUFFER
         self.stop_request = False
-        self.r = sr.Recognizer()
-        self.ps = PorterStemmer()
+        self.r = sr.Recognizer()        #Defunct?
+        self.ps = PorterStemmer()       #Defunct?
         self.output = ""
-        self.voice_length = voice_length
+        self.voice_length = voice_length #Defunct?
         # Initialize whatever stuff you need here
 
         #The following are all related to the use of Vosk and voice commanding
@@ -33,35 +33,51 @@ class VoiceAnalyzerThread(threading.Thread):
 
         # Define the list of possible commands along with hypothesis templates
         self.commands = {
+            "speed up": "The action involves increasing speed.",
+            "slow down": "The action involves decreasing speed.",
+            "volume up": "The action involves increasing volume.",
+            "volume down": "The action involves decreasing volume.",
             "stop": "The action involves bringing something to a halt.",
             "start": "The action involves beginning something.",
             "exit": "The action involves the termination of something.",
+            #"edit": "The action involves changing something."
         }
 
         # Initialize the zero-shot classification pipeline with the Roberta model
         self.classifier = pipeline('zero-shot-classification', model='roberta-large-mnli')
 
-    def convert_to_AudioData(self, arr: np.ndarray):
+    def convert_to_AudioData(self, arr: np.ndarray): #Defunct?
         # sample_width=2 relies on the fact that AudioThreadWithBuffer's format is PyAudio.paFloat32, which has 4 bytes per sample
         return sr.AudioData(frame_data=arr.tobytes(), 
                             sample_rate=self.BUFFER.RATE, 
                             sample_width=4)
     
     def int_or_str(text):
-    #Helper function for argument parsing.
+    #Helper function for argument parsing, it allows for numbers to be converted into ints
         try:
             return int(text)
         except ValueError:
             return text
     
     def callback(self, indata, frames, time, status):
-    #This is called (from a separate thread) for each audio block.
+        """
+        This function is called whenever PyAudio recieves new audio. It adds the audio to the queue
+        and stores the result in the field "data".
+        This function should never be called directly.
+        Parameters: none user-exposed
+        Returns: Nothing, but it adds onto the queue
+        """
         if status:
             print(status, file=sys.stderr)
         self.q.put(bytes(indata))
 
-    # Enhance the classify_command function to handle a wider range of negations
     def classify_command(self, user_input):
+        """
+        This function is called whenever the partial reult gains a new element, where in it will
+        determine using Roberta the most likely command to be called upon
+        Parameters: user_input: a string that is the partial result
+        Returns: highest_scoring_command: a string that is put into run_command to run the command
+        """
         # Check for negations and adjust the command accordingly
         negations = ["don't", "do not", "please don't", "never", "no", "not"]
         # Adjustments for negations
@@ -106,7 +122,12 @@ class VoiceAnalyzerThread(threading.Thread):
         return highest_scoring_command
     
     def run_command(self, command):
-
+        """
+        This function is called after classify_command is called upon and uses the highest scoring command
+        to enact whatever command was requested
+        Parameters: command: a string that is the highest scoring command found by roberta
+        Returns: Nothing, but acts upon the AudioBuffer to do various actions
+        """
         if command == "start":
 
             #Check if audio is playing
@@ -131,10 +152,18 @@ class VoiceAnalyzerThread(threading.Thread):
             self.BUFFER.stop()
 
         else:
-            #TODO
+            #TODO: Look into ways to use LLM to create commands and have the code be able to run them
+                #Maybe have the user provide smaller step by step requests to gain a better chance of the command working
+                #^ like the idea provided by ()
+
+                #Also possibly add an "Undo" command that can just reverse the last command sent?
+                #But only for custom commands?
             print("Run the user's defined command")
 
 
+    """
+    #TODO: Verify this code isn't needed anymore and remove it
+    """
     # Function to convert text to
     # speech
     def SpeakText(command: str):
@@ -143,6 +172,9 @@ class VoiceAnalyzerThread(threading.Thread):
         engine.say(command)
         engine.runAndWait()
 
+    """
+    #TODO: Verify this code isn't needed anymore and remove it as run now should just do this
+    """
     def getSpeech(self, audio: sr.AudioData):
         # Exception handling to handle
         # exceptions at the runtime
@@ -180,7 +212,12 @@ class VoiceAnalyzerThread(threading.Thread):
                 self.BUFFER.stop()
 
             else:
-                #TODO
+                #TODO: Look into ways to use LLM to create commands and have the code be able to run them
+                #Maybe have the user provide smaller step by step requests to gain a better chance of the command working
+                #^ like the idea provided by ()
+
+                #Also possibly add an "Undo" command that can just reverse the last command sent?
+                #But only for custom commands?
                 print("Run the user's defined command")
 
             self.output = ""
@@ -195,8 +232,17 @@ class VoiceAnalyzerThread(threading.Thread):
         self.output = ""
 
     def run(self):
+        """
+        This function is the driving force behind voice commanding, it will call upon classify command
+        in order to find the best command for what was said and then run said command
+        Parameters: nothing
+        Returns: nothing
+        """
         time.sleep(0.5)
 
+        #TODO: Trim down the arg parser portion to what's needed to minimize faults
+
+        #Activates the arguement parser so that Vosk can collect the spoken words using the SoundDevice library
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument(
             "-l", "--list-devices", action="store_true",
@@ -228,6 +274,7 @@ class VoiceAnalyzerThread(threading.Thread):
                 args.samplerate = int(device_info["default_samplerate"])
                 
             if args.model is None:
+                #Using a specific model to improve correctness
                 model = Model(model_name="vosk-model-en-us-0.22-lgraph")
             else:
                 model = Model(lang=args.model)
@@ -246,14 +293,30 @@ class VoiceAnalyzerThread(threading.Thread):
                 rec = KaldiRecognizer(model, args.samplerate)
                 while not self.stop_request:
                     data = self.q.get()
+
+                    #Possible optimization would be jut to ignore Result entirely,
+                    #but I don't think that would end up clearing the json buffer
+                    # if rec.AcceptWaveform(data) is False:
+                    #     print(rec.PartialResult())
+                    #     #print()
+
+                    #     #Possible optimization by using partials rather than whole
+                    #     #Parse the json text and find the command
+                    #     res = json.loads(rec.PartialResult())
+                    #     print(res["partial"])
+                    #     if res["partial"] != "":
+                    #         #print(toParse)
+                    #         toParse = self.classify_command(res["partial"])
+                    #         self.run_command(toParse)
+
                     if rec.AcceptWaveform(data):
                         #Print the result
                         print(rec.Result())
 
                         #Parse the json text and find the command
                         res = json.loads(rec.Result())
-                        print(res['text'])
-                        if res['text'] != "":
+                        print(res["text"])
+                        if res["text"] != "":
                             #print(toParse)                
                             toParse = self.classify_command(res['text'])
                             self.run_command(toParse)
@@ -283,19 +346,19 @@ class VoiceAnalyzerThread(threading.Thread):
         except Exception as e:
             parser.exit(type(e).__name__ + ": " + str(e))
 
-def main():
-    #Todo: Change to your file path
-    AThread = AudioBuffer(name="AThread", frames_per_buffer=1024, 
-                                    wav_file = "new_src\hunt.wav",
-                                    process_func=(lambda x, y, z: z))
-    VThread = VoiceAnalyzerThread(BUFFER=AThread, name = "Vthread")
-    try:
-        AThread.start()
-        VThread.start()
-    except KeyboardInterrupt:
-        AThread.stop_request = True
-        VThread.stop_request = True
+# def main():
+#     #Todo: Change to your file path
+#     AThread = AudioBuffer(name="AThread", frames_per_buffer=1024, 
+#                                     wav_file = "new_src\hunt.wav",
+#                                     process_func=(lambda x, y, z: z))
+#     VThread = VoiceAnalyzerThread(BUFFER=AThread, name = "Vthread")
+#     try:
+#         AThread.start()
+#         VThread.start()
+#     except KeyboardInterrupt:
+#         AThread.stop_request = True
+#         VThread.stop_request = True
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
