@@ -53,21 +53,24 @@ def main():
                     from WavBeatTracker import WavBeatTracker
                     from AudioBuffer import AudioBuffer
                     from VoiceCommandThread import VoiceAnalyzerThread
-                    from process_funcs import play_wav_data
+                    from process_funcs import save_wav_volume
                     import numpy as np
                     buffer = AudioBuffer(name="buffer", 
                          frames_per_buffer=CONFIG_DICT["FRAMES_PER_BUFFER"],
                          wav_file=accomp_audio_path,
-                         process_func=play_wav_data,
+                         process_func=save_wav_volume,
                          process_func_args=(),
-                         calc_chroma=False, 
+                         calc_transforms=False, 
                          calc_beats=True,
+                         run_counter=True,
                          kill_after_finished=True,
+                         time_stretch=True,
                          playback_rate=1.0,
-                         sample_rate=22050,
-                         dtype=np.float32,
-                         channels=1,
-                         debug_prints=False)
+                         sr_no_wav=22050,
+                         dtype_no_wav=np.float32,
+                         channels_no_wav=1,
+                         debug_prints=False,
+                         output_path="./src/wav_output.wav")
     
                     beat_detector = BeatNet_thread(model=1, BUFFER=buffer, plot=[], device='cpu')
                     wav_beat_tracker = WavBeatTracker(BUFFER=buffer)
