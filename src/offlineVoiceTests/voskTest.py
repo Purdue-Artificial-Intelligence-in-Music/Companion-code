@@ -65,18 +65,15 @@ def main():
     parser.add_argument(
         "-m", "--model", type=str, help="language model; e.g. en-us, fr, nl; default is en-us")
     args = parser.parse_args(remaining)
-
     try:
         if args.samplerate is None:
             device_info = sd.query_devices(args.device, "input")
             # soundfile expects an int, sounddevice provides a float:
             args.samplerate = int(device_info["default_samplerate"])
-            
         if args.model is None:
             model = Model(model_name="vosk-model-en-us-0.22-lgraph")
         else:
             model = Model(lang=args.model)
-
         if args.filename:
             dump_fn = open(args.filename, "wb")
         else:
