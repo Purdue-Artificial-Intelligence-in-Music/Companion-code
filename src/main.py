@@ -2,22 +2,23 @@
 from BeatNet_local.BeatNet_thread import BeatNet_thread
 from WavBeatTracker import *
 from AudioBuffer import *
-from VoiceCommandThread import *
+# from VoiceCommandThread import *
 from BeatSynchronizer import *
 import traceback
 import sys
 import torch
-from process_funcs import play_all
+from process_funcs import *
 
 FRAMES_PER_BUFFER = 1024  # number of frames in PyAudio buffer
-WAV_FILE = 'audio_files\imperial_march.wav'  # accompaniment WAV file
+WAV_FILE = 'audio_files/mountain_king.wav'  # accompaniment WAV file
 
 def main():
+
     # create AudioBuffer
     buffer = AudioBuffer(name="buffer", 
-                         frames_per_buffer=FRAMES_PER_BUFFER,
                          wav_file=WAV_FILE,
-                         process_func=play_all,
+                         frames_per_buffer=FRAMES_PER_BUFFER,
+                         process_func=play_wav_data,
                          process_func_args=(),
                          calc_chroma=True, 
                          calc_beats=True,
@@ -51,15 +52,15 @@ def main():
     beat_sync.start()
     print("Beat synchronizer started")
 
-    minutes_long = int(buffer.wav_len / buffer.RATE / 60)
-    seconds_long = int(buffer.wav_len / buffer.RATE) % 60
+    minutes_long = int(buffer.comp_len / buffer.RATE / 60)
+    seconds_long = int(buffer.comp_len / buffer.RATE) % 60
     try:
         start_time = time.time()
         print("", end="")
         while not buffer.stop_request:
             elapsed_time = time.time() - start_time
-            minutes_elapsed_in_wav = int(buffer.wav_index / buffer.RATE / 60)
-            seconds_elapsed_in_wav = int(buffer.wav_index / buffer.RATE) % 60
+            minutes_elapsed_in_wav = int(buffer.comp_index / buffer.RATE / 60)
+            seconds_elapsed_in_wav = int(buffer.comp_index / buffer.RATE) % 60
             buffer.playback_rate = beat_sync.playback_rate
             print("\r(%.2fs) Mic beats: %d, Wav beats: %d, playback speed = %.2f | Wav playback: %d:%02d out of %d:%02d" % 
                   (elapsed_time, beat_detector.get_total_beats(), wav_beat_tracker.get_total_beats(), buffer.playback_rate, 
