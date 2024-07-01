@@ -7,24 +7,24 @@ class WavBeatTracker(BeatTracker):
     def __init__(self, BUFFER: AudioBuffer):
         super().__init__()
         self.BUFFER = BUFFER
-        self.beats = BUFFER.wav_beats
+        self.beats = BUFFER.comp_beats
         self.len_beats = len(self.beats)
         self.downbeats = 0
         self.total_beats = 0
         self.next_beat_idx = 0
-        self.next_beat_sample_idx = BUFFER.wav_beats[0][0]
+        self.next_beat_sample_idx = BUFFER.comp_beats[0][0]
         self.daemon = True
 
     def update_beats(self):
         """Compares the WAV index to known beat positions to update how many beats have been played """
-        curr_sample_idx = self.BUFFER.wav_index
+        curr_sample_idx = self.BUFFER.comp_index
         while self.next_beat_idx < self.len_beats and curr_sample_idx > self.next_beat_sample_idx:
-            type = self.BUFFER.wav_beats[self.next_beat_idx][1]
+            type = self.BUFFER.comp_beats[self.next_beat_idx][1]
             if type == 1:
                 self.downbeats += 1
             self.total_beats += 1
             self.next_beat_idx += 1
-            self.next_beat_sample_idx = self.BUFFER.wav_beats[self.next_beat_idx][0]
+            self.next_beat_sample_idx = self.BUFFER.comp_beats[self.next_beat_idx][0]
     
     def get_downbeats(self) -> int:
         """Return the updated number of downbeats that have been played."""
