@@ -162,9 +162,14 @@ cython_debug/
 #.idea/
 
 
+.vscode/
+
 */*.mp3
 */*.wav
 **/*/*.wav
+
+*.mid
+*.png
 
 **/*/*.pt
 **/*/FluidR3_GM.zip

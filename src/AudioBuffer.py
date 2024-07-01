@@ -17,11 +17,6 @@ This class is a template class for a thread that reads in audio from PyAudio and
 This is version 2 of the code.
 '''
 
-# mic_data, _ = librosa.load('audio_files/imperial_march.wav', sr=22050, mono=True, dtype=np.float32)
-# if len(mic_data.shape) == 1:
-#     mic_data = mic_data.reshape(1, -1)
-# # mic_data = librosa.effects.time_stretch(mic_data, rate=2)
-# mic_index = 0
 
 class AudioBuffer(threading.Thread):
     """
@@ -651,10 +646,6 @@ class AudioBuffer(threading.Thread):
 
         """
         input_array = np.frombuffer(in_data, dtype=self.dtype)
-        # global mic_data
-        # global mic_index
-        # input_array = mic_data[:, int(mic_index):int(mic_index+self.FRAMES_PER_BUFFER)]
-        # mic_index += self.FRAMES_PER_BUFFER
 
         # Reshaping code to correct channels
         input_array = np.reshape(input_array, (self.CHANNELS, -1))
