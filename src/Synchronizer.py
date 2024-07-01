@@ -1,11 +1,12 @@
 from AudioPlayer import AudioPlayer
 from ScoreFollower import ScoreFollower
+from AudioGenerator import AudioGenerator
 from simple_pid import PID
 from threading import Thread
-
+import os
 
 class Synchronizer(Thread):
-    def __init__(self, sample_rate=22050, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
+    def __init__(self, midi_file, sample_rate=22050, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
         super(Synchronizer, self).__init__()
 
         self.frames_per_buffer = frames_per_buffer
@@ -13,7 +14,14 @@ class Synchronizer(Thread):
         self.c = c
         self.daemon = True
 
-        self.score_follower = ScoreFollower(midi_file='buns.mid', 
+        generator = AudioGenerator(midi_file=midi_file)
+        if not os.path.exists('soloist.wav'):
+            generator.generate_audio(output_path='soloist.wav', instrument='cello', inst_num=0)
+
+        if not os.path.exists('accompanist.wav'):
+            generator.generate_audio(output_path='accompanist.wav', instrument='violin', inst_num=1)
+
+        self.score_follower = ScoreFollower(path='soloist.wav',
                                             sample_rate=sample_rate,
                                             channels=channels,
                                             frames_per_buffer=frames_per_buffer,
@@ -22,11 +30,11 @@ class Synchronizer(Thread):
                                             max_run_count=max_run_count,
                                             diag_weight=diag_weight)
         
-        self.player = AudioPlayer(filepath='audio_files/buns_viola.wav', 
+        self.player = AudioPlayer(path='accompanist.wav', 
                                   sample_rate=sample_rate,
                                   channels=channels,
                                   frames_per_buffer=frames_per_buffer,
-                                  playback_rate=0.8)
+                                  playback_rate=1.0)
         
         self.PID = PID(Kp=0.04, Ki=0.001, Kd=0.001, setpoint=0, starting_output=0.8)
         self.PID.output_limits = (0.33, 3)
@@ -40,7 +48,7 @@ class Synchronizer(Thread):
         self.score_follower.stop()
         self.player.stop()
 
-    def sync(self):
+    def update(self):
         soloist_pos = self.score_follower.step()
         accompanist_pos = self.player.index // self.window_length
         error = accompanist_pos - soloist_pos
@@ -64,7 +72,7 @@ if __name__ == '__main__':
 
     try:
         while synchronizer.is_active():
-            synchronizer.sync()
+            synchronizer.update()
     except KeyboardInterrupt:
         synchronizer.stop()
 

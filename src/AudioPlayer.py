@@ -6,11 +6,11 @@ import numpy as np
 
 
 class AudioPlayer(Thread):
-    def __init__(self, filepath, sample_rate=22050, channels=1, frames_per_buffer=1024, playback_rate=1.0):
+    def __init__(self, path, sample_rate=22050, channels=1, frames_per_buffer=1024, playback_rate=1.0):
         super(AudioPlayer, self).__init__()
 
         # AUDIO
-        self.filepath = filepath
+        self.path = path
         self.sample_rate = sample_rate
         self.channels = channels
 
@@ -18,7 +18,7 @@ class AudioPlayer(Thread):
         mono = channels == 1
 
         # Load the audio
-        self.audio, self.sample_rate = librosa.load(filepath, sr=sample_rate, mono=mono)
+        self.audio, self.sample_rate = librosa.load(path, sr=sample_rate, mono=mono)
 
         # Reshape mono audio. Multi-channel audio should already be in the correct shape
         if mono:
@@ -84,7 +84,7 @@ class AudioPlayer(Thread):
         # assumes the stream is finished, and the stream stops.
         
         if self.paused:
-            return self.zeros((self.channels, frame_count)), pyaudio.paContinue
+            return np.zeros((self.channels, frame_count)), pyaudio.paContinue
         
         start = max(0, self.index)
         end = min(self.index + 5 * self.playback_rate * frame_count, self.audio_len)
@@ -127,13 +127,21 @@ class AudioPlayer(Thread):
         if self.stream is None:
             return False
         return self.stream.is_active()
+    
+    def pause(self):
+        """Pause but do not kill the thread."""
+        self.paused = True
+
+    def unpause(self):
+        """Unpause the thread."""
+        self.paused = False
 
     def stop(self):
         self.stream.close()
         self.p.terminate()
 
 if __name__ == '__main__':
-    player = AudioPlayer(filepath='audio_files/buns_viola.wav')
+    player = AudioPlayer(path='audio_files/buns_viola.wav')
     player.start()
     
     while not player.is_active():
