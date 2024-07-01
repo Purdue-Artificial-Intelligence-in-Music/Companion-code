@@ -16,7 +16,7 @@ def main():
 
     # create AudioBuffer
     buffer = AudioBuffer(name="buffer", 
-                         wav_file="audio_files/imperial_march.wav",
+                         wav_file=WAV_FILE,
                          frames_per_buffer=FRAMES_PER_BUFFER,
                          process_func=play_wav_data,
                          process_func_args=(),
