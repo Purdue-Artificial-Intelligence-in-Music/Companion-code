@@ -29,7 +29,6 @@ class ScoreFollower(Thread):
 
         self.ref = audio_to_np_cens(y=ref_audio, sr=sample_rate, n_fft=window_length, hop_len=window_length)
 
-        print(self.ref.shape)
         params = {
         "c": c,
         "max_run_count": max_run_count,
