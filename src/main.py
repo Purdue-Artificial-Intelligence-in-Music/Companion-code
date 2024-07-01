@@ -1,8 +1,9 @@
 
 from BeatNet_local.BeatNet_thread import BeatNet_thread
 from WavBeatTracker import *
-from AudioBuffer import *
+from buffer import *
 from AudioGenerator import *
+from AudioPlayer import *
 # from VoiceCommandThread import *
 from BeatSynchronizer import *
 import traceback
@@ -11,27 +12,15 @@ import torch
 from process_funcs import *
 
 FRAMES_PER_BUFFER = 1024  # number of frames in PyAudio buffer
-WAV_FILE = 'audio_files/mountain_king.wav'  # accompaniment WAV file
+WAV_FILE = 'accompanist.wav'  # accompaniment WAV file
 
 def main():
-    # generator = AudioGenerator(midi_file='buns.mid')
-    # generator.generate_audio(output_path='soloist.wav', instrument='violin', inst_num=0)
-    # generator.generate_audio(output_path='accompanist.wav', instrument='viola', inst_num=1)
 
     # create AudioBuffer
-    buffer = AudioBuffer(name="buffer", 
-                         wav_file="accompaniment.wav",
-                         frames_per_buffer=FRAMES_PER_BUFFER,
-                         process_func=play_wav_data,
-                         process_func_args=(),
-                         calc_chroma=True, 
-                         calc_beats=False,
-                         kill_after_finished=True,
-                         playback_rate=1.0,
-                         sample_rate=None,
-                         dtype=np.float32,
+    buffer = AudioBuffer(sample_rate=22050,
                          channels=1,
-                         debug_prints=True)
+                         frames_per_buffer=1024,
+                         num_chunks=100)
     
     # use CUDA if available
     if torch.cuda.is_available():
@@ -39,13 +28,17 @@ def main():
     else:
         device = 'cpu'
 
-    beat_detector = BeatNet_thread(model=1, BUFFER=buffer, plot=[], device=device)
-    wav_beat_tracker = WavBeatTracker(BUFFER=buffer)
-    beat_sync = BeatSynchronizer(player_beat_thread=beat_detector, accomp_beat_thread=wav_beat_tracker)
+    beat_detector = BeatNet_thread(model=1, buffer=buffer, plot=[], device=device)
+    player = AudioPlayer(path=WAV_FILE)
+    wav_beat_tracker = WavBeatTracker(player=player)
+    beat_sync = BeatSynchronizer(soloist_beat_thread=beat_detector, accomp_beat_thread=wav_beat_tracker)
     print("All thread objects initialized")
 
     buffer.start()
     print("Buffer started")
+
+    player.start()
+    print("Player started")
 
     beat_detector.start()
     print("Beat detector started")
@@ -56,18 +49,22 @@ def main():
     beat_sync.start()
     print("Beat synchronizer started")
 
-    minutes_long = int(buffer.comp_len / buffer.RATE / 60)
-    seconds_long = int(buffer.comp_len / buffer.RATE) % 60
+    minutes_long = int(player.audio_len / player.sample_rate / 60)
+    seconds_long = int(player.audio_len / player.sample_rate) % 60
+
+    while not player.is_active():
+        time.sleep(0.01)
+
     try:
         start_time = time.time()
         print("", end="")
-        while not buffer.stop_request:
+        while player.is_active():
             elapsed_time = time.time() - start_time
-            minutes_elapsed_in_wav = int(buffer.comp_index / buffer.RATE / 60)
-            seconds_elapsed_in_wav = int(buffer.comp_index / buffer.RATE) % 60
-            buffer.playback_rate = beat_sync.playback_rate
+            minutes_elapsed_in_wav = int(player.index / player.sample_rate / 60)
+            seconds_elapsed_in_wav = int(player.index / player.sample_rate) % 60
+            player.playback_rate = beat_sync.playback_rate
             print("\r(%.2fs) Mic beats: %d, Wav beats: %d, playback speed = %.2f | Wav playback: %d:%02d out of %d:%02d" % 
-                  (elapsed_time, beat_detector.get_total_beats(), wav_beat_tracker.get_total_beats(), buffer.playback_rate, 
+                  (elapsed_time, beat_detector.get_total_beats(), wav_beat_tracker.get_total_beats(), player.playback_rate, 
                    minutes_elapsed_in_wav, seconds_elapsed_in_wav, minutes_long, seconds_long),
                   end="",
                   flush=True)
@@ -80,8 +77,6 @@ def main():
                                          file=sys.stderr, flush=True)
         beat_sync.stop()
         beat_sync.join()
-        buffer.stop()
-        buffer.join()
 
     print("Program done")
 

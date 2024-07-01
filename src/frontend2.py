@@ -54,8 +54,8 @@ def main():
                             time_stretch=True,
                             kill_after_finished=True,
                             output_path="./src/wav_output.wav")
-                beat_detector = BeatNet_thread(model=1, BUFFER=buffer, plot=[], device='cpu')
-                wav_beat_tracker = WavBeatTracker(BUFFER=buffer)
+                beat_detector = BeatNet_thread(model=1, buffer=buffer, plot=[], device='cpu')
+                wav_beat_tracker = WavBeatTracker(player=buffer)
                 voice_recognizer = VoiceAnalyzerThread(name="voice_recognizer",
                                                     BUFFER=buffer,
                                                     voice_length=3)

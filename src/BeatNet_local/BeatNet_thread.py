@@ -13,7 +13,7 @@ from BeatNet_local.log_spect import LOG_SPECT
 from BeatNet_local.model import BDA
 import time
 import threading
-from AudioBuffer import *
+from buffer import *
 from BeatTracker import *
 
 class BeatNet_thread(BeatTracker):
@@ -42,19 +42,19 @@ class BeatNet_thread(BeatTracker):
     '''
     
     
-    def __init__(self, model, BUFFER: AudioBuffer, plot=[], device='cpu'):
+    def __init__(self, model, buffer: AudioBuffer, plot=[], device='cpu'):
         super().__init__()
         self.model = model
         self.mode = 'stream'
         self.inference_model = 'PF'
-        self.BUFFER = BUFFER
+        self.buffer = buffer
         self.plot = plot
         self.device = device
         self.thread = False
         self.daemon = True
         if plot and self.thread:
             raise RuntimeError('Plotting cannot be accomplished in the threading mode')
-        self.sample_rate = self.BUFFER.RATE
+        self.sample_rate = self.buffer.sample_rate
         self.log_spec_sample_rate = 22050
         self.log_spec_hop_length = int(20 * 0.001 * self.log_spec_sample_rate)
         self.log_spec_win_length = int(64 * 0.001 * self.log_spec_sample_rate)
@@ -100,10 +100,10 @@ class BeatNet_thread(BeatTracker):
                 raise RuntimeError('The inference model should be set to "PF" for the streaming mode!')
         self.counter = 0
 
-        while self.BUFFER.stream is None or self.BUFFER.buffer_index < self.log_spec_hop_length + 1:
+        while self.buffer.stream is None or self.buffer.count < self.log_spec_hop_length + 1:
             time.sleep(0.2)
 
-        while self.BUFFER.stream.is_active() and not self.stop_request:
+        while self.buffer.stream.is_active() and not self.stop_request:
             self.activation_extractor_stream()  # Using BeatNet causal Neural network streaming mode to extract activations
             if self.thread:
                 x = threading.Thread(target=self.estimator.process, args=(self.pred), daemon=True)   # Processing the inference in another thread 
@@ -120,28 +120,24 @@ class BeatNet_thread(BeatTracker):
         '''
         with torch.no_grad():
             # if there are not enough new frames for BeatNet to process, wait
-            if self.frames_processed + self.log_spec_hop_length > self.BUFFER.mic_frame_count:
+            if self.log_spec_hop_length > self.buffer.count:
                 self.loops_sleeping += 1
-                time.sleep(self.BUFFER.FRAMES_PER_BUFFER / self.BUFFER.RATE * 5)
+                time.sleep(self.buffer.frames_per_buffer / self.buffer.sample_rate * 5)
                 return
             
             self.loops_running += 1
 
-            # get the start and end indices for the next chunk of audio data
-            start = self.frames_processed % self.BUFFER.buffer_length
-            end = (start + self.log_spec_hop_length) % self.BUFFER.buffer_length
-
             # get the next chunk from audio buffer
-            audio = self.BUFFER.get_frames(start, end)
+            audio = self.buffer.read(self.log_spec_hop_length)
 
-            if self.BUFFER.CHANNELS > 1: 
+            if self.buffer.channels > 1: 
                 audio = np.mean(audio, axis=0)
             
             # increment the number of frames processed
             self.frames_processed += self.log_spec_hop_length
 
             # cast the audio to 32-bit floats
-            audio = audio.astype(dtype=np.float32, casting='safe')
+            audio = audio.astype(dtype=np.float32)
 
             # remove the oldest audio to make room for the new audio
             self.stream_window = np.append(self.stream_window[self.log_spec_hop_length:], audio)

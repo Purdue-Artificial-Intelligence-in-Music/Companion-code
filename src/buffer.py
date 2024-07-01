@@ -151,7 +151,7 @@ class AudioBuffer(Thread):
             Microphone audio frames
 
         """
-        audio = np.frombuffer(in_data, dtype=np.float32)
+        # audio = np.frombuffer(in_data, dtype=np.float32)
 
         global mic_audio, index
         audio = mic_audio[:, index:index+frame_count]
