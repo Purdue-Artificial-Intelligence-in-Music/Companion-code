@@ -354,19 +354,19 @@ class VoiceAnalyzerThread(threading.Thread):
             parser.exit(type(e).__name__ + ": " + str(e))
 >>>>>>> 9203d24 (Update VoiceCommandThread.py)
 
-def main():
-    #Todo: Change to your file path
-    AThread = AudioBuffer(name="AThread", frames_per_buffer=1024, 
-                                    wav_file = "new_src\hunt.wav",
-                                    process_func=(lambda x, y, z: z))
-    VThread = VoiceAnalyzerThread(BUFFER=AThread, name = "Vthread")
-    try:
-        AThread.start()
-        VThread.start()
-    except KeyboardInterrupt:
-        AThread.stop_request = True
-        VThread.stop_request = True
+# def main():
+#     #Todo: Change to your file path
+#     AThread = AudioBuffer(name="AThread", frames_per_buffer=1024, 
+#                                     wav_file = "new_src\hunt.wav",
+#                                     process_func=(lambda x, y, z: z))
+#     VThread = VoiceAnalyzerThread(BUFFER=AThread, name = "Vthread")
+#     try:
+#         AThread.start()
+#         VThread.start()
+#     except KeyboardInterrupt:
+#         AThread.stop_request = True
+#         VThread.stop_request = True
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
