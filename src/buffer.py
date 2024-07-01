@@ -153,9 +153,9 @@ class AudioBuffer(Thread):
         """
         audio = np.frombuffer(in_data, dtype=np.float32)
 
-        # global mic_audio, index
-        # audio = mic_audio[:, index:index+frame_count]
-        # index += frame_count
+        global mic_audio, index
+        audio = mic_audio[:, index:index+frame_count]
+        index += frame_count
         audio = audio.reshape((self.channels, -1))
         self.write(audio)
         if audio.shape[-1] != frame_count:
