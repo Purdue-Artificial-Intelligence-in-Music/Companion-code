@@ -8,15 +8,19 @@
 import os
 import torch
 import numpy as np
+from madmom.features import DBNDownBeatTrackingProcessor
 from BeatNet_local.particle_filtering_cascade import particle_filter_cascade
 from BeatNet_local.log_spect import LOG_SPECT
+import librosa
+import sys
 from BeatNet_local.model import BDA
+import pyaudio
+import matplotlib.pyplot as plt
 import time
 import threading
 from AudioBuffer import *
-from BeatTracker import *
 
-class BeatNet_thread(BeatTracker):
+class BeatNet:
 
     '''
     The main BeatNet handler class including different trained models, different modes for extracting the activation and causal and non-causal inferences
@@ -42,29 +46,25 @@ class BeatNet_thread(BeatTracker):
     '''
     
     
-    def __init__(self, model, BUFFER: AudioBuffer, plot=[], device='cpu'):
-        super().__init__()
+    def __init__(self, model, BUFFER: AudioBuffer, plot=[], thread=False, device='cpu'):
         self.model = model
         self.mode = 'stream'
         self.inference_model = 'PF'
         self.BUFFER = BUFFER
-        self.plot = plot
+        self.plot= plot
+        self.thread = thread
         self.device = device
-        self.thread = False
-        self.daemon = True
-        if plot and self.thread:
+        if plot and thread:
             raise RuntimeError('Plotting cannot be accomplished in the threading mode')
         self.sample_rate = self.BUFFER.RATE
-        self.log_spec_sample_rate = 22050
+        self.log_spec_sample_rate = self.sample_rate
         self.log_spec_hop_length = int(20 * 0.001 * self.log_spec_sample_rate)
         self.log_spec_win_length = int(64 * 0.001 * self.log_spec_sample_rate)
         self.proc = LOG_SPECT(sample_rate=self.log_spec_sample_rate, win_length=self.log_spec_win_length,
                              hop_size=self.log_spec_hop_length, n_bands=[24], mode = self.mode)
         
         self.estimator = particle_filter_cascade(beats_per_bar=[], fps=50, plot=self.plot, mode=self.mode) # instantiating a Particle Filter decoder - Is Chosen for online inference
-        self.pred = np.zeros([1,2])
-        self.frames_processed = 0  # number of frames processed by BeatNet
-
+        
         script_dir = os.path.dirname(__file__)
         #assiging a BeatNet CRNN instance to extract joint beat and downbeat activations
         self.model = BDA(272, 150, 2, self.device)   #Beat Downbeat Activation detector
@@ -80,76 +80,51 @@ class BeatNet_thread(BeatTracker):
         self.model.eval()
 
         self.stream_window = np.zeros(self.log_spec_win_length + 2 * self.log_spec_hop_length, dtype=np.float32)                                          
+        #self.stream = pyaudio.PyAudio().open(format=pyaudio.paFloat32,
+        #                                    channels=1,
+        #                                    rate=self.sample_rate,
+        #                                    input=True,
+        #                                    frames_per_buffer=self.log_spec_hop_length,)
 
         self.stop_request = False
-
-        self.loops_sleeping = 0
-        self.loops_running = 0
-
-    def get_downbeats(self) -> int:
-        return self.estimator.downbeats
-    
-    def get_total_beats(self) -> int:
-        return self.estimator.beats
-    
-    def get_current_beats(self):
-        return self.estimator.path[1:]
-
-    def run(self):  
+                                             
+    def process(self, audio_path=None):   
         if self.inference_model != "PF":
                 raise RuntimeError('The inference model should be set to "PF" for the streaming mode!')
         self.counter = 0
 
-        while self.BUFFER.stream is None or self.BUFFER.buffer_index < self.log_spec_hop_length + 1:
-            time.sleep(0.2)
-
+        while self.BUFFER.stream is None:
+            print('AThread stream is None')
+            time.sleep(0.5)
+        self.BUFFER.sample_counter.add(key="beatnet_streaming_counter", start=2048)
+        
         while self.BUFFER.stream.is_active() and not self.stop_request:
             self.activation_extractor_stream()  # Using BeatNet causal Neural network streaming mode to extract activations
             if self.thread:
                 x = threading.Thread(target=self.estimator.process, args=(self.pred), daemon=True)   # Processing the inference in another thread 
                 x.start()
-                x.join()
+                x.join()    
             else:
-                self.estimator.process(self.pred)
+                output = self.estimator.process(self.pred)
             self.counter += 1
             
+
+
     def activation_extractor_stream(self):
         # TODO: 
         ''' Streaming window
         Given the training input window's origin set to center, this streaming data formation causes 0.084 (s) delay compared to the trained model that needs to be fixed. 
         '''
         with torch.no_grad():
-            # if there are not enough new frames for BeatNet to process, wait
-            if self.frames_processed + self.log_spec_hop_length > self.BUFFER.mic_frame_count:
-                self.loops_sleeping += 1
-                time.sleep(self.BUFFER.FRAMES_PER_BUFFER / self.BUFFER.RATE * 5)
-                return
-            
-            self.loops_running += 1
-
-            # get the start and end indices for the next chunk of audio data
-            start = self.frames_processed % self.BUFFER.buffer_length
-            end = (start + self.log_spec_hop_length) % self.BUFFER.buffer_length
-
-            # get the next chunk from audio buffer
-            audio = self.BUFFER.get_frames(start, end)
-
-            if self.BUFFER.CHANNELS > 1: 
-                audio = np.mean(audio, axis=0)
-            
-            # increment the number of frames processed
-            self.frames_processed += self.log_spec_hop_length
-
-            # cast the audio to 32-bit floats
-            audio = audio.astype(dtype=np.float32, casting='safe')
-
-            # remove the oldest audio to make room for the new audio
-            self.stream_window = np.append(self.stream_window[self.log_spec_hop_length:], audio)
-        
-            # If BeatNet has been running for less than 5 cycles, return zeros
+            # print("Expected buffer of %d samples" % self.log_spec_hop_length)
+            counter_val = self.BUFFER.sample_counter.get("beatnet_streaming_counter")
+            hop = self.BUFFER.get_range_samples(counter_val, counter_val + self.log_spec_hop_length + 1) # changed here
+            self.BUFFER.sample_counter.add("beatnet_streaming_counter", self.log_spec_hop_length)
+            # print("Got a buffer of %d samples" % len(hop))
+            hop = hop.astype(dtype=np.float32, casting='safe')
+            self.stream_window = np.append(self.stream_window[self.log_spec_hop_length:], hop)
             if self.counter < 5:
                 self.pred = np.zeros([1,2])
-            # Else make a prediction
             else:
                 feats = self.proc.process_audio(self.stream_window).T[-1]
                 feats = torch.from_numpy(feats)
