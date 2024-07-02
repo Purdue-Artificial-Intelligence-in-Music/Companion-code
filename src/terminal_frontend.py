@@ -51,31 +51,42 @@ def main():
                     print("Loading...")
                     from BeatNet_local.BeatNet_thread import BeatNet_thread, BeatSynchronizer
                     from WavBeatTracker import WavBeatTracker
-                    from AudioBuffer import AudioBuffer
+                    from buffer import AudioBuffer
+                    from AudioPlayer import AudioPlayer
                     from VoiceCommandThread import VoiceAnalyzerThread
+                    from BeatSynchronizer import BeatSynchronizer
                     from process_funcs import save_wav_volume
                     import numpy as np
-                    buffer = AudioBuffer(name="buffer", 
-                         frames_per_buffer=CONFIG_DICT["FRAMES_PER_BUFFER"],
-                         wav_file=accomp_audio_path,
-                         process_func=save_wav_volume,
-                         process_func_args=(),
-                         calc_transforms=False, 
-                         calc_beats=True,
-                         run_counter=True,
-                         kill_after_finished=True,
-                         time_stretch=True,
-                         playback_rate=1.0,
-                         sr_no_wav=22050,
-                         dtype_no_wav=np.float32,
-                         channels_no_wav=1,
-                         debug_prints=False,
-                         output_path="./src/wav_output.wav")
+                    # buffer = AudioBuffer(name="buffer", 
+                    #      frames_per_buffer=CONFIG_DICT["FRAMES_PER_BUFFER"],
+                    #      wav_file=accomp_audio_path,
+                    #      process_func=save_wav_volume,
+                    #      process_func_args=(),
+                    #      calc_transforms=False, 
+                    #      calc_beats=True,
+                    #      run_counter=True,
+                    #      kill_after_finished=True,
+                    #      time_stretch=True,
+                    #      playback_rate=1.0,
+                    #      sr_no_wav=22050,
+                    #      dtype_no_wav=np.float32,
+                    #      channels_no_wav=1,
+                    #      debug_prints=False,
+                    #      output_path="./src/wav_output.wav")
+                    buffer = AudioBuffer(sample_rate=22050,
+                                         channels=1,
+                                         frames_per_buffer=CONFIG_DICT["FRAMES_PER_BUFFER"],
+                                         num_chunks=100)
+                    
+                    player = AudioPlayer(path=accomp_audio_path,
+                                         sample_rate=22050,
+                                         channels=1,
+                                         frames_per_buffer=CONFIG_DICT["FRAMES_PER_BUFFER"],
+                                         playback_rate=1.0)
     
                     beat_detector = BeatNet_thread(model=1, buffer=buffer, plot=[], device='cpu')
-                    wav_beat_tracker = WavBeatTracker(player=buffer)
+                    wav_beat_tracker = WavBeatTracker(player=player)
                     beat_sync = BeatSynchronizer(player_beat_thread=beat_detector, accomp_beat_thread=wav_beat_tracker)
-                    buffer.time_stretch_source = beat_sync
                     # voice_recognizer = VoiceAnalyzerThread(name="voice_recognizer",
                     #                                       BUFFER=buffer,
                     #                                       voice_length=3)
@@ -90,6 +101,7 @@ def main():
                     #print("Beat detector started")
                     wav_beat_tracker.start()
                     #print("Wav beat tracker started")
+                    player.start()
                     beat_sync.start()
                     #print("Beat synchronizer started")
                     # voice_recognizer.start()
@@ -99,16 +111,17 @@ def main():
                     start_time = time.time()
                     #print("", end="")
                     while not buffer.stop_request:
+                        player.playback_rate = beat_sync.playback_rate
                         '''
                         GUI stuff
                         '''
                         clear_terminal()
                         elapsed_time = time.time() - start_time
-                        minutes_elapsed_in_wav = int(buffer.wav_index / buffer.RATE / 60)
-                        seconds_elapsed_in_wav = int(buffer.wav_index / buffer.RATE) % 60
+                        minutes_elapsed_in_wav = int(player.index / player.sample_rate / 60)
+                        seconds_elapsed_in_wav = int(player.index / player.sample_rate) % 60
                         print("================== Companion: now playing %s ==================\n" % (accomp_audio_path))
                         print("    Time ", end="")
-                        print_one_directional_bar(width = 20, portion_filled = buffer.wav_index / buffer.wav_len)
+                        print_one_directional_bar(width = 20, portion_filled = player.index / player.audio_len)
                         print("\n                              ", end="")
                         print("%d:%02d out of %d:%02d\n" % (minutes_elapsed_in_wav, seconds_elapsed_in_wav, minutes_long, seconds_long))
                         print("   Tempo ", end="")
