@@ -3,10 +3,8 @@ from PySide6.QtCore import *
 from PySide6.QtWidgets import * 
 from PySide6.QtGui import *
 from AudioPlayer import AudioPlayer
-from process_funcs import *
 import numpy as np
 import matplotlib.pyplot as plt
-from features import ChromaMaker
 from features import audio_to_np_cens
 
 class WorkerThread(QThread):

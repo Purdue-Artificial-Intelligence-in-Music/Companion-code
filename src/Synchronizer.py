@@ -7,13 +7,14 @@ import os
 
 
 class Synchronizer(Thread):
+    """ """
     def __init__(self, midi_file, sample_rate=22050, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
+        # Initialize parent class
         super(Synchronizer, self).__init__()
+        self.daemon = True
 
-        self.frames_per_buffer = frames_per_buffer
         self.window_length = window_length
         self.c = c
-        self.daemon = True
 
         generator = AudioGenerator(midi_file=midi_file)
         if not os.path.exists('soloist.wav'):
@@ -42,22 +43,26 @@ class Synchronizer(Thread):
         self.PID.sample_time = window_length / sample_rate
         
     def run(self):
+        """ """
         self.score_follower.start()
         self.player.start()
 
     def stop(self):
+        """ """
         self.score_follower.stop()
         self.player.stop()
 
     def update(self):
+        """ """
         soloist_pos = self.score_follower.step()
         accompanist_pos = self.player.index // self.window_length
         error = accompanist_pos - soloist_pos
         if soloist_pos > self.c:
             self.player.playback_rate = self.PID(error)
-        print(f'Musician position: {soloist_pos}, Accompanist position {accompanist_pos}, Playback rate: {self.player.playback_rate}')
+        print(f'Soloist position: {soloist_pos}, Accompanist position {accompanist_pos}, Playback rate: {self.player.playback_rate}')
 
     def is_active(self):
+        """ """
         return self.score_follower.is_active() and self.player.is_active()
 
 
@@ -74,7 +79,7 @@ if __name__ == '__main__':
                                 window_length=4096,
                                 c=10,
                                 max_run_count=3,
-                                diag_weight=2)
+                                diag_weight=0.4)
 
     # start the synchronizer
     synchronizer.start()

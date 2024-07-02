@@ -9,7 +9,6 @@ from BeatSynchronizer import *
 import traceback
 import sys
 import torch
-from process_funcs import *
 
 FRAMES_PER_BUFFER = 1024  # number of frames in PyAudio buffer
 WAV_FILE = 'accompanist.wav'  # accompaniment WAV file
