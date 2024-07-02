@@ -4,6 +4,7 @@ from WavBeatTracker import *
 from AudioBuffer import *
 from VoiceCommandThread import *
 from BeatSynchronizer import *
+from tempo import *
 import traceback
 import sys
 import torch
@@ -66,6 +67,7 @@ def main():
                    minutes_elapsed_in_wav, seconds_elapsed_in_wav, minutes_long, seconds_long),
                   end="",
                   flush=True)
+            print("\nMic tempo: %.2f, Wav tempo: %.2f" % (tempo(buffer.get_last_frames(22050)), tempo(buffer.wav_data)))
             time.sleep(0.1)
 
     except Exception as e:
