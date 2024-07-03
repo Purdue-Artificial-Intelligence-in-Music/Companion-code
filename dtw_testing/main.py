@@ -14,8 +14,13 @@ def fast_dtw_test():
     print(duration)
 
     X = librosa.feature.chroma_cens(y=y, sr=sr)
-    noise = np.random.rand(X.shape[0], 200) # Random noise to vary Y from X
-    Y = np.concatenate((noise, noise, X, noise), axis=1) # Y is X but with noise added
+    noise = np.random.rand(X.shape[0], 3) # Random noise to vary Y from X
+    
+    print(noise)
+    print('----')
+    print(np.tile(noise, (1, 5)))
+    
+    Y = np.concatenate((np.tile(noise, (1, 100)), X, noise, noise, noise), axis=1) # Y is X but with noise added
 
     X = X.T #Transpose (not sure if this is okay but it lets fastdtw run)
     Y = Y.T # Fast dtw needs second dimension to be the same
@@ -50,9 +55,11 @@ def soft_dtw_test():
     loss = sdtw(x, y)  # Just like any torch.nn.xyzLoss()
 
     # Aggregate and call backward()
-    loss.mean().backward()
+    output = loss.mean().backward()
+    # forward_out = sdtw.forward(x, y)
     after = time.time()
-    print(loss)
+    # print(loss)
+    print(output)
     print(f"Soft DTW calculations for DTW took {after - before} seconds for a time series of {batch_size} batch size")
 
 
@@ -65,7 +72,7 @@ def librosa_test(plot=True):
 
     X = librosa.feature.chroma_cens(y=y, sr=sr)
     noise = np.random.rand(X.shape[0], 200) # Random noise to vary Y from X
-    Y = np.concatenate((noise, noise, X, noise), axis=1) # Y is X but with noise added
+    Y = np.concatenate((np.tile(noise, (1, 100)), X, noise, noise, noise), axis=1) # Y is X but with noise added
 
     
     print(X.shape)
@@ -75,7 +82,7 @@ def librosa_test(plot=True):
     
     before = time.time()
 
-    # D, wp, steps = librosa.sequence.dtw(X, Y, subseq=True, return_steps=True)
+    D, wp, steps = librosa.sequence.dtw(X, Y, subseq=True, return_steps=True, backtrack=True)
 
     #distance, path = fastdtw(X, Y, dist=euclidean)
     # print(distance)
@@ -108,6 +115,10 @@ def librosa_test(plot=True):
         plt.show()
         
         
-fast_dtw_test()
-# soft_dtw_test()
+# fast_dtw_test()
+soft_dtw_test()
 # librosa_test(True)
+
+# a = np.array([0,1,2])
+# out = np.tile(a,(3,1))
+# print(np.concatenate(out, axis=0))
