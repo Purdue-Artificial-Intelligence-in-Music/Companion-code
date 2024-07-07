@@ -18,10 +18,10 @@ class Synchronizer(Thread):
 
         generator = AudioGenerator(midi_file=midi_file)
         if not os.path.exists('soloist.wav'):
-            generator.generate_audio(output_path='soloist.wav', instrument='cello', inst_num=0)
+            generator.generate_audio(output_path='soloist.wav', midi_program=43, inst_num=0)
 
         if not os.path.exists('accompanist.wav'):
-            generator.generate_audio(output_path='accompanist.wav', instrument='violin', inst_num=1)
+            generator.generate_audio(output_path='accompanist.wav', midi_program=41, inst_num=1)
 
         self.score_follower = ScoreFollower(path='soloist.wav',
                                             sample_rate=sample_rate,
@@ -75,11 +75,11 @@ if __name__ == '__main__':
     synchronizer = Synchronizer(midi_file='midi_files/buns.mid',
                                 sample_rate=22050,
                                 channels=1,
-                                frames_per_buffer=1024,
+                                frames_per_buffer=4096,
                                 window_length=4096,
                                 c=10,
                                 max_run_count=3,
-                                diag_weight=0.4)
+                                diag_weight=1)
 
     # start the synchronizer
     synchronizer.start()
