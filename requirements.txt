@@ -41,7 +41,6 @@ soundfile==0.12.1
 SpeechRecognition==3.10.4
 tensorflow==2.13.0
 tensorflow_intel==2.13.0
-thread==2.0.3
 tornado==6.4.1
 transformers==4.41.2
 trove_classifiers==2024.5.22
