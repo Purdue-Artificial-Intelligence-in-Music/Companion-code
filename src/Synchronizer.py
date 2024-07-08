@@ -75,11 +75,11 @@ class Synchronizer(Thread):
     def update(self):
         """ """
         soloist_pos = self.score_follower.step()
-        accompanist_pos = self.player.index // self.window_length
+        accompanist_pos = int(self.player.index // self.window_length)
         error = accompanist_pos - soloist_pos
         if accompanist_pos > self.c:
             self.player.playback_rate = self.PID(error)
-        #  print(f'Soloist position: {soloist_pos}, Accompanist position {accompanist_pos}, Playback rate: {self.player.playback_rate}')
+        print(f'Soloist position: {soloist_pos}, Accompanist position {accompanist_pos}, Playback rate: {self.player.playback_rate}')
 
     def is_active(self):
         """ """

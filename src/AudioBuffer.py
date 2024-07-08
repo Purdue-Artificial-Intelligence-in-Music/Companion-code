@@ -49,6 +49,8 @@ class AudioBuffer(Thread):
         PyAudio object used to create the input stream
     stream : pyaudio.PyAudio.Stream
         Input stream to read audio from microphone
+    paused : bool
+        If True, read and write operations are paused
 
     """
     def __init__(self, sample_rate: int = 22050, channels: int = 1, frames_per_buffer: int = 1024, num_chunks: int = 100):
@@ -227,11 +229,11 @@ class AudioBuffer(Thread):
         return val_sum > self.on_threshold
     
     def pause(self):
-        """Pause but do not kill the thread."""
+        """Pause read and write operations"""
         self.paused = True
 
     def unpause(self):
-        """Unpause the thread."""
+        """Unpause read and write operations"""
         self.paused = False
 
     def stop(self):

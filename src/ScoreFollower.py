@@ -1,4 +1,4 @@
-from buffer import AudioBuffer
+from AudioBuffer import AudioBuffer
 import librosa
 from otw import OTW
 from threading import Thread
@@ -117,7 +117,7 @@ class ScoreFollower(Thread):
 
         # Read audio frames from the buffer
         audio = self.mic.read(self.window_length)
-        print(f'Read index: {self.mic.read_index}, Write index: {self.mic.write_index}, Count: {self.mic.count}')
+        # print(f'Read index: {self.mic.read_index}, Write index: {self.mic.write_index}, Count: {self.mic.count}')
         
         # Generate chroma feature
         chroma = self.get_chroma(audio)

@@ -13,7 +13,7 @@ from BeatNet_local.log_spect import LOG_SPECT
 from BeatNet_local.model import BDA
 import time
 import threading
-from buffer import *
+from AudioBuffer import *
 from BeatTracker import *
 
 class BeatNet_thread(BeatTracker):

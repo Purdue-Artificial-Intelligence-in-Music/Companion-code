@@ -1,6 +1,6 @@
 import threading
 import time
-from buffer import AudioBuffer
+from AudioBuffer import AudioBuffer
 from AudioPlayer import AudioPlayer
 import speech_recognition as sr         #Defunct?
 import pyttsx3                          #Defunct?

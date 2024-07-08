@@ -52,7 +52,7 @@ def main():
                     from BeatNet_local.BeatNet_thread import BeatNet_thread
                     from BeatSynchronizer import BeatSynchronizer
                     from WavBeatTracker import WavBeatTracker
-                    from buffer import AudioBuffer
+                    from AudioBuffer import AudioBuffer
                     from AudioPlayer import AudioPlayer
                     from VoiceCommandThread import VoiceAnalyzerThread
                     from BeatSynchronizer import BeatSynchronizer
