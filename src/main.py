@@ -7,7 +7,7 @@ import numpy as np
 def main():
 
     # create a synchronizer object
-    synchronizer = Synchronizer(path='ode_to_joy.musicxml',
+    synchronizer = Synchronizer(path='scores/ode_to_joy.musicxml',
                                 sample_rate=16000,
                                 channels=1,
                                 frames_per_buffer=4096,
