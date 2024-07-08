@@ -22,12 +22,6 @@ This class is a template class for a thread that reads in audio from PyAudio and
 This is version 2 of the code.
 '''
 
-# mic_data, _ = librosa.load('/home/shay/a/jorda227/Documents/Companion-code/audio_files/mountain_king.wav', sr=22050, mono=False)
-# if len(mic_data.shape) == 1:
-#     mic_data = mic_data.reshape(1, -1)
-# # mic_data = librosa.effects.time_stretch(mic_data, rate=0.75)
-# mic_index = 0
-
 def save_as_wav(filepath, sample_rate, audio):
     audio = audio.reshape((-1,))
     audio = (audio/np.max(audio) * (2 ** 31 - 1))
@@ -600,11 +594,6 @@ class AudioBuffer(threading.Thread):
 
         """
         input_array = np.frombuffer(in_data, dtype=self.dtype)
-        # global mic_data
-        # global mic_index
-        # input_array = mic_data[:, int(mic_index):int(mic_index+self.FRAMES_PER_BUFFER)]
-        # mic_index += self.FRAMES_PER_BUFFER
-        # mic_index %= mic_data.shape[1] - self.FRAMES_PER_BUFFER
 
         # Reshaping code to correct channels
         input_array = np.reshape(input_array, (self.CHANNELS, frame_count))

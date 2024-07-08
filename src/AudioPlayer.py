@@ -6,7 +6,7 @@ import numpy as np
 
 
 class AudioPlayer(Thread):
-    def __init__(self, path, sample_rate=22050, channels=1, frames_per_buffer=1024, playback_rate=1.0):
+    def __init__(self, path, sample_rate=16000, channels=1, frames_per_buffer=1024, playback_rate=1.0):
         super(AudioPlayer, self).__init__()
 
         # AUDIO

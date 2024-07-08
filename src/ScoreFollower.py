@@ -48,7 +48,7 @@ class ScoreFollower(Thread):
         Index of the next element from which audio frames will be read
 
     """
-    def __init__(self, path, sample_rate=22050, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
+    def __init__(self, path, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
         # Initialize parent class
         super(ScoreFollower, self).__init__()
         self.daemon = True

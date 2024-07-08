@@ -5,7 +5,7 @@ import time
 import librosa
 
 
-mic_audio, sr = librosa.load('soloist.wav', sr=22050, mono=True)
+mic_audio, sr = librosa.load('audio_files/ode_to_joy/soloist.wav', sr=22050, mono=True)
 mic_audio = librosa.effects.time_stretch(y=mic_audio, rate=0.9)
 mic_audio = mic_audio.reshape((1, -1))
 index = 0
@@ -74,6 +74,8 @@ class AudioBuffer(Thread):
         # PyAudio
         self.p = pyaudio.PyAudio()
         self.stream = None
+
+        self.paused = False
 
     def write(self, frames: np.ndarray):
         """
@@ -169,11 +171,10 @@ class AudioBuffer(Thread):
             Microphone audio frames
 
         """
-        # audio = np.frombuffer(in_data, dtype=np.float32)
-
-        global mic_audio, index
-        audio = mic_audio[:, index:index+frame_count]
-        index += frame_count
+        if self.paused:
+            return np.zeros((self.channels, frame_count)), pyaudio.paContinue
+        
+        audio = np.frombuffer(in_data, dtype=np.float32)
 
         # Reshape the audio into shape (channels, number of frames)
         audio = audio.reshape((self.channels, -1))
@@ -204,6 +205,35 @@ class AudioBuffer(Thread):
             return False
         return self.stream.is_active()
     
+    def audio_on(self, audio: np.array):
+        """Takes an audio input array and sets an instance variable saying whether the input is playing or not.
+
+        Parameters
+        ----------
+        audio : np.array
+            An array containing audio data
+        
+        Returns
+        -------
+        None
+            
+        """
+        audio = audio.astype(np.float64)
+        val_sum = 0.0
+        for col in audio.T:
+            val = np.dot(col, col)
+            val_sum += val
+        val_sum /= len(audio)
+        return val_sum > self.on_threshold
+    
+    def pause(self):
+        """Pause but do not kill the thread."""
+        self.paused = True
+
+    def unpause(self):
+        """Unpause the thread."""
+        self.paused = False
+
     def stop(self):
         """Close the PyAudio stream and terminate the PyAudio object. """
         self.stream.close()

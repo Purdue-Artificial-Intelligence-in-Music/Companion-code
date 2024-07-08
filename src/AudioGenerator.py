@@ -1,8 +1,8 @@
-from midi_ddsp_local import load_pretrained_model
-from ddsp_funcs import *
-import scipy
-import os
+from midi_ddsp import load_pretrained_model
+from midi_ddsp.utils.midi_synthesis_utils import synthesize_mono_midi
+from midi_ddsp.utils.audio_io import save_wav
 from xml2midi_conversion import process_score
+import os
 
 
 class AudioGenerator:
@@ -18,30 +18,23 @@ class AudioGenerator:
         self.synthesis_generator, self.expression_generator = load_pretrained_model()
         self.sample_rate = 16000
 
-    def save_as_wav(self, filepath, sample_rate, audio):
-        audio = audio.reshape((-1,))
-        audio = (audio/np.max(audio) * (2 ** 31 - 1))
-
-        audio = audio.astype(np.int32)
-        scipy.io.wavfile.write(filepath, sample_rate, audio)
-
-    def generate_audio(self, output_path, midi_program=41, inst_num=0):
+    def generate_audio(self, output_path, midi_program=41, instrument_id=0):
         output_dir = os.path.dirname(output_path)
 
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-
-        audio, conditioning_df, midi_synth_params = generate_audio_from_midi(self.synthesis_generator, 
-                                                                             self.expression_generator, 
-                                                                             self.midi_file, 
-                                                                             midi_program, 
-                                                                             inst_num)
-        audio = audio.numpy()
-        self.save_as_wav(output_path, self.sample_rate, audio)
-
+        
+        midi_audio, midi_control_params, midi_synth_params, conditioning_df = synthesize_mono_midi(synthesis_generator=self.synthesis_generator,
+                                                                                                   expression_generator=self.expression_generator,
+                                                                                                   midi_file=self.midi_file,
+                                                                                                   instrument_id=instrument_id,
+                                                                                                   output_dir=None,
+                                                                                                   pitch_offset=0,
+                                                                                                   display_progressbar=True)
+        save_wav(midi_audio[0].numpy(), output_path, 16000)
 
 
 if __name__ == '__main__':
     generator = AudioGenerator(path='ode_to_joy.musicxml')
-    generator.generate_audio(output_path='audio_files/ode_to_joy/solist.wav', midi_program=41, inst_num=0)
-    generator.generate_audio(output_path='audio_files/ode_to_joy/accompanist.wav', midi_program=42, inst_num=1)
+    generator.generate_audio(output_path='audio_files/ode_to_joy/solist.wav', midi_program=41, instrument_id=0)
+    generator.generate_audio(output_path='audio_files/ode_to_joy/accompanist.wav', midi_program=42, instrument_id=1)
