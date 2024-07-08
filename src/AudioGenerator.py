@@ -1,5 +1,4 @@
-from midi_ddsp import load_pretrained_model
-from midi_ddsp.utils.training_utils import set_seed
+from midi_ddsp_local import load_pretrained_model
 from ddsp_funcs import *
 import scipy
 import os
@@ -9,13 +8,13 @@ from xml2midi_conversion import process_score
 class AudioGenerator:
     def __init__(self, path):
         if path.endswith('.musicxml'):
-            self.midi_file = process_score(path)
+            title = os.path.basename(path)[:-9]
+            self.midi_file = process_score(input_path=path, output_path=f'midi_files/{title}.mid')
         elif path.endswith('.mid'):
             self.midi_file = path
         else:
             raise Exception('Error: AudioGenerator path must be to MusicXML or MIDI file')
 
-        set_seed(1)
         self.synthesis_generator, self.expression_generator = load_pretrained_model()
         self.sample_rate = 16000
 

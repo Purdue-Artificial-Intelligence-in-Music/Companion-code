@@ -162,7 +162,8 @@ def main():
                     import numpy as np
 
                     try:
-                        midi_output = process_score(score_path)
+                        title = os.path.basename(score_path)
+                        midi_output = process_score(input_path=score_path, output_path=f'midi_files/{title}.mid')
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt("Keyboard interrupt")
                     except Exception:
