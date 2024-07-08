@@ -8,7 +8,7 @@ import os
 
 class Synchronizer(Thread):
     """ """
-    def __init__(self, midi_file, sample_rate=22050, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
+    def __init__(self, path, sample_rate=22050, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
         # Initialize parent class
         super(Synchronizer, self).__init__()
         self.daemon = True
@@ -16,7 +16,7 @@ class Synchronizer(Thread):
         self.window_length = window_length
         self.c = c
 
-        generator = AudioGenerator(midi_file=midi_file)
+        generator = AudioGenerator(path=path)
         if not os.path.exists('soloist.wav'):
             generator.generate_audio(output_path='soloist.wav', midi_program=43, inst_num=0)
 
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     import numpy as np
 
     # create a synchronizer object
-    synchronizer = Synchronizer(midi_file='midi_files/buns.mid',
+    synchronizer = Synchronizer(path='midi_files/buns.mid',
                                 sample_rate=22050,
                                 channels=1,
                                 frames_per_buffer=4096,

@@ -162,7 +162,7 @@ def main():
                     import numpy as np
 
                     try:
-                        midi_output = process_score(score_path[:-9])
+                        midi_output = process_score(score_path)
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt("Keyboard interrupt")
                     except Exception:

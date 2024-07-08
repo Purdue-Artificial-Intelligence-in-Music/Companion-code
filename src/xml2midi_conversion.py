@@ -343,10 +343,16 @@ def update_artics(score_part, midi_part, beat_cdf):
             midi_part.control_changes.append(pm.ControlChange(cc_num, 0, ar[0]))
 
 
-def process_score(in_str):
-    score = converter.parse("".join([in_str, '.musicxml']))
-    _ = score.write('midi', "".join([in_str, '.midi']))
-    midi = pm.PrettyMIDI("".join([in_str, '.midi']))
+def process_score(musicxml):
+    if not musicxml.endswith('.musicxml'):
+        return
+    
+    title = musicxml[:-9]
+    
+    score = converter.parse(musicxml)
+    
+    _ = score.write('midi', title + '.mid')
+    midi = pm.PrettyMIDI(title + '.mid')
     
     tempo_markings = get_tempo_markings(score)
     beat_cdf = get_beat_cdf(tempo_markings)
@@ -362,10 +368,10 @@ def process_score(in_str):
     #randomize_note_times(midi=midi, mean_shift=0, stdev_shift=0.04, mean_dur=1, stdev_dur=0.02)
     add_pitch_bends(midi=midi, lambda_occur=2, mean_delta=0, stdev_delta=np.sqrt(500), step_size=0.01)
     #add_screwups(midi=midi, lambda_occur=0.03, stdev_pitch_delta=1)
-    print("".join([in_str, '_modified.midi']))
-    midi.write("".join([in_str, '_modified.midi']))
+    midi_file = title + '_modified.mid'
+    midi.write(midi_file)
     
-    pass
+    return midi_file
 
 def remove_notes(midi, time, delta):
     for inst in midi.instruments:
