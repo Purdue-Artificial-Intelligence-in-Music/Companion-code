@@ -6,9 +6,51 @@ import numpy as np
 
 
 class AudioPlayer(Thread):
+    """Class to play audio file
+
+    Parameters
+    ----------
+    path : str
+        Path to audio file
+    sample_rate : int, optional
+        Sample rate for audio file
+    channels : int, optional
+        Number of channels for audio file
+    frames_per_buffer : int, optional
+        Number of frames per buffer for PyAudio stream
+    playback_rate : float, optional
+        Multiplier for playback speed of audio file
+    
+    Attributes
+    ----------
+    path : str
+        Path to audio file
+    sample_rate : int
+        Sample rate for audio file
+    channels : int
+        Number of channels for audio file
+    frames_per_buffer : int
+        Number of frames per buffer for PyAudio stream
+    playback_rate : float
+        Multiplier for playback speed of audio file
+    audio : np.ndarray
+        Numpy array containing audio frames of shape (channels, number of frames)
+    audio_len : int
+        Number of audio frames in audio
+    p : 
+        PyAudio object
+    stream :
+        PyAudio stream
+    index : int
+        Index of next audio frame to play
+    paused : bool
+        True if audio playback is paused. False otherwise.
+    
+    """
     def __init__(self, path, sample_rate=16000, channels=1, frames_per_buffer=1024, playback_rate=1.0):
         super(AudioPlayer, self).__init__()
-
+        self.daemon=True
+        
         # AUDIO
         self.path = path
         self.sample_rate = sample_rate
@@ -36,7 +78,6 @@ class AudioPlayer(Thread):
         self.frames_per_buffer = frames_per_buffer
         self.playback_rate = playback_rate
         self.paused = False
-        self.daemon=True
 
     def fade_in(self, audio, num_frames):
         """Fades in an audio segment.
@@ -51,6 +92,7 @@ class AudioPlayer(Thread):
         Returns
         -------
         None
+        
         """
         num_frames = min(audio.shape[1], num_frames)
         fade_curve = np.log(np.linspace(1, np.e, num_frames))
@@ -71,6 +113,7 @@ class AudioPlayer(Thread):
         Returns
         -------
         None
+        
         """
         num_frames = min(audio.shape[1], num_frames)
         start = audio.shape[1] - num_frames
@@ -80,6 +123,24 @@ class AudioPlayer(Thread):
             channel *= fade_curve
 
     def callback(self, in_data, frame_count, time_info, status):
+        """Called when PyAudio stream needs audio frames to play
+
+        Parameters
+        ----------
+        in_data : 
+            
+        frame_count : int
+            Number of audio frames that must be returned
+        time_info :
+            
+        status :
+            
+
+        Returns
+        -------
+        np.ndarray, PortAudio Callback Return Code
+            Audio frames to be played by PyAudio stream
+        """
         # If len(data) is less than requested frame_count, PyAudio automatically
         # assumes the stream is finished, and the stream stops.
         
@@ -113,8 +174,8 @@ class AudioPlayer(Thread):
         return audio_segment, pyaudio.paContinue
     
     def run(self):
+        """Open a PyAudio output stream. """
 
-        # Open an output stream
         self.stream = self.p.open(format=pyaudio.paFloat32,
                                   channels=self.channels,
                                   rate=self.sample_rate,
@@ -124,6 +185,7 @@ class AudioPlayer(Thread):
                                   frames_per_buffer=self.frames_per_buffer)
         
     def is_active(self):
+        """Return True if the PyAudio stream is active. False otherwise. """
         if self.stream is None:
             return False
         return self.stream.is_active()
@@ -137,6 +199,7 @@ class AudioPlayer(Thread):
         self.paused = False
 
     def stop(self):
+        """Close the PyAudio stream and terminate the PyAudio object. """
         self.stream.close()
         self.p.terminate()
 

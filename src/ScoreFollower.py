@@ -28,24 +28,28 @@ class ScoreFollower(Thread):
     max_run_count : int, optional
         Slope constraint for online DTW (1/max_run_count to max_run_count)
     diag_weight : int, optional
-        Index of the next element from which audio frames will be read
+        Diagonal weight for OTW. Values less than 2 bias toward diagonal steps.
 
     Attributes
     ----------
-    sample_rate : int, optional
+    sample_rate : int
         Sample rate of the audio buffer
-    channels : int, optional
+    channels : int
         Number of channels
-    frames_per_buffer : int, optional
+    frames_per_buffer : int
         Number of frames per buffer for PyAudio stream
-    window_length : int, optional
+    window_length : int
         Number of frames per chroma feature
-    c : int, optional
-        Width of online DTW search
-    max_run_count : int, optional
-        Slope constraint for online DTW (1/max_run_count to max_run_count)
-    diag_weight : int, optional
-        Index of the next element from which audio frames will be read
+    mic : int
+        AudioBuffer object to store microphone audio
+    chroma_maker : ChromaMaker
+        ChromaMaker object to create CENS features
+    ref : np.ndarray
+        Reference sequence of CENS feaures
+    otw : OTW
+        OTW object to align live features with reference sequence
+    path : list
+        Alignment path between live and reference sequences
 
     """
     def __init__(self, path, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):

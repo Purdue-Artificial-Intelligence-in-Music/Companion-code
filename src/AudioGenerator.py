@@ -6,6 +6,23 @@ import os
 
 
 class AudioGenerator:
+    """Class to generate audio from MusicXML and MIDI scores
+
+    Parameters
+    ----------
+    path : str
+        Path to MusicXML or MIDI score
+
+    Attributes
+    ----------
+    midi_file : str
+        Path to MIDI file
+    synthesis_generator : MIDIExpressionAE
+        MIDI-DDSP synthesis generator object
+    expression_generator : ExpressionGenerator
+        MIDI-DDSP expression generator object
+        
+    """
     def __init__(self, path):
         if path.endswith('.musicxml'):
             title = os.path.basename(path)[:-9]
@@ -16,9 +33,26 @@ class AudioGenerator:
             raise Exception('Error: AudioGenerator path must be to MusicXML or MIDI file')
 
         self.synthesis_generator, self.expression_generator = load_pretrained_model()
-        self.sample_rate = 16000
 
     def generate_audio(self, output_path, midi_program=41, instrument_id=0):
+        """
+
+        Parameters
+        ----------
+        output_path : str
+            Path for generated audio file
+        midi_program : int
+            MIDI program number
+             (Default value = 41)
+        instrument_id : int
+            Select instrument in MIDI file
+             (Default value = 0) 
+
+        Returns
+        -------
+        None
+        
+        """
         output_dir = os.path.dirname(output_path)
 
         if not os.path.exists(output_dir):

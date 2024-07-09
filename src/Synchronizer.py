@@ -7,7 +7,40 @@ import os
 
 
 class Synchronizer(Thread):
-    """ """
+    """Synchronize microphone and accompaniment audio
+
+    Parameters
+    ----------
+    path : str
+        Path to audio file
+    sample_rate : int, optional
+        Sample rate for audio file
+    channels : int, optional
+        Number of channels for audio file
+    frames_per_buffer : int, optional
+        Number of frames per buffer for PyAudio stream
+    window_length : int, optional
+        Window length for CENS feature generation
+    c : int, optional
+        Search width for OTW
+    max_run_count : int, optional
+        Slope constraint for OTW
+    diag_weight : int, optional
+        Diagonal weight for OTW. Values less than 2 bias toward diagonal steps.
+    
+    Attributes
+    ----------
+    window_length : int
+        Window length for CENS feature generation
+    c : int
+        Search width for OTW
+    score_follower : ScoreFollower
+        ScoreFollower object to perform OTW
+    player : AudioPlayer
+        AudioPlayer object to play accompaniment
+    PID : simple_pid.PID
+        PID controller to adjust playback rate
+    """
     def __init__(self, path, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
         # Initialize parent class
         super(Synchronizer, self).__init__()
@@ -63,17 +96,17 @@ class Synchronizer(Thread):
         self.PID.sample_time = window_length / sample_rate
         
     def run(self):
-        """ """
+        """Start the score follower and audio player. """
         self.score_follower.start()
         self.player.start()
 
     def stop(self):
-        """ """
+        """Stop the score follower and audio player """
         self.score_follower.stop()
         self.player.stop()
 
     def update(self):
-        """ """
+        """Update the audio player playback rate  """
         soloist_pos = self.score_follower.step()
         accompanist_pos = int(self.player.index // self.window_length)
         error = accompanist_pos - soloist_pos
@@ -82,7 +115,7 @@ class Synchronizer(Thread):
         print(f'Soloist position: {soloist_pos}, Accompanist position {accompanist_pos}, Playback rate: {self.player.playback_rate}')
 
     def is_active(self):
-        """ """
+        """Return True if score follower and audio player are both active. False otherwise. """
         return self.score_follower.is_active() and self.player.is_active()
 
 
