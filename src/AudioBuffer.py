@@ -48,8 +48,7 @@ class AudioBuffer(Thread):
     """
     def __init__(self, sample_rate: int = 22050, channels: int = 1, frames_per_buffer: int = 1024, num_chunks: int = 100):
         # Initialize parent class
-        super(AudioBuffer, self).__init__()
-        self.daemon = True
+        super(AudioBuffer, self).__init__(daemon=True)
 
         # Params
         self.sample_rate = sample_rate 
@@ -73,7 +72,7 @@ class AudioBuffer(Thread):
         self.paused = False
 
     def write(self, frames: np.ndarray):
-        """
+        """Write audio frames to buffer.
 
         Parameters
         ----------
@@ -102,7 +101,7 @@ class AudioBuffer(Thread):
         # Increment the write index
         self.write_index = (self.write_index + num_frames) % self.length
 
-        # Increase the count
+        # Increase the count. The count can never be greater than the length of the buffer
         self.count = min(self.count + num_frames, self.length)
 
     def read(self, num_frames: int) -> np.ndarray:
@@ -132,7 +131,7 @@ class AudioBuffer(Thread):
             # Wrap around to the front of the buffer
             frames_from_start = self.buffer[:, :temp]
 
-            # Concatenate frames
+            # Concatenate frames from end and start of buffer
             frames = np.concatenate((frames_from_end, frames_from_start), axis=1)
         else:
             # Read frames all at once
@@ -148,7 +147,7 @@ class AudioBuffer(Thread):
         return frames
 
     def callback(self, in_data, frame_count, time_info, status):
-        """Called whenever PyAudio stream
+        """Called whenever PyAudio stream receives a new batch of audio frames
 
         Parameters
         ----------
