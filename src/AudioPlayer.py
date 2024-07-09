@@ -141,7 +141,7 @@ class AudioPlayer(Thread):
         self.p.terminate()
 
 if __name__ == '__main__':
-    player = AudioPlayer(path='audio_files/buns_viola.wav')
+    player = AudioPlayer(path='audio/imperial_march.wav')
     player.start()
     
     while not player.is_active():

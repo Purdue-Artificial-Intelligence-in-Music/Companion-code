@@ -27,14 +27,14 @@ class Synchronizer(Thread):
         title = os.path.basename(path)[:-9]
 
         # Path to soloist audio
-        soloist_path = os.path.join('audio_files', title, 'soloist.wav')
+        soloist_path = os.path.join('audio', title, 'soloist.wav')
 
         # If the soloist audio does not exist, generate it
         if not os.path.exists(soloist_path):
             generator.generate_audio(output_path=soloist_path, midi_program=43, instrument_id=0)
 
         # Path to accompanist audio
-        accompanist_path = os.path.join('audio_files', title, 'accompanist.wav')
+        accompanist_path = os.path.join('audio', title, 'accompanist.wav')
 
         # If the accompanist audio does not exist, generate it
         if not os.path.exists(accompanist_path):
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     import numpy as np
 
     # create a synchronizer object
-    synchronizer = Synchronizer(path='ode_to_joy.musicxml',
+    synchronizer = Synchronizer(path='scores/ode_to_joy.musicxml',
                                 sample_rate=16000,
                                 channels=1,
                                 frames_per_buffer=4096,

@@ -9,7 +9,7 @@ class AudioGenerator:
     def __init__(self, path):
         if path.endswith('.musicxml'):
             title = os.path.basename(path)[:-9]
-            self.midi_file = process_score(input_path=path, output_path=f'midi_files/{title}.mid')
+            self.midi_file = process_score(input_path=path, output_path=f'midi/{title}.mid')
         elif path.endswith('.mid'):
             self.midi_file = path
         else:
@@ -36,5 +36,5 @@ class AudioGenerator:
 
 if __name__ == '__main__':
     generator = AudioGenerator(path='ode_to_joy.musicxml')
-    generator.generate_audio(output_path='audio_files/ode_to_joy/solist.wav', midi_program=41, instrument_id=0)
-    generator.generate_audio(output_path='audio_files/ode_to_joy/accompanist.wav', midi_program=42, instrument_id=1)
+    generator.generate_audio(output_path='audio/ode_to_joy/solist.wav', midi_program=41, instrument_id=0)
+    generator.generate_audio(output_path='audio/ode_to_joy/accompanist.wav', midi_program=42, instrument_id=1)

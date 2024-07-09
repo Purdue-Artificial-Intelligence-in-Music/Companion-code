@@ -2,13 +2,6 @@ from threading import Thread
 import pyaudio
 import numpy as np
 import time
-import librosa
-
-
-mic_audio, sr = librosa.load('audio_files/ode_to_joy/soloist.wav', sr=22050, mono=True)
-mic_audio = librosa.effects.time_stretch(y=mic_audio, rate=0.9)
-mic_audio = mic_audio.reshape((1, -1))
-index = 0
 
 
 class AudioBuffer(Thread):
