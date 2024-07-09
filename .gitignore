@@ -164,7 +164,11 @@ cython_debug/
 
 .vscode/
 
+
+# audio files
+audio/
 */*.mp3
+*.wav
 */*.wav
 **/*/*.wav
 
@@ -179,6 +183,8 @@ cython_debug/
 **/*/*.mxl
 **/*/.idea
 beat_cache
+*.mid
+madmom/
 
 **/*/*.yml
 
