@@ -2,10 +2,7 @@ import threading
 import time
 from AudioBuffer import AudioBuffer
 from AudioPlayer import AudioPlayer
-import speech_recognition as sr         #Defunct?
-import pyttsx3                          #Defunct?
 import numpy as np
-from nltk.stem import PorterStemmer     #Defunct?
 from transformers import pipeline
 
 import argparse
@@ -24,10 +21,7 @@ class VoiceAnalyzerThread(threading.Thread):
         self.buffer = buffer
         self.player = player
         self.stop_request = False
-        self.r = sr.Recognizer()        #Defunct?
-        self.ps = PorterStemmer()       #Defunct?
         self.output = ""
-        self.voice_length = voice_length #Defunct?
         # Initialize whatever stuff you need here
 
         #The following are all related to the use of Vosk and voice commanding
@@ -48,12 +42,6 @@ class VoiceAnalyzerThread(threading.Thread):
         # Initialize the zero-shot classification pipeline with the Roberta model
         self.classifier = pipeline('zero-shot-classification', model='roberta-large-mnli')
 
-    def convert_to_AudioData(self, arr: np.ndarray): #Defunct?
-        # sample_width=2 relies on the fact that AudioThreadWithBuffer's format is PyAudio.paFloat32, which has 4 bytes per sample
-        return sr.AudioData(frame_data=arr.tobytes(), 
-                            sample_rate=self.buffer.sample_rate, 
-                            sample_width=4)
-    
     def int_or_str(text):
     #Helper function for argument parsing, it allows for numbers to be converted into ints
         try:
@@ -160,76 +148,6 @@ class VoiceAnalyzerThread(threading.Thread):
                 #Also possibly add an "Undo" command that can just reverse the last command sent?
                 #But only for custom commands?
             print("Run the user's defined command")
-
-
-    """
-    #TODO: Verify this code isn't needed anymore and remove it
-    """
-    # Function to convert text to
-    # speech
-    def SpeakText(command: str):
-        # Initialize the engine
-        engine = pyttsx3.init()
-        engine.say(command)
-        engine.runAndWait()
-
-    """
-    #TODO: Verify this code isn't needed anymore and remove it as run now should just do this
-    """
-    def getSpeech(self, audio: sr.AudioData):
-        # Exception handling to handle
-        # exceptions at the runtime
-        try:
-            # Using google to recognize audio
-            MyText = self.r.recognize_google(audio)
-            MyText = MyText.lower()
-            spokenWords = np.array(MyText.split())
-            
-
-            # TODO: Process the command and act upon the AudioBuffer
-            # MVP: Get start and stop to work
-
-            if self.output == "start":
-
-                print("start")
-                #If audio is not playing from the AudioBuffer, then start playing audio
-                self.buffer.unpause()
-                self.player.unpause()
-
-            elif self.output == "stop":
-
-                print("stop")
-                #Still run Buffer in the background, but don't play audio
-                self.buffer.pause()
-                self.player.pause()
-
-            elif self.output == "exit":
-
-                print("Detected interrupt")
-                #Stop both voice and buffer
-                self.stop_request = True
-                self.buffer.stop()
-                self.player.stop()
-
-            else:
-                #TODO: Look into ways to use LLM to create commands and have the code be able to run them
-                #Maybe have the user provide smaller step by step requests to gain a better chance of the command working
-                #^ like the idea provided by ()
-
-                #Also possibly add an "Undo" command that can just reverse the last command sent?
-                #But only for custom commands?
-                print("Run the user's defined command")
-
-            self.output = ""
-
-        except sr.RequestError as e:
-            print("Could not request results; {0}".format(e))
-            self.stop_request = True
-        except sr.UnknownValueError:
-            print("unknown error occurred")
-            self.stop_request = True
-
-        self.output = ""
 
     def run(self):
         """
@@ -346,20 +264,3 @@ class VoiceAnalyzerThread(threading.Thread):
             
         except Exception as e:
             parser.exit(type(e).__name__ + ": " + str(e))
-
-# def main():
-#     #Todo: Change to your file path
-#     AThread = AudioBuffer(name="AThread", frames_per_buffer=1024, 
-#                                     wav_file = "new_src\hunt.wav",
-#                                     process_func=(lambda x, y, z: z))
-#     VThread = VoiceAnalyzerThread(BUFFER=AThread, name = "Vthread")
-#     try:
-#         AThread.start()
-#         VThread.start()
-#     except KeyboardInterrupt:
-#         AThread.stop_request = True
-#         VThread.stop_request = True
-
-
-# if __name__ == "__main__":
-#     main()
