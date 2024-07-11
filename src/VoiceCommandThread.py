@@ -37,6 +37,7 @@ class VoiceAnalyzerThread(threading.Thread):
             "start": "The action involves beginning something.",
             "exit": "The action involves the termination of something.",
             #"edit": "The action involves changing something."
+            #"deafen": "The action involves the termination of listening"
         }
 
         # Initialize the zero-shot classification pipeline with the Roberta model
@@ -139,6 +140,17 @@ class VoiceAnalyzerThread(threading.Thread):
             self.stop_request = True
             self.buffer.stop()
             self.player.stop()
+
+        #TODO: Capture the % wanted for speed up and slow down
+        elif command == "speed up":
+
+            print("now 10 percent faster")
+            self.player.playback_rate = self.player.playback_rate * 1.1
+
+        elif command == "slow down":
+
+            print("now 10 percent slower")
+            self.player.playback_rate = self.player.playback_rate * 0.9
 
         else:
             #TODO: Look into ways to use LLM to create commands and have the code be able to run them
