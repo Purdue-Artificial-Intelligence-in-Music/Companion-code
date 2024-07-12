@@ -79,6 +79,8 @@ class AudioPlayer(Thread):
         self.playback_rate = playback_rate
         self.paused = False
 
+        self.audio_log = np.array([[]])
+
     def fade_in(self, audio, num_frames):
         """Fades in an audio segment.
 
@@ -167,6 +169,8 @@ class AudioPlayer(Thread):
         self.fade_in(audio_segment, num_frames=fade_size)
         self.fade_out(audio_segment, num_frames=fade_size)
         
+        self.audio_log = np.append(self.audio_log, audio_segment, axis=1)
+        
         # no more audio to read
         if audio_segment.shape[-1] < frame_count:
             return audio_segment, pyaudio.paComplete
@@ -204,7 +208,7 @@ class AudioPlayer(Thread):
         self.p.terminate()
 
 if __name__ == '__main__':
-    player = AudioPlayer(path='audio/imperial_march.wav')
+    player = AudioPlayer(path='audio/cello1.wav', playback_rate=0.9)
     player.start()
     
     while not player.is_active():

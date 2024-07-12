@@ -52,10 +52,9 @@ class ScoreFollower(Thread):
         Alignment path between live and reference sequences
 
     """
-    def __init__(self, path, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
+    def __init__(self, path, source=None, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
         # Initialize parent class
-        super(ScoreFollower, self).__init__()
-        self.daemon = True
+        super(ScoreFollower, self).__init__(daemon=True)
 
         self.sample_rate = sample_rate
         self.channels = channels
@@ -63,13 +62,14 @@ class ScoreFollower(Thread):
         self.window_length = window_length
 
         # Create buffer for microphone audio
-        self.mic = AudioBuffer(sample_rate=sample_rate,
+        self.mic = AudioBuffer(source=source,
+                               sample_rate=sample_rate,
                                channels=channels,
                                frames_per_buffer=frames_per_buffer,
                                num_chunks=100)
         
         # Load reference audio
-        ref_audio, _ = librosa.load(path, sr=22050)
+        ref_audio, _ = librosa.load(path, sr=sample_rate)
         self.chroma_maker = ChromaMaker(sr=sample_rate, n_fft=window_length)
 
         # Generate chroma features for reference audio with no over lap
@@ -115,7 +115,7 @@ class ScoreFollower(Thread):
         while self.mic.count < self.window_length:
             # If the mic is not active, return the last position in the reference audio
             if not self.mic.is_active():
-                return self.otw.j
+                return self.otw.j, self.otw.t
             # If the mic is active, wait for more audio frames
             time.sleep(0.01)
 
@@ -133,7 +133,7 @@ class ScoreFollower(Thread):
         self.path.append((j, self.otw.t))
 
         # Return position in reference audio
-        return j
+        return j, self.otw.t
 
     def run(self):
         """Start the microphone input stream. """
@@ -142,15 +142,17 @@ class ScoreFollower(Thread):
     def stop(self):
         """Stop the microphone input stream. """
         self.mic.stop()
+        self.mic.join()
 
     def is_active(self):
         """Return True if the microphone input stream is active and we have not reached the end of the otw buffer"""
         return self.mic.is_active() and self.otw.t < self.otw.live.shape[-1] - 1
+        # return self.otw.j < self.ref.shape[-1] - 1
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    follower = ScoreFollower(path='soloist.wav', 
-                             sample_rate=22050,
+    follower = ScoreFollower(path='audio/Air_on_the_G_String/track0.wav', 
+                             sample_rate=16000,
                              channels=1,
                              frames_per_buffer=1024,
                              window_length=4096,
@@ -166,10 +168,24 @@ if __name__ == '__main__':
     try:
         while follower.is_active():
             follower.step()
+            print(follower.mic.count)
+            print(f'Live index: {follower.otw.t}, Ref index: {follower.otw.j}/{follower.ref.shape[-1] - 1}')
     except KeyboardInterrupt:
         follower.stop()
+        follower.join()
 
-    indices = np.asarray(follower.path).T
-    follower.otw.D[(indices[0], indices[1])] = np.inf
-    plt.imshow(follower.otw.D)
+    # indices = np.asarray(follower.path).T
+    # follower.otw.D[(indices[0], indices[1])] = np.inf
+    # plt.imshow(follower.otw.D)
+    # plt.show()
+
+    t = follower.otw.t
+    fig, axes = plt.subplots(2, 1, sharex=False, sharey=True)
+    mic_chroma = np.flip(follower.otw.live[:, :t], axis=0)
+    ref_chroma = np.flip(follower.otw.ref, axis=0)
+
+    print(mic_chroma.shape)
+    print(ref_chroma.shape)
+    axes[0].imshow(mic_chroma)
+    axes[1].imshow(ref_chroma)
     plt.show()
