@@ -11,7 +11,7 @@ class WorkerThread(QThread):
 
     def __init__(self):
         super().__init__()
-        self.player = AudioPlayer('audio_files/imperial_march.wav')
+        self.player = AudioPlayer('audio/Air_on_the_G_String/track0.wav')
         self.playback_rate = Signal(int)
         print(self.player.audio.shape)
         self.chroma_cens = audio_to_np_cens(self.player.audio.reshape((-1,)), sr=self.player.sample_rate, n_fft=1024, hop_len=1024)

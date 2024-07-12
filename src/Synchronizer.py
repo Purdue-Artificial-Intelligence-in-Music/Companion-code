@@ -3,7 +3,11 @@ from ScoreFollower import ScoreFollower
 from AudioGenerator import AudioGenerator
 from simple_pid import PID
 from threading import Thread
+from midi_ddsp.utils.audio_io import save_wav
+import soundfile
 import os
+import numpy as np
+import librosa
 
 
 class Synchronizer(Thread):
@@ -11,8 +15,12 @@ class Synchronizer(Thread):
 
     Parameters
     ----------
-    path : str
-        Path to audio file
+    score : str
+        Path to score
+    source : str, optional
+        Path to soloist recording. If None, use mic audio.
+    output : str, optional
+        Path to output file for performance recording. If None, use score title.
     sample_rate : int, optional
         Sample rate for audio file
     channels : int, optional
@@ -41,40 +49,48 @@ class Synchronizer(Thread):
     PID : simple_pid.PID
         PID controller to adjust playback rate
     """
-    def __init__(self, path, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
+    def __init__(self, score, source=None, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
         # Initialize parent class
-        super(Synchronizer, self).__init__()
-        self.daemon = True
+        super(Synchronizer, self).__init__(daemon=True)
 
+        self.sample_rate = sample_rate
         self.window_length = window_length
         self.c = c
 
         # Check that musicxml score was provided
-        if not path.endswith('.musicxml'):
+        if not score.endswith('.musicxml'):
             raise Exception("Error: Synchronizer path must be for uncompressed MusicXML score (.musicxml)")
         
         # Create an AudioGenerator object
-        generator = AudioGenerator(path=path)
+        generator = AudioGenerator(path=score)
 
         # Get the title of the score
-        title = os.path.basename(path)[:-9]
+        title = os.path.basename(score)[:-9]
 
         # Path to soloist audio
-        soloist_path = os.path.join('audio', title, 'soloist.wav')
+        self.output_dir = os.path.join('audio', title)
+        soloist_path = os.path.join(self.output_dir, 'track0.wav')
+        accompanist_path = os.path.join(self.output_dir, 'track1.wav')
 
+        
         # If the soloist audio does not exist, generate it
-        if not os.path.exists(soloist_path):
-            generator.generate_audio(output_path=soloist_path, midi_program=43, instrument_id=0)
+        if not os.path.exists(self.output_dir):
 
-        # Path to accompanist audio
-        accompanist_path = os.path.join('audio', title, 'accompanist.wav')
-
-        # If the accompanist audio does not exist, generate it
-        if not os.path.exists(accompanist_path):
-            generator.generate_audio(output_path=accompanist_path, midi_program=41, instrument_id=1)
-
+            # If there is a source audio file
+            if source is not None:
+                # calculate the length of the audio file
+                frames, _ = librosa.load(source, mono=True, sr=sample_rate)
+                num_frames = frames.shape[-1]
+                target_length = num_frames / sample_rate
+            else:
+                target_length = None
+            
+            # Synthesize audio from midi file
+            generator.generate_audio(output_dir=self.output_dir, target_length=target_length)
+            
         # ScoreFollower needs soloist audio
         self.score_follower = ScoreFollower(path=soloist_path,
+                                            source=source,
                                             sample_rate=sample_rate,
                                             channels=channels,
                                             frames_per_buffer=frames_per_buffer,
@@ -104,52 +120,47 @@ class Synchronizer(Thread):
         """Stop the score follower and audio player """
         self.score_follower.stop()
         self.player.stop()
+        self.score_follower.join()
+        self.player.join()
 
     def update(self):
         """Update the audio player playback rate  """
-        soloist_pos = self.score_follower.step()
-        accompanist_pos = int(self.player.index // self.window_length)
-        error = accompanist_pos - soloist_pos
-        if accompanist_pos > self.c:
-            self.player.playback_rate = self.PID(error)
-        print(f'Soloist position: {soloist_pos}, Accompanist position {accompanist_pos}, Playback rate: {self.player.playback_rate}')
+        ref_index, live_index = self.score_follower.step()
+
+        error = self.accompanist_time() - self.predicted_time()
+        playback_rate = self.PID(error)
+        if live_index > self.c:
+            self.player.playback_rate = playback_rate
 
     def is_active(self):
         """Return True if score follower and audio player are both active. False otherwise. """
-        return self.score_follower.is_active() and self.player.is_active()
-
-
-if __name__ == '__main__':
-    import time
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    # create a synchronizer object
-    synchronizer = Synchronizer(path='scores/ode_to_joy.musicxml',
-                                sample_rate=16000,
-                                channels=1,
-                                frames_per_buffer=4096,
-                                window_length=4096,
-                                c=10,
-                                max_run_count=3,
-                                diag_weight=1)
-
-    # start the synchronizer
-    synchronizer.start()
-
-    # wait until the synchronizer is active
-    while not synchronizer.is_active():
-        time.sleep(0.01)
-
-    try:
-        while synchronizer.is_active():
-            # update the playback rate of the accompaniment
-            synchronizer.update()
-    except KeyboardInterrupt:
-        synchronizer.stop()
-
-    indices = np.asarray(synchronizer.score_follower.path).T
-    synchronizer.score_follower.otw.D[(indices[0], indices[1])] = np.inf
-    plt.imshow(synchronizer.score_follower.otw.D)
-    plt.show()
+        return self.score_follower.is_active() #and self.player.is_active()
     
+    def soloist_time(self):
+        return self.score_follower.mic.total / self.score_follower.mic.sample_rate
+
+    def predicted_time(self):
+        return self.score_follower.otw.j * self.window_length / self.sample_rate
+    
+    def accompanist_time(self):
+        return self.player.index / self.player.sample_rate
+    
+    def save_performance(self):
+        # Get the audio logs
+        mic_log = self.score_follower.mic.audio_log
+        player_log = self.player.audio_log
+
+        # Trim the audio logs to be the same length
+        length = min(mic_log.shape[-1], player_log.shape[-1])
+        mic_log = mic_log[:, :length]
+        player_log = player_log[:, :length]
+
+        # Normalize and combine logs
+        mic_log /= np.max(mic_log)
+        player_log /= np.max(player_log)
+        audio = mic_log + player_log
+        audio = audio.reshape((-1, ))
+
+        # Save performance to wave file
+        output_path = os.path.join(self.output_dir, 'performance.wav')
+        soundfile.write(output_path, audio, self.sample_rate)

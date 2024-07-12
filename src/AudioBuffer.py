@@ -2,7 +2,7 @@ from threading import Thread
 import pyaudio
 import numpy as np
 import time
-
+import librosa
 
 class AudioBuffer(Thread):
     """Thread to save microphone audio to a circular buffer.
@@ -46,7 +46,7 @@ class AudioBuffer(Thread):
         If True, read and write operations are paused
 
     """
-    def __init__(self, sample_rate: int = 22050, channels: int = 1, frames_per_buffer: int = 1024, num_chunks: int = 100):
+    def __init__(self, source=None, sample_rate: int = 16000, channels: int = 1, frames_per_buffer: int = 1024, num_chunks: int = 100):
         # Initialize parent class
         super(AudioBuffer, self).__init__(daemon=True)
 
@@ -56,6 +56,16 @@ class AudioBuffer(Thread):
         self.frames_per_buffer = frames_per_buffer
         self.num_chunks = num_chunks
 
+        self.audio = None
+        self.audio_index = 0
+        if source is not None:
+            # Check for mono audio
+            mono = channels == 1
+            self.audio, _ = librosa.load(source, sr=sample_rate, mono=mono)
+            # Reshape mono audio. Multi-channel audio should already be in the correct shape
+            if mono:
+                self.audio = self.audio.reshape((1, -1))
+            
         # Create buffer
         self.length = num_chunks * frames_per_buffer
         self.buffer = np.zeros((channels, self.length))
@@ -64,12 +74,15 @@ class AudioBuffer(Thread):
         self.write_index = 0
         self.read_index = 0
         self.count = 0
+        self.total = 0
 
         # PyAudio
         self.p = pyaudio.PyAudio()
         self.stream = None
 
         self.paused = False
+
+        self.audio_log = np.array([[]])
 
     def write(self, frames: np.ndarray):
         """Write audio frames to buffer.
@@ -103,6 +116,10 @@ class AudioBuffer(Thread):
 
         # Increase the count. The count can never be greater than the length of the buffer
         self.count = min(self.count + num_frames, self.length)
+        self.total += num_frames
+        
+        if self.count == self.length:
+            print("Buffer is full")
 
     def read(self, num_frames: int) -> np.ndarray:
         """Returns the specified number of frames from the buffer starting at the read index.
@@ -168,7 +185,12 @@ class AudioBuffer(Thread):
         if self.paused:
             return np.zeros((self.channels, frame_count)), pyaudio.paContinue
         
-        audio = np.frombuffer(in_data, dtype=np.float32)
+        if self.audio is not None:
+            audio = self.audio[:, self.audio_index:self.audio_index + frame_count]
+            self.audio_index += frame_count
+            # self.audio_index %= self.length
+        else:
+            audio = np.frombuffer(in_data, dtype=np.float32)
 
         # Reshape the audio into shape (channels, number of frames)
         audio = audio.reshape((self.channels, -1))
@@ -176,6 +198,7 @@ class AudioBuffer(Thread):
         # Write the audio to the buffer
         self.write(audio)
 
+        self.audio_log = np.append(self.audio_log, audio, axis=1)
         # If the number of frames is not equal to frame _count, close the stream
         if audio.shape[-1] != frame_count:
             return audio, pyaudio.paComplete
@@ -235,10 +258,11 @@ class AudioBuffer(Thread):
 
         
 if __name__ == '__main__':
-    buffer = AudioBuffer(sample_rate=22050,
+    buffer = AudioBuffer(sample_rate=16000,
                          channels=1,
                          frames_per_buffer=1024,
-                         num_chunks=100)
+                         num_chunks=100, 
+                         source='audio/ode_to_joy/cello1.m4a')
     buffer.start()
 
     while not buffer.is_active():
