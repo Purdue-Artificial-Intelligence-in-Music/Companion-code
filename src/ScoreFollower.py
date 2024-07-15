@@ -44,6 +44,8 @@ class ScoreFollower(Thread):
         AudioBuffer object to store microphone audio
     chroma_maker : ChromaMaker
         ChromaMaker object to create CENS features
+    ref_audio : np.ndarray
+        Reference audio
     ref : np.ndarray
         Reference sequence of CENS feaures
     otw : OTW
@@ -69,11 +71,12 @@ class ScoreFollower(Thread):
                                num_chunks=100)
         
         # Load reference audio
-        ref_audio, _ = librosa.load(path, sr=sample_rate)
+        mono = channels == 1
+        self.ref_audio, _ = librosa.load(path, sr=sample_rate, mono=mono)
         self.chroma_maker = ChromaMaker(sr=sample_rate, n_fft=window_length)
 
         # Generate chroma features for reference audio with no over lap
-        self.ref = audio_to_np_cens(y=ref_audio, sr=sample_rate, n_fft=window_length, hop_len=window_length)
+        self.ref = audio_to_np_cens(y=self.ref_audio, sr=sample_rate, n_fft=window_length, hop_len=window_length)
 
         # Params for online DTW
         params = {
