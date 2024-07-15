@@ -3,7 +3,7 @@ import librosa
 import pyaudio
 import time
 import numpy as np
-
+import pyrubberband as prb
 
 class AudioPlayer(Thread):
     """Class to play audio file
@@ -79,7 +79,7 @@ class AudioPlayer(Thread):
         self.playback_rate = playback_rate
         self.paused = False
 
-        self.audio_log = np.array([[]])
+        self.audio_log = np.empty((channels, 0))
 
     def fade_in(self, audio, num_frames):
         """Fades in an audio segment.
@@ -154,9 +154,10 @@ class AudioPlayer(Thread):
 
         # Increment the wav_index based on the playback rate
         self.index += self.playback_rate * frame_count
-
+        audio = self.audio[:, int(start):int(end)]
+        
         # Time stretch the audio based on the playback rate
-        stretched_audio = librosa.effects.time_stretch(y=self.audio[:, int(start):int(end)], rate=self.playback_rate)  # get audio
+        stretched_audio = librosa.effects.time_stretch(y=audio, rate=self.playback_rate, n_fft=int(self.playback_rate * frame_count))  # get audio
         
         # Reshaped the stretched audio (necessary if there is only one channel)
         stretched_audio = stretched_audio.reshape((self.channels, -1))
@@ -208,7 +209,7 @@ class AudioPlayer(Thread):
         self.p.terminate()
 
 if __name__ == '__main__':
-    player = AudioPlayer(path='audio/cello1.wav', playback_rate=0.9)
+    player = AudioPlayer(path='audio/ode_to_joy/track0.wav', playback_rate=0.9)
     player.start()
     
     while not player.is_active():

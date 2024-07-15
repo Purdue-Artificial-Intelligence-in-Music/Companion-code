@@ -49,7 +49,8 @@ class Synchronizer(Thread):
     PID : simple_pid.PID
         PID controller to adjust playback rate
     """
-    def __init__(self, score, source=None, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
+    def __init__(self, score, source=None, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=2,
+                 Kp=0.2, Ki=0.001, Kd=0.05):
         # Initialize parent class
         super(Synchronizer, self).__init__(daemon=True)
 
@@ -107,7 +108,7 @@ class Synchronizer(Thread):
                                   playback_rate=1.0)
         
         # PID Controller
-        self.PID = PID(Kp=0.04, Ki=0.001, Kd=0.001, setpoint=0, starting_output=1.0)
+        self.PID = PID(Kp=Kp, Ki=Ki, Kd=Kd, setpoint=0, starting_output=1.0)
         self.PID.output_limits = (0.33, 3)
         self.PID.sample_time = window_length / sample_rate
         
@@ -134,7 +135,7 @@ class Synchronizer(Thread):
 
     def is_active(self):
         """Return True if score follower and audio player are both active. False otherwise. """
-        return self.score_follower.is_active() #and self.player.is_active()
+        return self.score_follower.is_active() # and self.player.is_active()
     
     def soloist_time(self):
         return self.score_follower.mic.total / self.score_follower.mic.sample_rate

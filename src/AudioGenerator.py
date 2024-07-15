@@ -29,7 +29,7 @@ class AudioGenerator:
         if path.endswith('.musicxml'):
             title = os.path.basename(path)[:-9]
             output_path = os.path.join('midi', title + '.mid')
-            if not os.exists('midi'):
+            if not os.path.exists('midi'):
                 os.makedirs('midi')
             self.midi_file = process_score(input_path=path, output_path=output_path)
         elif path.endswith('.mid'):

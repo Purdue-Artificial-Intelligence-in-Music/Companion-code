@@ -2,14 +2,24 @@ from Synchronizer import Synchronizer
 import time
 import matplotlib.pyplot as plt
 import numpy as np
-from librosa.display import specshow
+from librosa.display import specshow, waveshow
+import librosa
+from features import audio_to_np_cens
 
 
 # create a synchronizer object
 synchronizer = Synchronizer(score='scores/Air_on_the_G_String.musicxml',
-                            source=None,
+                            source='audio/cello1.wav',
+                            sample_rate=16000,
+                            channels=1,
+                            frames_per_buffer=1024,
+                            window_length=8192,
+                            c=20,
                             max_run_count=3,
-                            diag_weight=0.5)
+                            diag_weight=0.5,
+                            Kp=0.2,
+                            Ki=0.001,
+                            Kd=0.05)
 
 # start the synchronizer
 synchronizer.start()
@@ -27,17 +37,27 @@ try:
         accompanist_time = synchronizer.accompanist_time()
         playback_rate = synchronizer.player.playback_rate
         print(f'Soloist time: {soloist_time:.2f}, Predicted time: {predicted_time:.2f}, Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}')
+        alignment_error = predicted_time - soloist_time
+        accompaniment_error = accompanist_time - predicted_time
+        # print(f'Accompaniment error: {accompaniment_error}')
 except KeyboardInterrupt:
     synchronizer.stop()
-
+    synchronizer.join()
 
 synchronizer.save_performance()
 
-t = synchronizer.score_follower.otw.t
-mic_chroma = np.flip(synchronizer.score_follower.otw.live[:, :t], axis=0)
-ref_chroma = np.flip(synchronizer.score_follower.otw.ref, axis=0)
+plt.rcParams.update({'font.size': 18})
+figsize = (18, 6)
+dpi = 400
+pad_inches = 0.1
 
-fig, ax = plt.subplots(nrows=2, sharex=False, sharey=True, figsize=(4, 8))
-specshow(mic_chroma, y_axis='chroma', x_axis='time', ax=ax[0])
-specshow(ref_chroma, y_axis='chroma', x_axis='time', ax=ax[1])
+indices = np.asarray(synchronizer.score_follower.path).T
+cost_matrix = synchronizer.score_follower.otw.D
+cost_matrix[(indices[0], indices[1])] = np.inf
+cost_matrix = cost_matrix[:, :synchronizer.score_follower.otw.t]
+plt.imshow(cost_matrix)
+plt.title('OTW Cost Matrix')
+plt.xlabel('Live Sequence')
+plt.ylabel('Reference Sequence')
 plt.show()
+plt.savefig('cost_matrix.png', bbox_inches='tight', pad_inches=pad_inches, dpi=dpi)
