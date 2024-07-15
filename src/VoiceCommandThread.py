@@ -224,21 +224,6 @@ class VoiceAnalyzerThread(threading.Thread):
                 while not self.stop_request:
                     data = self.q.get()
 
-                    #Possible optimization would be jut to ignore Result entirely,
-                    #but I don't think that would end up clearing the json buffer
-                    # if rec.AcceptWaveform(data) is False:
-                    #     print(rec.PartialResult())
-                    #     #print()
-
-                    #     #Possible optimization by using partials rather than whole
-                    #     #Parse the json text and find the command
-                    #     res = json.loads(rec.PartialResult())
-                    #     print(res["partial"])
-                    #     if res["partial"] != "":
-                    #         #print(toParse)
-                    #         toParse = self.classify_command(res["partial"])
-                    #         self.run_command(toParse)
-
                     if rec.AcceptWaveform(data):
                         #Print the result
                         print(rec.Result())
@@ -276,3 +261,37 @@ class VoiceAnalyzerThread(threading.Thread):
             
         except Exception as e:
             parser.exit(type(e).__name__ + ": " + str(e))
+
+#Mini Main for demo reasons
+if __name__ == '__main__':
+    player = AudioPlayer(path="C:\\Users\\Eddie\\miniconda3\\envs\\new_test\\Lib\\site-packages\\music21\\audioSearch\\test_audio.wav")
+    player.start()
+    buffer = AudioBuffer(sample_rate=22050,
+                         channels=1,
+                         frames_per_buffer=1024,
+                         num_chunks=100)
+    buffer.start()
+
+    commander = VoiceAnalyzerThread(name="test",buffer=buffer,player=player)
+    commander.start()
+
+    while not buffer.is_active():
+        time.sleep(0.01)
+        
+    while buffer.is_active():
+            time.sleep(0.1)
+    
+    while not player.is_active():
+        time.sleep(0.01)
+
+    try:
+        while player.is_active():
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        player.stop()
+        player.join()
+        buffer.stop()
+        buffer.join()
+        commander.stop()
+        commander.join()
+        
