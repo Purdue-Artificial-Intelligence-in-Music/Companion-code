@@ -82,7 +82,7 @@ class AudioBuffer(Thread):
 
         self.paused = False
 
-        self.audio_log = np.array([[]])
+        self.audio_log = np.empty(shape=(channels, 0), dtype=np.float32)
 
     def write(self, frames: np.ndarray):
         """Write audio frames to buffer.
@@ -258,11 +258,11 @@ class AudioBuffer(Thread):
 
         
 if __name__ == '__main__':
-    buffer = AudioBuffer(sample_rate=16000,
+    buffer = AudioBuffer(source='audio/ode_to_joy/cello1.m4a',
+                         sample_rate=16000,
                          channels=1,
                          frames_per_buffer=1024,
-                         num_chunks=100, 
-                         source='audio/ode_to_joy/cello1.m4a')
+                         num_chunks=100)
     buffer.start()
 
     while not buffer.is_active():

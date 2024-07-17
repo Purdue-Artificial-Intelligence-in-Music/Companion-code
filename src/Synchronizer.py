@@ -10,6 +10,24 @@ import numpy as np
 import librosa
 
 
+def calculate_slope(x, y):
+    if len(x) != len(y):
+        raise ValueError("The lengths of x and y must be equal.")
+    
+    n = len(x)
+    mean_x = sum(x) / n
+    mean_y = sum(y) / n
+    
+    numerator = sum((x[i] - mean_x) * (y[i] - mean_y) for i in range(n))
+    denominator = sum((x[i] - mean_x) ** 2 for i in range(n))
+    
+    if denominator == 0:
+        raise ValueError("Variance of x is zero, slope cannot be calculated.")
+    
+    slope = numerator / denominator
+    return slope
+
+
 class Synchronizer(Thread):
     """Synchronize microphone and accompaniment audio
 
@@ -50,7 +68,7 @@ class Synchronizer(Thread):
         PID controller to adjust playback rate
     """
     def __init__(self, score, source=None, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=2,
-                 Kp=0.2, Ki=0.001, Kd=0.05):
+                 Kp=0.2, Ki=0.00, Kd=0.05):
         # Initialize parent class
         super(Synchronizer, self).__init__(daemon=True)
 
@@ -59,8 +77,8 @@ class Synchronizer(Thread):
         self.c = c
 
         # Check that musicxml score was provided
-        if not score.endswith('.musicxml'):
-            raise Exception("Error: Synchronizer path must be for uncompressed MusicXML score (.musicxml)")
+        if not (score.endswith('.musicxml') or score.endswith('mid')):
+            raise Exception("Error: Synchronizer path must be uncompressed MusicXML score (.musicxml) or MIDI file (.mid)")
         
         # Create an AudioGenerator object
         generator = AudioGenerator(path=score)
@@ -75,7 +93,7 @@ class Synchronizer(Thread):
 
         
         # If the soloist audio does not exist, generate it
-        if not os.path.exists(self.output_dir):
+        if not (os.path.exists(soloist_path) and os.path.exists(accompanist_path)):
 
             # If there is a source audio file
             if source is not None:
@@ -107,11 +125,17 @@ class Synchronizer(Thread):
                                   frames_per_buffer=frames_per_buffer,
                                   playback_rate=1.0)
         
+
+        ref_audio, _ = librosa.load(soloist_path, sr=sample_rate, mono=True)
+        ref_tempo = librosa.beat.tempo(ref_audio, sr=sample_rate)
+        print("Reference tempo:", ref_tempo)
         # PID Controller
-        self.PID = PID(Kp=Kp, Ki=Ki, Kd=Kd, setpoint=0, starting_output=1.0)
-        self.PID.output_limits = (0.33, 3)
-        self.PID.sample_time = window_length / sample_rate
-        
+        self.PID = PID(Kp=Kp, Ki=Ki, Kd=Kd, setpoint=0, starting_output=1.0, 
+                       output_limits=(1 / max_run_count, max_run_count), sample_time = window_length / sample_rate)
+        # self.PID.output_limits = (1/max_run_count, max_run_count)
+        # self.PID.sample_time = window_length / sample_rate
+        self.accompaniment_error = []
+
     def run(self):
         """Start the score follower and audio player. """
         self.score_follower.start()
@@ -128,9 +152,19 @@ class Synchronizer(Thread):
         """Update the audio player playback rate  """
         ref_index, live_index = self.score_follower.step()
 
+        librosa.beat.tempo(self.score_follower.mic[:, self.score_follower.mic])
         error = self.accompanist_time() - self.predicted_time()
         playback_rate = self.PID(error)
+        # if len(self.score_follower.path) >= 5:
+            # points = self.score_follower.path[-5:]
+            # print(points)
+            # ref_indices, live_indices = np.asarray(points).T
+            # slope = calculate_slope(x=live_indices, y=ref_indices)
+            # print("slope:", slope)
+            # slope = max(slope, 0.33)
+            # slope = min(slope, 3)
         if live_index > self.c:
+            # self.player.index = ref_index * self.score_follower.window_length
             self.player.playback_rate = playback_rate
 
     def is_active(self):

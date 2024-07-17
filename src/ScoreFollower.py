@@ -5,7 +5,7 @@ from threading import Thread
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from features import ChromaMaker, audio_to_np_cens
+from features import ChromaMaker, audio_to_np_cens, file_to_np_cens
 
 
 class ScoreFollower(Thread):
@@ -54,7 +54,7 @@ class ScoreFollower(Thread):
         Alignment path between live and reference sequences
 
     """
-    def __init__(self, path, source=None, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=4096, c=10, max_run_count=3, diag_weight=0.4):
+    def __init__(self, path, source=None, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=8192, c=10, max_run_count=3, diag_weight=0.4):
         # Initialize parent class
         super(ScoreFollower, self).__init__(daemon=True)
 
@@ -68,24 +68,24 @@ class ScoreFollower(Thread):
                                sample_rate=sample_rate,
                                channels=channels,
                                frames_per_buffer=frames_per_buffer,
-                               num_chunks=100)
-        
-        # Load reference audio
-        mono = channels == 1
-        self.ref_audio, _ = librosa.load(path, sr=sample_rate, mono=mono)
+                               num_chunks=200)
+
+        # Instantiate ChromaMaker object
         self.chroma_maker = ChromaMaker(sr=sample_rate, n_fft=window_length)
-
-        # Generate chroma features for reference audio with no over lap
-        self.ref = audio_to_np_cens(y=self.ref_audio, sr=sample_rate, n_fft=window_length, hop_len=window_length)
-
-        # Params for online DTW
+        
+        # Params for OTW
         params = {
+        "sr": sample_rate,
+        "n_fft": window_length,
+        "ref_hop_len": window_length,
         "c": c,
         "max_run_count": max_run_count,
         "diag_weight": diag_weight
         }
 
-        # Initialize online DTW object
+        self.ref = file_to_np_cens(filepath=path, params=params)
+
+        # Initialize OTW object
         self.otw = OTW(ref=self.ref, params=params)
 
         # Online DTW alignment path
@@ -124,8 +124,7 @@ class ScoreFollower(Thread):
 
         # Read audio frames from the buffer
         audio = self.mic.read(self.window_length)
-        # print(f'Read index: {self.mic.read_index}, Write index: {self.mic.write_index}, Count: {self.mic.count}')
-        
+
         # Generate chroma feature
         chroma = self.get_chroma(audio)
 
@@ -154,41 +153,37 @@ class ScoreFollower(Thread):
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    follower = ScoreFollower(path='audio/Air_on_the_G_String/track0.wav', 
-                             sample_rate=16000,
-                             channels=1,
-                             frames_per_buffer=1024,
-                             window_length=4096,
-                             c=10,
-                             max_run_count=3,
-                             diag_weight=2)
+    score_follower = ScoreFollower(path='audio/C_Major_Scale_Duet/track0.wav',
+                                   source='audio/C_Major_Scale_Tempo_Variation/track0.wav',
+                                   sample_rate=16000,
+                                   channels=1,
+                                   frames_per_buffer=1024,
+                                   window_length=8192,
+                                   c=8,
+                                   max_run_count=3,
+                                   diag_weight=0.4)
 
-    follower.start()
+    score_follower.start()
 
-    while not follower.is_active():
+    while not score_follower.is_active():
         time.sleep(0.01)
 
     try:
-        while follower.is_active():
-            follower.step()
-            print(follower.mic.count)
-            print(f'Live index: {follower.otw.t}, Ref index: {follower.otw.j}/{follower.ref.shape[-1] - 1}')
+        while score_follower.is_active():
+            live_index, ref_index = score_follower.step()
+            print(f'Live index: {live_index}, Ref index: {ref_index}/{score_follower.ref.shape[-1] - 1}')
+            print(score_follower.path)
     except KeyboardInterrupt:
-        follower.stop()
-        follower.join()
+        score_follower.stop()
+        score_follower.join()
 
-    # indices = np.asarray(follower.path).T
-    # follower.otw.D[(indices[0], indices[1])] = np.inf
-    # plt.imshow(follower.otw.D)
-    # plt.show()
+    cost_matrix = score_follower.otw.D
+    indices = np.asarray(score_follower.path).T
+    cost_matrix[(indices[0], indices[1])] = np.inf
 
-    t = follower.otw.t
-    fig, axes = plt.subplots(2, 1, sharex=False, sharey=True)
-    mic_chroma = np.flip(follower.otw.live[:, :t], axis=0)
-    ref_chroma = np.flip(follower.otw.ref, axis=0)
-
-    print(mic_chroma.shape)
-    print(ref_chroma.shape)
-    axes[0].imshow(mic_chroma)
-    axes[1].imshow(ref_chroma)
+    plt.figure()
+    plt.imshow(cost_matrix)
+    plt.title('OTW Cost Matrix')
+    plt.xlabel('Live Sequence')
+    plt.ylabel('Reference Sequence')
     plt.show()

@@ -6,20 +6,22 @@ from librosa.display import specshow, waveshow
 import librosa
 from features import audio_to_np_cens
 
+SCORE = 'scores/Air_on_the_G_String.musicxml'
+source = 'audio/cello1.wav'
 
 # create a synchronizer object
-synchronizer = Synchronizer(score='scores/Air_on_the_G_String.musicxml',
+synchronizer = Synchronizer(score=SCORE,
                             source='audio/cello1.wav',
                             sample_rate=16000,
                             channels=1,
                             frames_per_buffer=1024,
                             window_length=8192,
-                            c=20,
+                            c=10,
                             max_run_count=3,
                             diag_weight=0.5,
-                            Kp=0.2,
+                            Kp=0.1,
                             Ki=0.001,
-                            Kd=0.05)
+                            Kd=0.01)
 
 # start the synchronizer
 synchronizer.start()
@@ -55,9 +57,18 @@ indices = np.asarray(synchronizer.score_follower.path).T
 cost_matrix = synchronizer.score_follower.otw.D
 cost_matrix[(indices[0], indices[1])] = np.inf
 cost_matrix = cost_matrix[:, :synchronizer.score_follower.otw.t]
+
+plt.figure()
 plt.imshow(cost_matrix)
 plt.title('OTW Cost Matrix')
 plt.xlabel('Live Sequence')
 plt.ylabel('Reference Sequence')
-plt.show()
 plt.savefig('cost_matrix.png', bbox_inches='tight', pad_inches=pad_inches, dpi=dpi)
+plt.close()
+
+plt.figure()
+plt.plot(synchronizer.accompaniment_error)
+plt.title('Accompaniment error')
+plt.xlabel('Predicted Time')
+plt.ylabel('Accompaniment error')
+plt.show()
