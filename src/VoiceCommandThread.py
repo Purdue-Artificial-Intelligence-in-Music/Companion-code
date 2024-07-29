@@ -23,6 +23,7 @@ class VoiceAnalyzerThread(threading.Thread):
         self.stop_request = False
         self.output = ""
         # Initialize whatever stuff you need here
+        self.canHear = True
 
         #The following are all related to the use of Vosk and voice commanding
         self.q = queue.Queue()
@@ -37,7 +38,7 @@ class VoiceAnalyzerThread(threading.Thread):
             "start": "The action involves beginning something.",
             "exit": "The action involves the termination of something.",
             #"edit": "The action involves changing something."
-            #"deafen": "The action involves the termination of listening"
+            "deafen": "The action involves the termination of listening",
         }
 
         # Initialize the zero-shot classification pipeline with the Roberta model
@@ -79,6 +80,9 @@ class VoiceAnalyzerThread(threading.Thread):
             "don't go": "stop",
             "do not go": "stop",
             "never go": "stop",
+            "do not listen": "deafen",
+            "don't listen": "deafen",
+            "never listen": "deafen"
         }
         # Action phrases that directly map to commands
         action_phrases = {
@@ -93,6 +97,7 @@ class VoiceAnalyzerThread(threading.Thread):
             "pause": "stop", 
             "I can't hear": "volume up",
             "it's noisy": "volume down",
+            "return": "deafen", #Thinking of using it as a toggle
         }
 
         # First check for any negation adjustments
@@ -119,7 +124,12 @@ class VoiceAnalyzerThread(threading.Thread):
         Parameters: command: a string that is the highest scoring command found by roberta
         Returns: Nothing, but acts upon the AudioBuffer to do various actions
         """
-        if command == "start":
+        if command == "deafen":
+
+            #Reverse whatever if its allowed to process a command
+            self.canHear = not self.canHear
+
+        elif command == "start":
 
             #If audio is not playing from the AudioBuffer, then start playing audio
             print("start")
@@ -234,7 +244,13 @@ class VoiceAnalyzerThread(threading.Thread):
                         if res["text"] != "":
                             #print(toParse)                
                             toParse = self.classify_command(res['text'])
-                            self.run_command(toParse)
+
+                            #As long as the thread is allowed to hear, run any command
+                            if self.canHear:
+                                self.run_command(toParse)
+                            #As an elif canHear is false here, so only allow deafen to run
+                            elif toParse == "deafen":
+                                self.run_command(toParse)
 
                     else:
                         print(rec.PartialResult())
@@ -247,7 +263,13 @@ class VoiceAnalyzerThread(threading.Thread):
                         if res["partial"] != "":
                             #print(toParse)
                             toParse = self.classify_command(res["partial"])
-                            self.run_command(toParse)
+                            
+                            #As long as the thread is allowed to hear, run any command
+                            if self.canHear:
+                                self.run_command(toParse)
+                            #As an elif canHear is false here, so only allow deafen to run
+                            elif toParse == "deafen":
+                                self.run_command(toParse)
 
                     if dump_fn is not None:
                         dump_fn.write(data)
@@ -264,6 +286,7 @@ class VoiceAnalyzerThread(threading.Thread):
 
 #Mini Main for demo reasons
 if __name__ == '__main__':
+    #Change this to any wav file you want
     player = AudioPlayer(path="C:\\Users\\Eddie\\miniconda3\\envs\\new_test\\Lib\\site-packages\\music21\\audioSearch\\test_audio.wav")
     player.start()
     buffer = AudioBuffer(sample_rate=22050,
