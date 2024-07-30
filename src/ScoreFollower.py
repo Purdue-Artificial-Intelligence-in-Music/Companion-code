@@ -1,14 +1,12 @@
 from AudioBuffer import AudioBuffer
-import librosa
 from otw import OTW
-from threading import Thread
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from features import ChromaMaker, audio_to_np_cens, file_to_np_cens
+from features import ChromaMaker, file_to_np_cens
 
 
-class ScoreFollower(Thread):
+class ScoreFollower:
     """Performs online dynamic time warping (DTW) between reference audio and live microphone audio
 
     Parameters
@@ -54,9 +52,7 @@ class ScoreFollower(Thread):
         Alignment path between live and reference sequences
 
     """
-    def __init__(self, path, source=None, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=8192, c=10, max_run_count=3, diag_weight=0.4):
-        # Initialize parent class
-        super(ScoreFollower, self).__init__(daemon=True)
+    def __init__(self, reference, source=None, sample_rate=16000, channels=1, frames_per_buffer=1024, window_length=8192, c=10, max_run_count=3, diag_weight=0.4):
 
         self.sample_rate = sample_rate
         self.channels = channels
@@ -68,7 +64,7 @@ class ScoreFollower(Thread):
                                sample_rate=sample_rate,
                                channels=channels,
                                frames_per_buffer=frames_per_buffer,
-                               num_chunks=200)
+                               max_duration=600)
 
         # Instantiate ChromaMaker object
         self.chroma_maker = ChromaMaker(sr=sample_rate, n_fft=window_length)
@@ -83,7 +79,7 @@ class ScoreFollower(Thread):
         "diag_weight": diag_weight
         }
 
-        self.ref = file_to_np_cens(filepath=path, params=params)
+        self.ref = file_to_np_cens(filepath=reference, params=params)
 
         # Initialize OTW object
         self.otw = OTW(ref=self.ref, params=params)
@@ -118,7 +114,8 @@ class ScoreFollower(Thread):
         while self.mic.count < self.window_length:
             # If the mic is not active, return the last position in the reference audio
             if not self.mic.is_active():
-                return self.otw.j, self.otw.t
+                print("Microphone is no longer active and all audio has been processed.")
+                return None
             # If the mic is active, wait for more audio frames
             time.sleep(0.01)
 
@@ -135,25 +132,24 @@ class ScoreFollower(Thread):
         self.path.append((j, self.otw.t))
 
         # Return position in reference audio
-        return j, self.otw.t
+        return j
 
-    def run(self):
+    def start(self):
         """Start the microphone input stream. """
         self.mic.start()
 
     def stop(self):
         """Stop the microphone input stream. """
         self.mic.stop()
-        self.mic.join()
 
     def is_active(self):
         """Return True if the microphone input stream is active and we have not reached the end of the otw buffer"""
         return self.mic.is_active() and self.otw.t < self.otw.live.shape[-1] - 1
-        # return self.otw.j < self.ref.shape[-1] - 1
+
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    score_follower = ScoreFollower(path='audio/C_Major_Scale_Duet/track0.wav',
+    score_follower = ScoreFollower(reference='audio/C_Major_Scale_Duet/track0.wav',
                                    source='audio/C_Major_Scale_Tempo_Variation/track0.wav',
                                    sample_rate=16000,
                                    channels=1,

@@ -1,10 +1,10 @@
-from threading import Thread
 import pyaudio
 import numpy as np
 import time
 import librosa
+import soundfile
 
-class AudioBuffer(Thread):
+class AudioBuffer:
     """Thread to save microphone audio to a circular buffer.
 
     Parameters
@@ -15,8 +15,8 @@ class AudioBuffer(Thread):
         Number of channels
     frames_per_buffer : int, optional
         Number of frames per buffer for PyAudio stream
-    num_chunks : int, optional
-        Number of audio chunks in audio buffer. Each chunk is of size frames_per_buffer
+    max_length : int, optional
+        Maximum number of frames in buffer
 
     Attributes
     ----------
@@ -26,10 +26,8 @@ class AudioBuffer(Thread):
         Number of channels
     frames_per_buffer : int
         Number of frames per buffer for PyAudio stream
-    num_chunks : int
-        Number of audio chunks in audio buffer. Each chunk is of size frames_per_buffer
-    length : int
-        Number of frames in the buffer. Equal to num_chunks * frames_per_buffer
+    max_length : int
+        Maximum number of frames in buffer
     buffer : np.ndarray
         Array containing audio frames
     write_index : int
@@ -46,15 +44,13 @@ class AudioBuffer(Thread):
         If True, read and write operations are paused
 
     """
-    def __init__(self, source=None, sample_rate: int = 16000, channels: int = 1, frames_per_buffer: int = 1024, num_chunks: int = 100):
-        # Initialize parent class
-        super(AudioBuffer, self).__init__(daemon=True)
+    def __init__(self, source=None, sample_rate: int = 16000, channels: int = 1, frames_per_buffer: int = 1024, max_duration: int = 600):
 
         # Params
         self.sample_rate = sample_rate 
         self.channels = channels
         self.frames_per_buffer = frames_per_buffer
-        self.num_chunks = num_chunks
+        self.length = max_duration * sample_rate
 
         self.audio = None
         self.audio_index = 0
@@ -67,22 +63,18 @@ class AudioBuffer(Thread):
                 self.audio = self.audio.reshape((1, -1))
             
         # Create buffer
-        self.length = num_chunks * frames_per_buffer
-        self.buffer = np.zeros((channels, self.length))
+        self.buffer = np.empty(shape=(channels, self.length), dtype=np.float32)
 
         # Track buffer
         self.write_index = 0
         self.read_index = 0
         self.count = 0
-        self.total = 0
 
         # PyAudio
         self.p = pyaudio.PyAudio()
         self.stream = None
 
         self.paused = False
-
-        self.audio_log = np.empty(shape=(channels, 0), dtype=np.float32)
 
     def write(self, frames: np.ndarray):
         """Write audio frames to buffer.
@@ -100,26 +92,18 @@ class AudioBuffer(Thread):
         # Get the number of frames to write
         num_frames = frames.shape[-1]
 
-        # If the buffer will overflow
+        # If the buffer will exceed its length, raise exception
         if self.write_index + num_frames > self.length:
-            # Write frames to the end of the buffer
-            self.buffer[:, self.write_index:] = frames[:, :self.length-self.write_index]
-            # Wrap around to the front of the buffer 
-            self.buffer[:, :num_frames-(self.length-self.write_index)] = frames[:, self.length-self.write_index:]
-        # If the buffer will not overflow
-        else:
-            # Write all frames at once
-            self.buffer[:, self.write_index:self.write_index + num_frames] = frames
-            
-        # Increment the write index
-        self.write_index = (self.write_index + num_frames) % self.length
-
-        # Increase the count. The count can never be greater than the length of the buffer
-        self.count = min(self.count + num_frames, self.length)
-        self.total += num_frames
+            raise Exception('Error: Not enough space left in buffer')
         
-        if self.count == self.length:
-            print("Buffer is full")
+        # Write frames
+        self.buffer[:, self.write_index:self.write_index + num_frames] = frames
+        
+        # Increment the write index
+        self.write_index += num_frames
+
+        # Increase the count
+        self.count += num_frames
 
     def read(self, num_frames: int) -> np.ndarray:
         """Returns the specified number of frames from the buffer starting at the read index.
@@ -136,26 +120,13 @@ class AudioBuffer(Thread):
 
         """
         if num_frames > self.count:
+            print('AudioBuffer read error')
             raise Exception(f'Error: Attempted to read {num_frames} frames but count is {self.count}')
         
-        # If reading past the end of the buffer
-        if self.read_index + num_frames > self.length:
-            # Read frames until the end of the buffer is reached
-            temp = self.read_index
-            frames_from_end = self.buffer[:, temp:]
-            temp = (self.read_index + num_frames) % self.length
-
-            # Wrap around to the front of the buffer
-            frames_from_start = self.buffer[:, :temp]
-
-            # Concatenate frames from end and start of buffer
-            frames = np.concatenate((frames_from_end, frames_from_start), axis=1)
-        else:
-            # Read frames all at once
-            frames = self.buffer[:, self.read_index:self.read_index+num_frames]
+        frames = self.buffer[:, self.read_index:self.read_index+num_frames]
         
         # Increment the read index
-        self.read_index = (self.read_index + num_frames) % self.length
+        self.read_index += num_frames
 
         # Reduce the count
         self.count -= num_frames
@@ -188,7 +159,6 @@ class AudioBuffer(Thread):
         if self.audio is not None:
             audio = self.audio[:, self.audio_index:self.audio_index + frame_count]
             self.audio_index += frame_count
-            # self.audio_index %= self.length
         else:
             audio = np.frombuffer(in_data, dtype=np.float32)
 
@@ -198,7 +168,6 @@ class AudioBuffer(Thread):
         # Write the audio to the buffer
         self.write(audio)
 
-        self.audio_log = np.append(self.audio_log, audio, axis=1)
         # If the number of frames is not equal to frame _count, close the stream
         if audio.shape[-1] != frame_count:
             return audio, pyaudio.paComplete
@@ -206,7 +175,7 @@ class AudioBuffer(Thread):
         # Continue to the microphone audio stream
         return audio, pyaudio.paContinue
     
-    def run(self):
+    def start(self):
         """Open a PyAudio input stream to read audio data from the microphone. """
         self.stream = self.p.open(format=pyaudio.paFloat32,
                                   channels=self.channels,
@@ -256,13 +225,21 @@ class AudioBuffer(Thread):
         self.stream.close()
         self.p.terminate()
 
+    def get_audio(self):
+        return self.buffer[:, :self.write_index]
+
+    def save(self, path):
+        audio = self.get_audio()
+        audio = audio.reshape((-1, ))
+        soundfile.write(path, audio, self.sample_rate)
+
         
 if __name__ == '__main__':
-    buffer = AudioBuffer(source='audio/ode_to_joy/cello1.m4a',
+    buffer = AudioBuffer(source='audio/ode_to_joy/track0.wav',
                          sample_rate=16000,
                          channels=1,
                          frames_per_buffer=1024,
-                         num_chunks=100)
+                         max_duration=600)
     buffer.start()
 
     while not buffer.is_active():
@@ -273,4 +250,5 @@ if __name__ == '__main__':
             time.sleep(0.1)
     except KeyboardInterrupt:
         buffer.stop()
-        buffer.join()
+
+    buffer.save('test.wav')
