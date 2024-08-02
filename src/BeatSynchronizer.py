@@ -39,9 +39,3 @@ class BeatSynchronizer(threading.Thread):
     def stop(self):
         """Stop the thread """
         self.enabled = False
-
-        
-    
-    
-
-    

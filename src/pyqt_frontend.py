@@ -3,20 +3,29 @@ from PySide6.QtCore import *
 from PySide6.QtWidgets import * 
 from PySide6.QtGui import *
 from AudioPlayer import AudioPlayer
+from AudioBuffer import AudioBuffer
 import numpy as np
 import matplotlib.pyplot as plt
-from features import audio_to_np_cens
+from music21 import *
+env = environment.UserSettings()
+env['musescoreDirectPNGPath'] = env['musicxmlPath']
+
+#Download musescore without hub from https://musescore.org/en
+#Run python -m music21.configure in terminal
+#Other options to look at are using the musescore module or lilypond
+
+from audioflux.display import fill_spec
+
+#Link to music21 docs https://web.archive.org/web/20211127032016/http://web.mit.edu/music21/doc
 
 class WorkerThread(QThread):
+    finished_signal = Signal()
+    playback_rate = Signal(int)
 
     def __init__(self):
         super().__init__()
-        self.player = AudioPlayer('audio/Air_on_the_G_String/track0.wav')
-        self.playback_rate = Signal(int)
-        print(self.player.audio.shape)
-        self.chroma_cens = audio_to_np_cens(self.player.audio.reshape((-1,)), sr=self.player.sample_rate, n_fft=1024, hop_len=1024)
-        print(self.chroma_cens.shape)
-        self.chroma_index = 0
+        self.buffer = AudioBuffer()
+        self.player = AudioPlayer('audio/moonlight_sonata.wav')
 
     def run(self):
         self.player.start()
@@ -26,7 +35,6 @@ class WorkerThread(QThread):
         except Exception as e:
             print("Detected interrupt")
             self.player.stop()
-            self.player.join()
 
     @Slot(int)
     def set_playback_rate(self, playback_rate):
@@ -34,7 +42,8 @@ class WorkerThread(QThread):
 
     @Slot()
     def stop(self):
-        self.player.stop()
+        if self.isRunning():
+            self.buffer.stop()
 
     @Slot()
     def pause(self):
@@ -51,54 +60,64 @@ class WorkerThread(QThread):
         return chroma
 
 
+class Slider(QSlider):
+    def __init__(self, val:float, name: str, minVal:float, align: int,
+                 maxVal:float, calc:int, thread:WorkerThread):
+        super(Slider, self).__init__()
+        self.val = val
+        self.calc = calc
+        self.name = name
+        self.calc = calc
+        self.setValue(self.calc*self.val)
+        self.setMinimum(minVal)
+        self.setMaximum(maxVal)
+        self.label = QLabel(f"{self.name}: {self.val}", alignment=align)
+        self.thread = thread
+        
+    @Slot()
+    def set_val(self):
+        self.val = self.value() / self.calc
+        self.label.setText(f"{self.name}: {self.val}")
+        self.thread.set_playback_rate(self.val) 
+
 class Demo(QWidget):
     def __init__(self):
-        super().__init__()
-
-        self.speed = 1
+        super(Demo, self).__init__()
+        self.thread = WorkerThread()
+        self.speed = Slider(val=1, thread=self.thread, name="Speed", minVal=0, maxVal=200, calc=100, align=Qt.AlignCenter)
+        self.speed.setOrientation(Qt.Orientation.Horizontal)
+        self.speed.valueChanged.connect(self.speed.set_val)
 
         self.start_button = QPushButton("Start")
         self.stop_button = QPushButton("Stop")
-        self.pause_button = QPushButton("Pause")
-        self.unpause_button = QPushButton("Unpause")
-
-        self.speed_text = QLabel(f"Speed: {self.speed}", alignment=Qt.AlignCenter)
-
-        self.speed_slider = QSlider(orientation=Qt.Orientation.Horizontal, )
-        self.speed_slider.setValue(self.speed * 100)
-        self.speed_slider.setMinimum(0)
-        self.speed_slider.setMaximum(200)
+        self.pause_button = QPushButton("Pause") 
+        self.unpause_button = QPushButton("Resume")
 
         self.layout = QVBoxLayout(self)
-        self.layout.addWidget(self.speed_text)
-        self.layout.addWidget(self.speed_slider)
+        self.layout.addWidget(self.speed.label)
+        self.layout.addWidget(self.speed)
         self.layout.addWidget(self.start_button)
         self.layout.addWidget(self.stop_button)
         self.layout.addWidget(self.pause_button)
         self.layout.addWidget(self.unpause_button)
 
-        self.speed_slider.sliderMoved.connect(self.set_speed)
         self.start_button.clicked.connect(self.start_task)
         self.stop_button.clicked.connect(self.stop_task)
         self.pause_button.clicked.connect(self.pause_task)
         self.unpause_button.clicked.connect(self.unpause_task)
-        
-        self.thread = WorkerThread()
 
         self.chroma_display = QLabel(alignment=Qt.AlignCenter)
+        self.sheet_display = QLabel(alignment=Qt.AlignCenter)
 
         self.layout.addWidget(self.chroma_display)
+        self.layout.addWidget(self.sheet_display)
+        self.set_sheet()
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_chroma)
 
-        self.img_data = np.zeros((12, 200))
+        self.timer.start(100)
 
-    @Slot()
-    def set_speed(self):
-        self.speed = self.speed_slider.value() / 100
-        self.speed_text.setText(f"Speed: {self.speed}")
-        self.thread.set_playback_rate(self.speed)
 
     @Slot()
     def start_task(self):
@@ -112,18 +131,36 @@ class Demo(QWidget):
 
     @Slot()
     def pause_task(self):
-        self.timer.stop()
-        self.thread.pause()
+        if self.thread.isRunning():
+            self.thread.pause()
+            #Pauses choma display
+            self.timer.timeout.disconnect(self.update_chroma)
 
     @Slot()
     def unpause_task(self):
-        self.timer.start()
-        self.thread.unpause()
+        if self.thread.isRunning():
+            self.thread.unpause()
+            #Unpauses choma display
+            self.timer.timeout.connect(self.update_chroma)
+
+    @Slot()
+    def set_sheet(self):
+        #readfile = self.thread.buffer.wav_file.split('.')[0]
+        #xml_file = readfile + ".musicxl"
+        mus = converter.parse("audio_files\ode_to_joy.musicxml")
+        mus.write('xml.png', 'sheet.png')
+
+        pixmap = QPixmap("sheet-1.png")
+        pixmap = pixmap.scaled(800, 400, Qt.KeepAspectRatio)
+        self.sheet_display.setPixmap(pixmap)
 
     @Slot()
     def update_chroma(self):
         chroma = self.thread.get_next_chroma()
         chroma = chroma.reshape((12, -1))
+        chroma = np.flip(chroma, axis=0)
+        img_data = np.zeros((12, num_features))
+
 
         self.img_data = np.concatenate((self.img_data[:, 1:], chroma), axis=1)
 
@@ -136,10 +173,8 @@ class Demo(QWidget):
 
         self.chroma_display.setPixmap(pixmap)
 
-
 if __name__ == "__main__":
     app = QApplication([])
-
     widget = Demo()
     widget.resize(800, 600)
     widget.show()
