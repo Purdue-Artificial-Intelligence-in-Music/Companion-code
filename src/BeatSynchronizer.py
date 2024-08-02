@@ -5,7 +5,7 @@ import time
 class BeatSynchronizer(threading.Thread):
     """Synchronize the beats from two BeatTracker threads using PID contrl """
     def __init__(self, 
-                 player_beat_thread: BeatTracker, 
+                 soloist_beat_thread: BeatTracker, 
                  accomp_beat_thread: BeatTracker,
                  Kp = 0.15,
                  Ki = 0.001,
@@ -15,7 +15,7 @@ class BeatSynchronizer(threading.Thread):
                  max_tempo = 2.5):
         super().__init__()
         self.daemon = True
-        self.player_beat_thread = player_beat_thread
+        self.soloist_beat_thread = soloist_beat_thread
         self.accomp_beat_thread = accomp_beat_thread
         self.PID = PID(Kp, Ki, Kd, setpoint=0)
         self.PID.output_limits = (min_tempo, max_tempo)
@@ -28,11 +28,11 @@ class BeatSynchronizer(threading.Thread):
         _ = self.PID(0)
         start_time = time.time()
         while self.enabled:
-            player_beats = self.player_beat_thread.get_total_beats()
+            soloist_beats = self.soloist_beat_thread.get_total_beats()
             accomp_beats = self.accomp_beat_thread.get_total_beats()
             elapsed_time = time.time() - start_time
             if elapsed_time > 6:
-                error = accomp_beats - player_beats
+                error = accomp_beats - soloist_beats
                 self.playback_rate = self.PID(error)
             time.sleep(self.PID.sample_time)
 

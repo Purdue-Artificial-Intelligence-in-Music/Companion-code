@@ -1,6 +1,7 @@
 import threading
 import time
 from AudioBuffer import AudioBuffer
+from AudioPlayer import AudioPlayer
 import speech_recognition as sr         #Defunct?
 import pyttsx3                          #Defunct?
 import numpy as np
@@ -17,10 +18,11 @@ from vosk import Model, KaldiRecognizer
 
 
 class VoiceAnalyzerThread(threading.Thread):
-    def __init__(self, name: str, BUFFER: AudioBuffer, voice_length=3):
+    def __init__(self, name: str, buffer: AudioBuffer, player: AudioPlayer, voice_length=3):
         super(VoiceAnalyzerThread, self).__init__()
         self.name = name
-        self.BUFFER = BUFFER
+        self.buffer = buffer
+        self.player = player
         self.stop_request = False
         self.r = sr.Recognizer()        #Defunct?
         self.ps = PorterStemmer()       #Defunct?
@@ -49,7 +51,7 @@ class VoiceAnalyzerThread(threading.Thread):
     def convert_to_AudioData(self, arr: np.ndarray): #Defunct?
         # sample_width=2 relies on the fact that AudioThreadWithBuffer's format is PyAudio.paFloat32, which has 4 bytes per sample
         return sr.AudioData(frame_data=arr.tobytes(), 
-                            sample_rate=self.BUFFER.RATE, 
+                            sample_rate=self.buffer.sample_rate, 
                             sample_width=4)
     
     def int_or_str(text):
@@ -130,26 +132,25 @@ class VoiceAnalyzerThread(threading.Thread):
         """
         if command == "start":
 
-            #Check if audio is playing
-            self.BUFFER.audio_on()
             #If audio is not playing from the AudioBuffer, then start playing audio
-                            
-            if self.BUFFER.input_on() is False:
-                    print("Turning on audio")
-                    self.BUFFER.unpause()
+            print("start")
+            self.buffer.unpause()
+            self.player.unpause()
 
         elif command == "stop":
 
             print("stop")
             #Still run Buffer in the background, but don't play audio
-            self.BUFFER.pause()
+            self.buffer.pause()
+            self.player.pause()
 
         elif command == "exit":
 
             print("Detected interrupt")
             #Stop both voice and buffer
             self.stop_request = True
-            self.BUFFER.stop()
+            self.buffer.stop()
+            self.player.stop()
 
         else:
             #TODO: Look into ways to use LLM to create commands and have the code be able to run them
@@ -191,25 +192,24 @@ class VoiceAnalyzerThread(threading.Thread):
             if self.output == "start":
 
                 print("start")
-                #Check if audio is playing
-                self.BUFFER.audio_on()
                 #If audio is not playing from the AudioBuffer, then start playing audio
-                if self.BUFFER.input_on() is False:
-                    print("Turning on audio")
-                    self.BUFFER.unpause()
+                self.buffer.unpause()
+                self.player.unpause()
 
             elif self.output == "stop":
 
                 print("stop")
                 #Still run Buffer in the background, but don't play audio
-                self.BUFFER.pause()
+                self.buffer.pause()
+                self.player.pause()
 
             elif self.output == "exit":
 
                 print("Detected interrupt")
                 #Stop both voice and buffer
                 self.stop_request = True
-                self.BUFFER.stop()
+                self.buffer.stop()
+                self.player.stop()
 
             else:
                 #TODO: Look into ways to use LLM to create commands and have the code be able to run them
@@ -340,7 +340,8 @@ class VoiceAnalyzerThread(threading.Thread):
         except KeyboardInterrupt:
             print("\nDone")
             self.stop_request = True
-            self.BUFFER.stop()
+            self.buffer.stop()
+            self.player.stop()
             parser.exit(0)
             
         except Exception as e:

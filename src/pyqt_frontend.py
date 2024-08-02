@@ -2,8 +2,8 @@ import sys
 from PySide6.QtCore import * 
 from PySide6.QtWidgets import * 
 from PySide6.QtGui import *
+from AudioPlayer import AudioPlayer
 from AudioBuffer import AudioBuffer
-from process_funcs import *
 import numpy as np
 import matplotlib.pyplot as plt
 from music21 import *
@@ -24,33 +24,21 @@ class WorkerThread(QThread):
 
     def __init__(self):
         super().__init__()
-        self.buffer = AudioBuffer(name="buffer", 
-                         frames_per_buffer=4096,
-                         wav_file='audio_files\moonlight_sonata.wav',
-                         process_func=play_wav_data,
-                         process_func_args=(),
-                         calc_chroma=True, 
-                         calc_beats=False,
-                         kill_after_finished=True,
-                         playback_rate=1.0,
-                         sample_rate=None,
-                         dtype=np.float32,
-                         channels=1,
-                         debug_prints=True)
+        self.buffer = AudioBuffer()
+        self.player = AudioPlayer('audio/moonlight_sonata.wav')
 
     def run(self):
-        self.buffer.start()
+        self.player.start()
         try:
-            while not self.buffer.stop_request:
+            while self.player.is_active():
                 QThread.sleep(0.1)
         except Exception as e:
             print("Detected interrupt")
-            self.buffer.stop()
-            self.buffer.join()
+            self.player.stop()
 
     @Slot(int)
     def set_playback_rate(self, playback_rate):
-        self.buffer.playback_rate = playback_rate
+        self.player.playback_rate = playback_rate
 
     @Slot()
     def stop(self):
@@ -59,15 +47,17 @@ class WorkerThread(QThread):
 
     @Slot()
     def pause(self):
-        self.buffer.pause()
+        self.player.pause()
 
     @Slot()
     def unpause(self):
-        self.buffer.unpause()
+        self.player.unpause()
 
-    @Slot(int)
-    def get_last_chroma(self, num_features):
-        return self.buffer.get_last_chroma(num_features)
+    @Slot()
+    def get_next_chroma(self):
+        chroma = self.chroma_cens[:, self.chroma_index]
+        self.chroma_index += 1
+        return chroma
 
 
 class Slider(QSlider):
@@ -83,6 +73,7 @@ class Slider(QSlider):
         self.setMaximum(maxVal)
         self.label = QLabel(f"{self.name}: {self.val}", alignment=align)
         self.thread = thread
+        
     @Slot()
     def set_val(self):
         self.val = self.value() / self.calc
@@ -130,6 +121,7 @@ class Demo(QWidget):
 
     @Slot()
     def start_task(self):
+        self.timer.start(1024 / self.thread.player.sample_rate * 1000)
         self.thread.start()
 
     @Slot()
@@ -164,18 +156,16 @@ class Demo(QWidget):
 
     @Slot()
     def update_chroma(self):
-        num_features = 200
-        chroma = self.thread.get_last_chroma(num_features)
-        chroma = np.sum(chroma, axis=0)
+        chroma = self.thread.get_next_chroma()
         chroma = chroma.reshape((12, -1))
         chroma = np.flip(chroma, axis=0)
         img_data = np.zeros((12, num_features))
 
-        if chroma.size > 0:
-            img_data[:, -chroma.shape[-1]:] = chroma
+
+        self.img_data = np.concatenate((self.img_data[:, 1:], chroma), axis=1)
 
         image_filepath = 'chroma_buffer.png'
-        plt.imsave(image_filepath, img_data, cmap='plasma')
+        plt.imsave(image_filepath, self.img_data, cmap='plasma')
 
         # Load the image using QPixmap
         pixmap = QPixmap(image_filepath)
