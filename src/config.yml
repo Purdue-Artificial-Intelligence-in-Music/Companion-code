@@ -1,0 +1,6 @@
+DDSP_SAMPLE_RATE: 48000
+FRAMES_PER_BUFFER: 1024
+TORCH_DEVICE: cpu
+test_key:
+  test_key2: aasdjkkjs
+  test_key3: 1.298

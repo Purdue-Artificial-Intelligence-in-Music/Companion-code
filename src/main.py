@@ -1,85 +1,42 @@
-
-from BeatNet_local.BeatNet_thread import BeatNet_thread
-from WavBeatTracker import *
-from AudioBuffer import *
-from VoiceCommandThread import *
-from BeatSynchronizer import *
-import traceback
-import sys
-import torch
-from process_funcs import play_all
-
-FRAMES_PER_BUFFER = 1024  # number of frames in PyAudio buffer
-WAV_FILE = 'audio_files\imperial_march.wav'  # accompaniment WAV file
-
-def main():
-    # create AudioBuffer
-    buffer = AudioBuffer(name="buffer", 
-                         frames_per_buffer=FRAMES_PER_BUFFER,
-                         wav_file=WAV_FILE,
-                         process_func=play_all,
-                         process_func_args=(),
-                         calc_chroma=True, 
-                         calc_beats=True,
-                         kill_after_finished=True,
-                         playback_rate=1.0,
-                         sample_rate=None,
-                         dtype=np.float32,
-                         channels=1,
-                         debug_prints=True)
-    
-    # use CUDA if available
-    if torch.cuda.is_available():
-        device = 'cuda'
-    else:
-        device = 'cpu'
-
-    beat_detector = BeatNet_thread(model=1, BUFFER=buffer, plot=[], device=device)
-    wav_beat_tracker = WavBeatTracker(BUFFER=buffer)
-    beat_sync = BeatSynchronizer(player_beat_thread=beat_detector, accomp_beat_thread=wav_beat_tracker)
-    print("All thread objects initialized")
-
-    buffer.start()
-    print("Buffer started")
-
-    beat_detector.start()
-    print("Beat detector started")
-
-    wav_beat_tracker.start()
-    print("Wav beat tracker started")
-
-    beat_sync.start()
-    print("Beat synchronizer started")
-
-    minutes_long = int(buffer.wav_len / buffer.RATE / 60)
-    seconds_long = int(buffer.wav_len / buffer.RATE) % 60
-    try:
-        start_time = time.time()
-        print("", end="")
-        while not buffer.stop_request:
-            elapsed_time = time.time() - start_time
-            minutes_elapsed_in_wav = int(buffer.wav_index / buffer.RATE / 60)
-            seconds_elapsed_in_wav = int(buffer.wav_index / buffer.RATE) % 60
-            buffer.playback_rate = beat_sync.playback_rate
-            print("\r(%.2fs) Mic beats: %d, Wav beats: %d, playback speed = %.2f | Wav playback: %d:%02d out of %d:%02d" % 
-                  (elapsed_time, beat_detector.get_total_beats(), wav_beat_tracker.get_total_beats(), buffer.playback_rate, 
-                   minutes_elapsed_in_wav, seconds_elapsed_in_wav, minutes_long, seconds_long),
-                  end="",
-                  flush=True)
-            time.sleep(0.1)
-
-    except Exception as e:
-        print("Detected interrupt")
-        print(traceback.format_exception(None, # <- type(e) by docs, but ignored 
-                                         e, e.__traceback__),
-                                         file=sys.stderr, flush=True)
-        beat_sync.stop()
-        beat_sync.join()
-        buffer.stop()
-        buffer.join()
-
-    print("Program done")
+from Synchronizer import Synchronizer
+import time
 
 
-if __name__ == "__main__":
-    main()
+# create a synchronizer object
+synchronizer = Synchronizer(reference='data/bach/synthesized/track0.wav',
+                            accompaniment='data/bach/synthesized/track1.wav',
+                            source='data/bach/live/constant_tempo.wav',
+                            Kp=0.0,
+                            Ki=0.0,
+                            Kd=0.00,
+                            sample_rate=16000,
+                            win_length=4096,
+                            hop_length=1024,
+                            c=20,
+                            max_run_count=3,
+                            diag_weight=0.5,
+                            channels=1,
+                            frames_per_buffer=1024)
+
+# start the synchronizer
+synchronizer.start()
+
+# wait until the synchronizer is active
+while not synchronizer.is_active():
+    time.sleep(0.01)
+
+try:
+    while synchronizer.update():  # update the playback rate of the accompaniment
+        soloist_time = synchronizer.soloist_time()
+        predicted_time = synchronizer.predicted_time()
+        accompanist_time = synchronizer.accompanist_time()
+        playback_rate = synchronizer.player.playback_rate
+        print(f'Soloist time: {soloist_time:.2f}, Predicted time: {predicted_time:.2f}, Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}')
+        print(synchronizer.score_follower.mic.count)
+        alignment_error = predicted_time - soloist_time
+        accompaniment_error = accompanist_time - predicted_time
+
+except KeyboardInterrupt:
+    synchronizer.stop()
+
+synchronizer.save_performance(path='data/bach/performance.wav')
