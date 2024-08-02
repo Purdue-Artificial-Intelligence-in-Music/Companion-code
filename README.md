@@ -14,3 +14,5 @@ Companion is an app that not only plays along with a human player during a chamb
 1. Clone the repository.
 2. In a python 3.8 environment, run the command ```python setup.py```
 4. Run ``src/main.py`` to start Companion.
+
+* All relevant work regarding note-tracking/music synchronization could be found in the folder get_notes_and_start_end_times
