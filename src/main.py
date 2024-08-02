@@ -3,19 +3,20 @@ import time
 
 
 # create a synchronizer object
-synchronizer = Synchronizer(reference='data/c_major/synthesized/track0.wav',
-                            accompaniment='data/c_major/synthesized/track1.wav',
-                            source='data/c_major/live/tempo_variation.wav',
+synchronizer = Synchronizer(reference='data/bach/synthesized/track0.wav',
+                            accompaniment='data/bach/synthesized/track1.wav',
+                            source='data/bach/live/constant_tempo.wav',
+                            Kp=0.0,
+                            Ki=0.0,
+                            Kd=0.00,
                             sample_rate=16000,
-                            channels=1,
-                            frames_per_buffer=1024,
-                            window_length=4096,
+                            win_length=4096,
+                            hop_length=1024,
                             c=20,
                             max_run_count=3,
                             diag_weight=0.5,
-                            Kp=0.8,
-                            Ki=0.0,
-                            Kd=0.05)
+                            channels=1,
+                            frames_per_buffer=1024)
 
 # start the synchronizer
 synchronizer.start()
@@ -38,4 +39,4 @@ try:
 except KeyboardInterrupt:
     synchronizer.stop()
 
-synchronizer.save_performance(path='data/c_major/performance.wav')
+synchronizer.save_performance(path='data/bach/performance.wav')

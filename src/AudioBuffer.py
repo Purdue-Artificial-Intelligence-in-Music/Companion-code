@@ -44,26 +44,27 @@ class AudioBuffer:
         If True, read and write operations are paused
 
     """
-    def __init__(self, source=None, sample_rate: int = 16000, channels: int = 1, frames_per_buffer: int = 1024, max_duration: int = 600):
+    def __init__(self, source: str = None, max_duration: int = 600, sample_rate: int = 16000, channels: int = 1, frames_per_buffer: int = 1024):
 
         # Params
-        self.sample_rate = sample_rate 
+        self.sample_rate = sample_rate
         self.channels = channels
         self.frames_per_buffer = frames_per_buffer
-        self.length = max_duration * sample_rate
+        self.length = max_duration * self.sample_rate
 
         self.audio = None
         self.audio_index = 0
+
         if source is not None:
             # Check for mono audio
-            mono = channels == 1
-            self.audio, _ = librosa.load(source, sr=sample_rate, mono=mono)
+            mono = self.channels == 1
+            self.audio, _ = librosa.load(source, sr=self.sample_rate, mono=mono)
             # Reshape mono audio. Multi-channel audio should already be in the correct shape
             if mono:
                 self.audio = self.audio.reshape((1, -1))
             
         # Create buffer
-        self.buffer = np.empty(shape=(channels, self.length), dtype=np.float32)
+        self.buffer = np.empty(shape=(self.channels, self.length), dtype=np.float32)
 
         # Track buffer
         self.write_index = 0
@@ -233,13 +234,16 @@ class AudioBuffer:
         audio = audio.reshape((-1, ))
         soundfile.write(path, audio, self.sample_rate)
 
+    def get_time(self):
+        return self.write_index / self.sample_rate
+
         
 if __name__ == '__main__':
     buffer = AudioBuffer(source='audio/ode_to_joy/track0.wav',
+                         max_duration=600,
                          sample_rate=16000,
                          channels=1,
-                         frames_per_buffer=1024,
-                         max_duration=600)
+                         frames_per_buffer=1024)
     buffer.start()
 
     while not buffer.is_active():

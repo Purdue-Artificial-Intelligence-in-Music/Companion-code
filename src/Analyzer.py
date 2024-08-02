@@ -54,7 +54,7 @@ class Analyzer:
         return self.score_follower.otw.t
     
     def indices_to_time(self, indices):
-        return indices * sync.window_length / sync.sample_rate
+        return indices * sync.win_length / sync.sample_rate
     
     def get_cost_matrix(self):
         return self.score_follower.otw.D[:, :self.score_follower.otw.t+1]

@@ -44,34 +44,28 @@ class Synchronizer:
     PID : simple_pid.PID
         PID controller to adjust playback rate
     """
-    def __init__(self, reference: str, accompaniment: str, source: str = None, sample_rate: int = 16000, channels: int = 1, frames_per_buffer: int = 1024, 
-                 window_length: int = 4096, c: int = 10, max_run_count: int = 3, diag_weight: int = 2, Kp: int = 0.2, Ki: int = 0.00, Kd=0.05):
+    def __init__(self, reference: str, accompaniment: str, source: str = None, 
+                 Kp: int = 0.2, Ki: int = 0.00, Kd=0.05, 
+                 sample_rate: int = 16000, win_length: int = 4096, c: int = 10, max_run_count: int = 3, diag_weight: int=0.5, hop_length: int = 1024, **kwargs):
 
         self.sample_rate = sample_rate
-        self.window_length = window_length
+        self.win_length = win_length
         self.c = c
-            
+
         # ScoreFollower needs soloist audio
         self.score_follower = ScoreFollower(reference=reference,
                                             source=source,
-                                            sample_rate=sample_rate,
-                                            channels=channels,
-                                            frames_per_buffer=frames_per_buffer,
-                                            window_length=window_length,
-                                            c=c,
                                             max_run_count=max_run_count,
-                                            diag_weight=diag_weight)
+                                            diag_weight=diag_weight,
+                                            **kwargs)
         
         # AudioPlayer needs accompanist audio
-        self.player = AudioPlayer(path=accompaniment,
-                                  sample_rate=sample_rate,
-                                  channels=channels,
-                                  frames_per_buffer=frames_per_buffer,
-                                  playback_rate=1.0)
-
+        self.player = AudioPlayer(path=accompaniment, playback_rate=1.0, hop_length=hop_length, **kwargs)
+        
         # PID Controller
         self.PID = PID(Kp=Kp, Ki=Ki, Kd=Kd, setpoint=0, starting_output=1.0, 
-                       output_limits=(1 / max_run_count, max_run_count), sample_time = window_length / sample_rate)
+                       output_limits=(1 / max_run_count, max_run_count), 
+                       sample_time = self.win_length / self.sample_rate)
         
         self.accompanist_time_log = []
 
@@ -108,13 +102,13 @@ class Synchronizer:
         return self.score_follower.is_active() and self.player.is_active()
     
     def soloist_time(self):
-        return self.score_follower.mic.write_index / self.score_follower.mic.sample_rate
+        return self.score_follower.mic.get_time()
 
     def predicted_time(self):
-        return self.score_follower.otw.j * self.window_length / self.sample_rate
+        return self.score_follower.otw.j * self.score_follower.win_length / self.score_follower.sample_rate
     
     def accompanist_time(self):
-        return self.player.index / self.player.sample_rate
+        return self.player.get_time()
     
     def save_performance(self, path):
         # Get the audio logs

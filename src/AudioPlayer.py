@@ -5,18 +5,17 @@ import numpy as np
 from librosa import core
 from librosa.core import convert
 
-
-def normalize_angle(angle):
+def normalize_audio(audio):
     """
-    Normalize the given angle to be between -pi and pi.
+    Normalize audio data to the range [-1, 1].
 
     Parameters:
-    angle (float): The angle in radians to be normalized.
+    audio (np.ndarray): The audio data to be normalized.
 
     Returns:
-    float: The normalized angle in radians between -pi and pi.
+    np.ndarray: The normalized audio data.
     """
-    return np.arctan2(np.sin(angle), np.cos(angle))
+    return audio / np.max(np.abs(audio))
 
 class AudioPlayer:
     """Class to play audio file
@@ -60,12 +59,17 @@ class AudioPlayer:
         True if audio playback is paused. False otherwise.
     
     """
-    def __init__(self, path, sample_rate=16000, channels=1, frames_per_buffer=1024, playback_rate=1.0, n_fft=2048, window_length=2048, hop_length=512):
+    def __init__(self, path: str, playback_rate: int = 1.0, sample_rate: int = 16000, channels: int = 1, 
+                 n_fft: int = 4096, win_length: int = 4096, hop_length: int = 1024, frames_per_buffer: int = 1024):
         
         # AUDIO
         self.path = path
         self.sample_rate = sample_rate
         self.channels = channels
+        self.n_fft = n_fft  # length of signal after padding with zeros
+        self.win_length = win_length
+        self.hop_length = hop_length
+        self.frames_per_buffer = frames_per_buffer
 
         # Check for mono audio
         mono = channels == 1
@@ -73,42 +77,37 @@ class AudioPlayer:
         # Load the audio
         self.audio, self.sample_rate = librosa.load(path, sr=sample_rate, mono=mono)
 
+        # Normalize audio
+        self.audio = normalize_audio(self.audio)
+
         # Reshape mono audio. Multi-channel audio should already be in the correct shape
         if mono:
             self.audio = self.audio.reshape((1, -1))
 
+        # Get number of frames in audio
         self.audio_len = self.audio.shape[-1]
 
         # Phase Vocoder
-        self.n_fft = n_fft
-        self.window_length = window_length
-        self.hop_length = hop_length
+        # The audio is windowed to create overlapping frames of size window_length
+        # The degree of overlap is determined by hop_length
+        # These frames are then padded with zeros to reach a length of n_fft
 
         # Calculate the Short-Time Fourier Transform 
-        self.D = core.stft(self.audio, 
-                           n_fft=n_fft,
-                           hop_length=hop_length,
-                           win_length=window_length)
-
-        if hop_length is None:
-            hop_length = int(n_fft // 4)
+        self.stft = core.stft(self.audio, 
+                              n_fft=n_fft,
+                              hop_length=hop_length,
+                              win_length=win_length)
+        
+        shape = list(self.stft.shape)
+        shape[-1] *= 3
+        self.stft_stretch = np.zeros(shape, dtype='complex_')
+        self.t = 0  # index in stft_stretch
 
         # Expected phase advance in each bin per frame
         self.phi_advance = hop_length * convert.fft_frequencies(sr=2 * np.pi, n_fft=n_fft)
 
-        # Magnitude of each frame in the STFT
-        self.magnitudes = np.abs(self.D)
-
-        # Phase of each frame in the STFT
-        self.phases = np.angle(self.D)
-
         # Phase accumulator; initialize to the phase of the first frame of the STFT
-        self.phase_acc = self.phases[..., 0]
-
-        self.previous_phase = self.phase_acc
-
-        # Phse differnce between frames in the STFT
-        self.phase_differences = np.diff(self.phases, axis=-1)
+        self.phase_acc = np.angle(self.stft[..., 0])
 
         # Index of current phrame in the STFT
         self.k = 0
@@ -120,82 +119,57 @@ class AudioPlayer:
         self.stream = None
         
         self.index = 0
-        self.frames_per_buffer = frames_per_buffer
         self.playback_rate = playback_rate
         self.paused = False
 
         self.output_log = np.empty((channels, 0))
 
-    def fade_in(self, audio, num_frames):
-        """Fades in an audio segment.
+        self.omega = hop_length / win_length
 
-        Parameters
-        ----------
-        audio : np.ndarray
-            Audio to fade in.
-        num_frames : int
-            Number of frames to fade in.
-
-        Returns
-        -------
-        None
-        
-        """
-        num_frames = min(audio.shape[1], num_frames)
-        fade_curve = np.log(np.linspace(1, np.e, num_frames))
-
-        for channel in audio[:, :num_frames]:
-            channel *= fade_curve
-
-    def fade_out(self, audio, num_frames):
-        """Fades out an audio segment.
-
-        Parameters
-        ----------
-        audio : np.ndarray
-            Audio to fade in.
-        num_frames : int
-            Number of frames to fade in.
-
-        Returns
-        -------
-        None
-        
-        """
-        num_frames = min(audio.shape[1], num_frames)
-        start = audio.shape[1] - num_frames
-        fade_curve = np.log(np.linspace(np.e, 1, num_frames))
-
-        for channel in audio[:, start:]:
-            channel *= fade_curve
-
-    def get_next_frames(self, rate):
-        if self.k >= self.D.shape[-1]:
+    def get_next_frames(self):
+        if self.k >= self.stft.shape[-1]-1:
             return None
-        
-        # Get the magnitude of the next frame in the stft
-        mag = self.magnitudes[..., int(self.k)]
-        # Use the magnitude and accumulated phase to 
-        # stft_stretch = util.phasor(self.phase_acc, mag=mag)
 
-        d_stretch = mag * np.exp(1j * self.phase_acc)
-        d_stretch = d_stretch[..., np.newaxis]
+        columns = self.stft[..., int(self.k) : int(self.k + 2)]
+
+        # Weighting for linear magnitude interpolation
+        alpha = np.mod(self.k, 1.0)
+        mag = (1.0 - alpha) * np.abs(columns[..., 0]) + alpha * np.abs(columns[..., 1])
+        # Use the magnitude and accumulated phase to generate a phasor
+        self.stft_stretch[..., self.t] = mag * np.exp(1j * self.phase_acc)
+        self.t += 1
 
         # Accumulate the phase
-        if self.k < self.phase_differences.shape[-1]:
-            self.phase_acc += self.phase_differences[..., self.k]
-            self.phase_acc = normalize_angle(self.phase_acc)
-        self.k += rate
+        dphase = np.angle(columns[..., 1]) - np.angle(columns[..., 0]) - self.phi_advance
+        dphase = dphase - 2.0 * np.pi * np.round(dphase / (2.0 * np.pi))
+        self.phase_acc += self.phi_advance + dphase
 
-        len_stretch = int(self.window_length / rate)
-        y_stretch = core.istft(d_stretch, 
-                               hop_length=self.hop_length,
-                               win_length=self.window_length,
-                               n_fft=self.n_fft,
-                               dtype=self.audio.dtype, 
-                               length=len_stretch)
+        # Convert back to time domain
+        num_hops = 10
+        if self.playback_rate >= 1:
+            length = int(round(num_hops * self.hop_length / self.playback_rate))
+        else:
+            length = None
 
-        return y_stretch
+        if self.t >= num_hops:
+            stretched_audio = librosa.core.istft(self.stft_stretch[..., self.t-num_hops:self.t],
+                                                 hop_length=self.hop_length,
+                                                 win_length=self.win_length,
+                                                 n_fft=self.n_fft,
+                                                 dtype=self.audio.dtype, 
+                                                 length=length)
+            
+            segment = stretched_audio[..., :self.frames_per_buffer]
+        else:
+            segment = np.zeros((self.channels, self.frames_per_buffer))
+
+
+        # Increment the frame index
+        self.k += self.playback_rate
+        self.index = self.k * self.hop_length
+
+        # Return time-stretched audio
+        return segment
 
     def callback(self, in_data, frame_count, time_info, status):
         """Called when PyAudio stream needs audio frames to play
@@ -221,26 +195,12 @@ class AudioPlayer:
         
         if self.paused:
             return np.zeros((self.channels, frame_count)), pyaudio.paContinue
-        
-        # start = max(0, self.index)
-        # end = min(self.index + 5 * self.playback_rate * frame_count, self.audio_len)
 
-        # # Increment the wav_index based on the playback rate
-        # self.index += self.playback_rate * frame_count
-        # audio = self.audio[:, int(start):int(end)]
-        
         # Time stretch the audio based on the playback rate
-        # stretched_audio = librosa.effects.time_stretch(y=audio, rate=self.playback_rate, n_fft=int(self.playback_rate * frame_count))  # get audio
-        stretched_audio = self.get_next_frames(self.playback_rate)
+        audio_segment = self.get_next_frames()
 
-        if stretched_audio is None:
+        if audio_segment is None:
             return np.zeros((self.channels, frame_count)), pyaudio.paComplete
-        
-        # Reshaped the stretched audio (necessary if there is only one channel)
-        # stretched_audio = stretched_audio.reshape((self.channels, -1))
-
-        # Get exactly enough frames to fill the PyAudio buffer
-        audio_segment = stretched_audio[:, :frame_count]
         
         self.output_log = np.append(self.output_log, audio_segment, axis=1)
         
@@ -280,33 +240,38 @@ class AudioPlayer:
         self.stream.close()
         self.p.terminate()
 
+    def get_time(self):
+        return self.k * self.hop_length / self.sample_rate
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import soundfile
 
-    player = AudioPlayer(path='audio/ode_to_joy/track0.wav', 
-                         sample_rate=22050,
+    player = AudioPlayer(path='data/bach/synthesized/track1.wav', 
+                         sample_rate=16000,
                          channels=1,
                          frames_per_buffer=1024,
                          playback_rate=1,
-                         n_fft=2048,
-                         window_length=2048,
+                         n_fft=4096,
+                         win_length=4096,
                          hop_length=1024)
     player.start()
+
+    # the hop_length needs to match the frames_per_buffer
+    # n_fft and window_length need to be at least double that
+    # n_fft must be greater than or equal to window_length
     
     while not player.is_active():
         time.sleep(0.01)
 
     try:
         while player.is_active():
+            # player.playback_rate = 1 + 0.5 * np.sin(time.time())
             time.sleep(0.1)
     except KeyboardInterrupt:
         player.stop()
 
-    print(player.audio.shape)
-    print(player.output_log.shape)
     audio = player.output_log.reshape((-1, ))
-    soundfile.write('test.wav', audio, 22050)
-
     plt.plot(audio)
     plt.show()
+    soundfile.write('test.wav', audio, 22050)
