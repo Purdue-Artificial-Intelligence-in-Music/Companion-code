@@ -134,6 +134,12 @@ class ScoreFollower:
         """Start the microphone input stream. """
         self.mic.start()
 
+    def pause(self):
+        self.mic.pause()
+
+    def unpause(self):
+        self.mic.unpause()
+
     def stop(self):
         """Stop the microphone input stream. """
         self.mic.stop()
@@ -141,6 +147,9 @@ class ScoreFollower:
     def is_active(self):
         """Return True if the microphone input stream is active and we have not reached the end of the otw buffer"""
         return self.mic.is_active() and self.otw.t < self.otw.live.shape[-1] - 1
+    
+    def get_estimated_time(self):
+        return self.otw.j * self.win_length / self.sample_rate
 
 
 if __name__ == '__main__':

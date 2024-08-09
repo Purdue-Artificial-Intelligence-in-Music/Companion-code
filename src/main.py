@@ -6,9 +6,9 @@ import time
 synchronizer = Synchronizer(reference='data/bach/synthesized/track0.wav',
                             accompaniment='data/bach/synthesized/track1.wav',
                             source='data/bach/live/constant_tempo.wav',
-                            Kp=0.0,
-                            Ki=0.0,
-                            Kd=0.00,
+                            Kp=0.5,
+                            Ki=0.001,
+                            Kd=0.05,
                             sample_rate=16000,
                             win_length=4096,
                             hop_length=1024,
@@ -28,7 +28,7 @@ while not synchronizer.is_active():
 try:
     while synchronizer.update():  # update the playback rate of the accompaniment
         soloist_time = synchronizer.soloist_time()
-        predicted_time = synchronizer.predicted_time()
+        predicted_time = synchronizer.estimated_time()
         accompanist_time = synchronizer.accompanist_time()
         playback_rate = synchronizer.player.playback_rate
         print(f'Soloist time: {soloist_time:.2f}, Predicted time: {predicted_time:.2f}, Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}')

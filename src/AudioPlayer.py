@@ -274,4 +274,4 @@ if __name__ == '__main__':
     audio = player.output_log.reshape((-1, ))
     plt.plot(audio)
     plt.show()
-    soundfile.write('test.wav', audio, 22050)
+    soundfile.write('test.wav', audio, 16000)

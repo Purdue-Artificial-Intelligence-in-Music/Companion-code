@@ -131,7 +131,7 @@ class Analyzer:
     
     def print_last(self):
         soloist_time = self.sync.soloist_time()
-        predicted_time = self.sync.predicted_time()
+        predicted_time = self.sync.estimated_time()
         accompanist_time = self.sync.accompanist_time()
         playback_rate = self.sync.player.playback_rate
         print(f"Soloist time: {soloist_time:.2f}, Predicted time: {predicted_time:.2f}, Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}")

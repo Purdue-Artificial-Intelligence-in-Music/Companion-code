@@ -44,19 +44,20 @@ class Synchronizer:
     PID : simple_pid.PID
         PID controller to adjust playback rate
     """
-    def __init__(self, reference: str, accompaniment: str, source: str = None, 
-                 Kp: int = 0.2, Ki: int = 0.00, Kd=0.05, 
-                 sample_rate: int = 16000, win_length: int = 4096, c: int = 10, max_run_count: int = 3, diag_weight: int=0.5, hop_length: int = 1024, **kwargs):
+    def __init__(self, reference: str, accompaniment: str, source: str = None, Kp: int = 0.2, Ki: int = 0.00, Kd=0.05, 
+                 sample_rate: int = 16000, win_length: int = 4096, hop_length: int = 1024, c: int = 10, max_run_count: int = 3, diag_weight: int=0.5, **kwargs):
 
         self.sample_rate = sample_rate
-        self.win_length = win_length
         self.c = c
 
         # ScoreFollower needs soloist audio
         self.score_follower = ScoreFollower(reference=reference,
                                             source=source,
+                                            c=c,
                                             max_run_count=max_run_count,
                                             diag_weight=diag_weight,
+                                            sample_rate=sample_rate,
+                                            win_length=win_length,
                                             **kwargs)
         
         # AudioPlayer needs accompanist audio
@@ -65,7 +66,7 @@ class Synchronizer:
         # PID Controller
         self.PID = PID(Kp=Kp, Ki=Ki, Kd=Kd, setpoint=0, starting_output=1.0, 
                        output_limits=(1 / max_run_count, max_run_count), 
-                       sample_time = self.win_length / self.sample_rate)
+                       sample_time = win_length / sample_rate)
         
         self.accompanist_time_log = []
 
@@ -73,6 +74,14 @@ class Synchronizer:
         """Start the score follower and audio player. """
         self.score_follower.start()
         self.player.start()
+
+    def pause(self):
+        self.score_follower.pause()
+        self.player.pause()
+
+    def unpause(self):
+        self.score_follower.unpause()
+        self.player.unpause()
 
     def stop(self):
         """Stop the score follower and audio player """
@@ -89,7 +98,7 @@ class Synchronizer:
 
         accompanist_time = self.accompanist_time()
         self.accompanist_time_log.append(accompanist_time)
-        error = accompanist_time - self.predicted_time()
+        error = accompanist_time - self.estimated_time()
         playback_rate = self.PID(error)
 
         if ref_index > self.c:
@@ -104,8 +113,8 @@ class Synchronizer:
     def soloist_time(self):
         return self.score_follower.mic.get_time()
 
-    def predicted_time(self):
-        return self.score_follower.otw.j * self.score_follower.win_length / self.score_follower.sample_rate
+    def estimated_time(self):
+        return self.score_follower.get_estimated_time()
     
     def accompanist_time(self):
         return self.player.get_time()
