@@ -7,6 +7,9 @@ from AudioBuffer import AudioBuffer
 import numpy as np
 import matplotlib.pyplot as plt
 from music21 import *
+import librosa
+from Synchronizer import Synchronizer
+import time
 env = environment.UserSettings()
 env['musescoreDirectPNGPath'] = env['musicxmlPath']
 
@@ -24,45 +27,64 @@ class WorkerThread(QThread):
 
     def __init__(self):
         super().__init__()
-        self.buffer = AudioBuffer()
-        self.player = AudioPlayer('audio/moonlight_sonata.wav')
+
+        self.sync = Synchronizer(reference='data/bach/synthesized/track0.wav',
+                                 accompaniment='data/bach/synthesized/track1.wav',
+                                 source='data/bach/live/constant_tempo.wav',
+                                 Kp=0.5,
+                                 Ki=0.001,
+                                 Kd=0.05,
+                                 sample_rate=16000,
+                                 win_length=4096,
+                                 hop_length=1024,
+                                 c=20,
+                                 max_run_count=3,
+                                 diag_weight=0.5,
+                                 channels=1,
+                                 frames_per_buffer=1024)
 
     def run(self):
-        self.player.start()
+        self.sync.start()
+        # wait until the synchronizer is active
+        while not self.sync.is_active():
+            QThread.sleep(0.01)
+
         try:
-            while self.player.is_active():
+            while self.sync.is_active():
                 QThread.sleep(0.1)
         except Exception as e:
             print("Detected interrupt")
-            self.player.stop()
+            self.stop()
 
     @Slot(int)
     def set_playback_rate(self, playback_rate):
-        self.player.playback_rate = playback_rate
+        self.sync.player.playback_rate = playback_rate
 
     @Slot()
     def stop(self):
-        if self.isRunning():
-            self.buffer.stop()
+        self.sync.stop()
 
     @Slot()
     def pause(self):
-        self.player.pause()
+        self.sync.pause()
 
     @Slot()
     def unpause(self):
-        self.player.unpause()
+        self.sync.unpause()
 
     @Slot()
     def get_next_chroma(self):
-        chroma = self.chroma_cens[:, self.chroma_index]
-        self.chroma_index += 1
+        chroma = self.sync.score_follower.otw.live[..., self.sync.score_follower.otw.t]
         return chroma
+    
+    @Slot()
+    def get_chroma(self):
+        return self.sync.score_follower.otw.live
 
 
 class Slider(QSlider):
     def __init__(self, val:float, name: str, minVal:float, align: int,
-                 maxVal:float, calc:int, thread:WorkerThread):
+                 maxVal:float, calc:int, thread: WorkerThread):
         super(Slider, self).__init__()
         self.val = val
         self.calc = calc
@@ -83,6 +105,7 @@ class Slider(QSlider):
 class Demo(QWidget):
     def __init__(self):
         super(Demo, self).__init__()
+
         self.thread = WorkerThread()
         self.speed = Slider(val=1, thread=self.thread, name="Speed", minVal=0, maxVal=200, calc=100, align=Qt.AlignCenter)
         self.speed.setOrientation(Qt.Orientation.Horizontal)
@@ -113,15 +136,16 @@ class Demo(QWidget):
         self.layout.addWidget(self.sheet_display)
         self.set_sheet()
 
+        self.img_data = np.zeros_like(self.thread.get_chroma())
+
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_chroma)
 
         self.timer.start(100)
 
-
     @Slot()
     def start_task(self):
-        self.timer.start(1024 / self.thread.player.sample_rate * 1000)
+        self.timer.start(1024 / self.thread.sync.sample_rate * 1000)
         self.thread.start()
 
     @Slot()
@@ -147,7 +171,7 @@ class Demo(QWidget):
     def set_sheet(self):
         #readfile = self.thread.buffer.wav_file.split('.')[0]
         #xml_file = readfile + ".musicxl"
-        mus = converter.parse("audio_files\ode_to_joy.musicxml")
+        mus = converter.parse("scores\ode_to_joy.musicxml")
         mus.write('xml.png', 'sheet.png')
 
         pixmap = QPixmap("sheet-1.png")
@@ -159,13 +183,12 @@ class Demo(QWidget):
         chroma = self.thread.get_next_chroma()
         chroma = chroma.reshape((12, -1))
         chroma = np.flip(chroma, axis=0)
-        img_data = np.zeros((12, num_features))
 
+        # self.img_data = np.concatenate((self.img_data[:, 1:], chroma), axis=1)
 
-        self.img_data = np.concatenate((self.img_data[:, 1:], chroma), axis=1)
-
+        chromagram = self.thread.get_chroma()
         image_filepath = 'chroma_buffer.png'
-        plt.imsave(image_filepath, self.img_data, cmap='plasma')
+        plt.imsave(image_filepath, chromagram, cmap='plasma')
 
         # Load the image using QPixmap
         pixmap = QPixmap(image_filepath)
