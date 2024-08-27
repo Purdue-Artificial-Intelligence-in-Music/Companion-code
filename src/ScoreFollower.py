@@ -11,33 +11,33 @@ class ScoreFollower:
 
     Parameters
     ----------
-    path : str
+    reference : str
         Path to reference audio file
-    sample_rate : int, optional
-        Sample rate of the audio buffer
-    channels : int, optional
-        Number of channels
-    frames_per_buffer : int, optional
-        Number of frames per buffer for PyAudio stream
-    window_length : int, optional
-        Number of frames per chroma feature
+    source : str, optional
+        Path to source audio file. If None, use microphone audio.
     c : int, optional
         Width of online DTW search
     max_run_count : int, optional
         Slope constraint for online DTW (1/max_run_count to max_run_count)
     diag_weight : int, optional
         Diagonal weight for OTW. Values less than 2 bias toward diagonal steps.
+    sample_rate : int, optional
+        Sample rate of the audio buffer
+    win_length : int, optional
+        Number of frames per chroma feature
+    **kwargs
+        See AudioBuffer for additional keyword arguments
 
     Attributes
     ----------
     sample_rate : int
         Sample rate of the audio buffer
+    win_length : int
+        Number of frames per chroma feature
     channels : int
         Number of channels
     frames_per_buffer : int
         Number of frames per buffer for PyAudio stream
-    window_length : int
-        Number of frames per chroma feature
     mic : int
         AudioBuffer object to store microphone audio
     chroma_maker : ChromaMaker
@@ -52,7 +52,7 @@ class ScoreFollower:
         Alignment path between live and reference sequences
 
     """
-    def __init__(self, reference: str, source: str = None, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4, sample_rate: int = 16000, win_length: int = 4096, **kwargs, ):
+    def __init__(self, reference: str, source: str = None, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4, sample_rate: int = 16000, win_length: int = 4096, **kwargs):
 
         self.sample_rate = sample_rate
         self.win_length = win_length
