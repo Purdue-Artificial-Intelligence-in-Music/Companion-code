@@ -3,11 +3,6 @@ import numpy as np
 import scipy.io.wavfile
 
 
-input_file = 'test_audio/imperial_march.wav'
-output_file = 'test_audio/imperial_march.wav'
-
-y, sr = librosa.load(input_file, sr=22050, mono=False, dtype=np.float64)
-
 input_file = 'audio_files/imperial_march.wav'
 output_file = 'audio_files/imperial_march.wav'
 

@@ -134,4 +134,3 @@ class BeatNet_for_audio_arr:
             preds = preds.cpu().detach().numpy()
             preds = np.transpose(preds[:2, :])
         return preds
-
