@@ -18,6 +18,9 @@ class AudioBuffer:
     max_length : int, optional
         Maximum number of frames in buffer
 
+    Returns
+    -------
+
     Attributes
     ----------
     sample_rate : int
@@ -42,7 +45,6 @@ class AudioBuffer:
         Input stream to read audio from microphone
     paused : bool
         If True, read and write operations are paused
-
     """
     def __init__(self, source: str = None, max_duration: int = 600, sample_rate: int = 16000, channels: int = 1, frames_per_buffer: int = 1024):
 
@@ -88,7 +90,7 @@ class AudioBuffer:
         Returns
         -------
         None
-
+        
         """
         # Get the number of frames to write
         num_frames = frames.shape[-1]
@@ -113,12 +115,14 @@ class AudioBuffer:
         ----------
         num_frames : int
             Number of frames to read from the buffer
+        num_frames: int :
+            
 
         Returns
         -------
         np.ndarray
-            Audio frames from the buffer
-
+            Array of audio frames with shape (channels, num_frames)
+        
         """
         if num_frames > self.count:
             print('AudioBuffer read error')
@@ -141,18 +145,19 @@ class AudioBuffer:
         Parameters
         ----------
         in_data : bytes
-
+            
         frame_count : int
             Number of frames that must be returned to keep the audio stream alive
-        time_info : 
+        time_info :
+            
+        status :
+            
 
-        status : 
-        
         Returns
         -------
         np.ndarray, PortAudio Callback Return Code
-            Microphone audio frames
-
+            Audio frames that were just written to the buffer.
+        
         """
         if self.paused:
             return np.zeros((self.channels, frame_count)), pyaudio.paContinue
@@ -177,7 +182,7 @@ class AudioBuffer:
         return audio, pyaudio.paContinue
     
     def start(self):
-        """Open a PyAudio input stream to read audio data from the microphone. """
+        """Open a PyAudio input stream to read audio data from the microphone."""
         self.stream = self.p.open(format=pyaudio.paFloat32,
                                   channels=self.channels,
                                   rate=self.sample_rate,
@@ -186,32 +191,15 @@ class AudioBuffer:
                                   stream_callback=self.callback,
                                   frames_per_buffer=self.frames_per_buffer)
         
-    def is_active(self):
-        """Return True if the PyAudio stream is active. Otherwise, return False. """
+    def is_active(self) -> bool:
+        """Return True if the stream is active. False otherwise. """
         if self.stream is None:
             return False
         return self.stream.is_active()
     
-    def audio_on(self, audio: np.array):
-        """Takes an audio input array and sets an instance variable saying whether the input is playing or not.
-
-        Parameters
-        ----------
-        audio : np.array
-            An array containing audio data
-        
-        Returns
-        -------
-        None
-            
-        """
-        audio = audio.astype(np.float64)
-        val_sum = 0.0
-        for col in audio.T:
-            val = np.dot(col, col)
-            val_sum += val
-        val_sum /= len(audio)
-        return val_sum > self.on_threshold
+    def get_time(self) -> int:
+        """Get the length of the audio written to the buffer in seconds. """
+        return self.write_index / self.sample_rate
     
     def pause(self):
         """Pause read and write operations"""
@@ -222,20 +210,31 @@ class AudioBuffer:
         self.paused = False
 
     def stop(self):
-        """Close the PyAudio stream and terminate the PyAudio object. """
+        """Close the PyAudio stream and terminate the PyAudio object."""
         self.stream.close()
         self.p.terminate()
 
-    def get_audio(self):
+    def get_audio(self) -> np.ndarray:
+        """Get all the audio written to the buffer so far. """
         return self.buffer[:, :self.write_index]
 
     def save(self, path):
+        """
+
+        Parameters
+        ----------
+        path : str
+            Filepath to save the audio to.
+            
+
+        Returns
+        -------
+            None
+        
+        """
         audio = self.get_audio()
         audio = audio.reshape((-1, ))
         soundfile.write(path, audio, self.sample_rate)
-
-    def get_time(self):
-        return self.write_index / self.sample_rate
 
         
 if __name__ == '__main__':
