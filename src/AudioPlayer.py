@@ -6,67 +6,85 @@ from librosa import core
 from librosa.core import convert
 
 def normalize_audio(audio):
-    """
-    Normalize audio data to the range [-1, 1].
+    """Normalize audio data to the range [-1, 1].
 
-    Parameters:
-    audio (np.ndarray): The audio data to be normalized.
+    Parameters
+    ----------
+    audio : np.ndarray
+        Array containing audio data.
 
-    Returns:
-    np.ndarray: The normalized audio data.
+    Returns
+    -------
+    np.ndarray
+        The normalized audio data.
+
     """
     return audio / np.max(np.abs(audio))
 
 class AudioPlayer:
-    """Class to play audio file
+    """Class to play audio files
 
     Parameters
     ----------
     path : str
-        Path to audio file
+        Path to audio file.
+    playback_rate : int, optional
+        Speed multiplier for audio playback.
     sample_rate : int, optional
-        Sample rate for audio file
+        Sample rate for audio file.
     channels : int, optional
-        Number of channels for audio file
+        Number of channels for audio file.
+    n_fft : int, optional
+        Length of the windowed signal after padding with zeros.
+    win_length : int, optional
+        Length of the windowed signal before padding with zeros.
+    hop_length : int, optional
+        Number of audio samples between adjacent windows.
     frames_per_buffer : int, optional
-        Number of frames per buffer for PyAudio stream
-    playback_rate : float, optional
-        Multiplier for playback speed of audio file
-    
+        Number of frames per buffer for PyAudio stream.
+
     Attributes
     ----------
     path : str
         Path to audio file
+    playback_rate : float
+        Multiplier for playback speed of audio file
     sample_rate : int
         Sample rate for audio file
     channels : int
         Number of channels for audio file
+    n_fft : int
+        Length of the windowed signal after padding with zeros.
+    win_length : int
+        Length of the windowed signal before padding with zeros.
+    hop_length : int
+        Number of audio samples between adjacent windows.
     frames_per_buffer : int
         Number of frames per buffer for PyAudio stream
-    playback_rate : float
-        Multiplier for playback speed of audio file
     audio : np.ndarray
         Numpy array containing audio frames of shape (channels, number of frames)
     audio_len : int
         Number of audio frames in audio
-    p : 
+    p : pyaudio.PyAudio
         PyAudio object
-    stream :
+    stream : pyaudio.Stream
         PyAudio stream
     index : int
         Index of next audio frame to play
     paused : bool
         True if audio playback is paused. False otherwise.
-    
+    output_log : np.ndarray
+        Record of all audio frames given to PyAudio stream
     """
     def __init__(self, path: str, playback_rate: int = 1.0, sample_rate: int = 16000, channels: int = 1, 
                  n_fft: int = 4096, win_length: int = 4096, hop_length: int = 1024, frames_per_buffer: int = 1024):
         
         # AUDIO
         self.path = path
+        self.playback_rate = playback_rate
         self.sample_rate = sample_rate
         self.channels = channels
-        self.n_fft = n_fft  # length of signal after padding with zeros
+        self.n_fft = n_fft
         self.win_length = win_length
         self.hop_length = hop_length
         self.frames_per_buffer = frames_per_buffer
@@ -109,7 +127,7 @@ class AudioPlayer:
         # Phase accumulator; initialize to the phase of the first frame of the STFT
         self.phase_acc = np.angle(self.stft[..., 0])
 
-        # Index of current phrame in the STFT
+        # Index of current frame in the STFT
         self.k = 0
 
         # PYAUDIO
@@ -119,14 +137,17 @@ class AudioPlayer:
         self.stream = None
         
         self.index = 0
-        self.playback_rate = playback_rate
         self.paused = False
 
         self.output_log = np.empty((channels, 0))
 
-        self.omega = hop_length / win_length
+    def get_next_frames(self) -> np.ndarray:
+        """ Time scales audio frames according to the playback rate
 
-    def get_next_frames(self):
+        Returns
+        -------
+            Array of audio frames with shape (channels, frames_per_buffer)
+        """
         if self.k >= self.stft.shape[-1]-1:
             return None
 
@@ -176,8 +197,8 @@ class AudioPlayer:
 
         Parameters
         ----------
-        in_data : 
-            
+        in_data : np.ndarray
+            Audio frames to be played
         frame_count : int
             Number of audio frames that must be returned
         time_info :
@@ -188,7 +209,7 @@ class AudioPlayer:
         Returns
         -------
         np.ndarray, PortAudio Callback Return Code
-            Audio frames to be played by PyAudio stream
+            Time scaled audio frames
         """
         # If len(data) is less than requested frame_count, PyAudio automatically
         # assumes the stream is finished, and the stream stops.
@@ -211,7 +232,7 @@ class AudioPlayer:
         return audio_segment, pyaudio.paContinue
     
     def start(self):
-        """Open a PyAudio output stream. """
+        """Open a PyAudio output stream."""
 
         self.stream = self.p.open(format=pyaudio.paFloat32,
                                   channels=self.channels,
@@ -221,26 +242,27 @@ class AudioPlayer:
                                   stream_callback=self.callback,
                                   frames_per_buffer=self.frames_per_buffer)
         
-    def is_active(self):
-        """Return True if the PyAudio stream is active. False otherwise. """
+    def is_active(self) -> bool:
+        """Return True if PyAudio stream is active. False otherwise. """
         if self.stream is None:
             return False
         return self.stream.is_active()
     
     def pause(self):
-        """Pause but do not kill the thread."""
+        """Pause the audio playback."""
         self.paused = True
 
     def unpause(self):
-        """Unpause the thread."""
+        """Unpause the audio playback."""
         self.paused = False
 
     def stop(self):
-        """Close the PyAudio stream and terminate the PyAudio object. """
+        """Close the PyAudio stream and terminate the PyAudio object."""
         self.stream.close()
         self.p.terminate()
 
-    def get_time(self):
+    def get_time(self) -> int:
+        """Get the timestamp in the audio being played."""
         return self.k * self.hop_length / self.sample_rate
 
 if __name__ == '__main__':
@@ -266,7 +288,7 @@ if __name__ == '__main__':
 
     try:
         while player.is_active():
-            # player.playback_rate = 1 + 0.5 * np.sin(time.time())
+            player.playback_rate = 1 + 0.5 * np.sin(time.time())
             time.sleep(0.1)
     except KeyboardInterrupt:
         player.stop()

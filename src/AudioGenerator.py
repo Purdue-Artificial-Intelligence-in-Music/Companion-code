@@ -26,7 +26,7 @@ class AudioGenerator:
         MIDI-DDSP expression generator object
         
     """
-    def __init__(self, path):
+    def __init__(self, path: str):
 
         # If the input is a MusicXML file, convert to MIDI
         if path.endswith('.musicxml'):
