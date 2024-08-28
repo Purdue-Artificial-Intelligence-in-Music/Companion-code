@@ -238,7 +238,7 @@ class AudioBuffer:
 
         
 if __name__ == '__main__':
-    buffer = AudioBuffer(source='audio/ode_to_joy/track0.wav',
+    buffer = AudioBuffer(source=None,
                          max_duration=600,
                          sample_rate=16000,
                          channels=1,
