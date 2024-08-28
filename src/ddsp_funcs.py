@@ -5,10 +5,8 @@ import numpy as np
 import librosa
 import matplotlib.pyplot as plt
 import tensorflow.compat.v2 as tf
-from IPython.display import Javascript
 import IPython.display as ipd
 import pandas as pd
-import music21
 import os
 
 from midi_ddsp_local import load_pretrained_model

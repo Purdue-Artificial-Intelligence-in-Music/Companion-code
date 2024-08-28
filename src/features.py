@@ -1,5 +1,4 @@
 import numpy as np
-# from .file_utils import load_wav
 import librosa
 
 def pitch_freqs(start_pitch = 0, end_pitch = 128) :
