@@ -5,7 +5,7 @@ import librosa
 import soundfile
 
 class AudioBuffer:
-    """Thread to save microphone audio to a circular buffer.
+    """Thread to save microphone audio to a buffer.
 
     Parameters
     ----------
@@ -14,7 +14,7 @@ class AudioBuffer:
     channels : int, optional
         Number of channels
     frames_per_buffer : int, optional
-        Number of frames per buffer for PyAudio stream
+        Number of frames per buffer for PyAudio stream : upper limit of frames the object could take before buffer reset
     max_length : int, optional
         Maximum number of frames in buffer
 
