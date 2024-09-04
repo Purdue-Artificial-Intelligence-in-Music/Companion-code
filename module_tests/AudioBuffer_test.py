@@ -33,7 +33,7 @@ class AudioBufferTests(unittest.TestCase):
             max_duration=self.max_duration)
 
     def test_AudioBuffer_constructor(self):
-        """Test the initialization of the AudioBuffer."""
+        # Test the initialization of the AudioBuffer
         self.assertEqual(self.audio_buffer.sample_rate, self.sample_rate)
         self.assertEqual(self.audio_buffer.channels, self.channels)
         self.assertEqual(self.audio_buffer.frames_per_buffer, self.frames_per_buffer)
@@ -44,10 +44,18 @@ class AudioBufferTests(unittest.TestCase):
         self.assertIsInstance(self.audio_buffer.buffer, np.ndarray)
 
     def test_write_to_buffer(self):
-        """Test writing frames to the buffer."""
+        # Test writing frames to the buffer
         frames = np.random.rand(self.channels, 100).astype(np.float32)
         self.audio_buffer.write(frames)
         self.assertEqual(self.audio_buffer.write_index, 100)
         self.assertEqual(self.audio_buffer.count, 100)
         np.testing.assert_array_equal(self.audio_buffer.buffer[:, :100], frames)
+
+    def test_write_to_buffer_overflow(self):
+        # test writing more frames than alloted
+        frames = np.random.rand(self.channels, self.audio_buffer.length + 1).astype(np.float32)
+        with self.assertRaises(Exception) as context:   #ensure Exception is raised at overflow
+                self.audio_buffer.write(frames)
+                self.assertTrue('Not enough space left in buffer' in str(context.exception))
+
     
