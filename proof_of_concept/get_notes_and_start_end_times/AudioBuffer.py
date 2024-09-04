@@ -5,7 +5,7 @@ import time
 import librosa
 from typing import Callable
 from BeatNet_local.BeatNet_files import BeatNet_for_audio_arr
-from Counter import *
+from proof_of_concept.beat_tracking.Counter import *
 import os
 from BeatSynchronizer import *
 import audioflux as af

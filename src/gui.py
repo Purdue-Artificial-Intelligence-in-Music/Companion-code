@@ -2,14 +2,10 @@ import sys
 from PySide6.QtCore import * 
 from PySide6.QtWidgets import * 
 from PySide6.QtGui import *
-from AudioPlayer import AudioPlayer
-from AudioBuffer import AudioBuffer
 import numpy as np
 import matplotlib.pyplot as plt
 from music21 import *
-import librosa
 from Synchronizer import Synchronizer
-import time
 env = environment.UserSettings()
 env['musescoreDirectPNGPath'] = env['musicxmlPath']
 

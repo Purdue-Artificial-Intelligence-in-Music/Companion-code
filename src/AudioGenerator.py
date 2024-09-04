@@ -4,7 +4,6 @@ from midi_ddsp.utils.audio_io import save_wav
 import os
 import pretty_midi
 from music21 import *
-import librosa
 import numpy as np
 
 
