@@ -2,11 +2,18 @@ import sys
 import os
 
 # importing AudioBuffer to this script
-directory = r'C:\Users\Nick\github\Nick-Ko-Companion-code\src\AudioBuffer.py'
+directory = r'C:\Users\Nick\github\Nick-Ko-Companion-code\src'
 assert os.path.exists(directory), f"{directory} does not exists"
 sys.path.append(directory)
+print(directory in sys.path)
 
-from AudioBuffer import AudioBuffer
+try:
+    from AudioBuffer import AudioBuffer
+except:
+    print("remember to use SET PYTHONPATH=\"C:\\Users\\Nick\\github\\Nick-Ko-Companion-code\\src\"")
+    print("on Windows machines")
+    exit(1)
+
 import numpy as np
 import unittest
 
