@@ -26,8 +26,3 @@ jobs:
     - name: Send greeting
       shell: powershell
       run: echo "Hello ${{ inputs.name }}"
-
-具有快顯功能表
-
-
-具有快顯功能表
