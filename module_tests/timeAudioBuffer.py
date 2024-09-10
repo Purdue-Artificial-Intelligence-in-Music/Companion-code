@@ -48,7 +48,8 @@ def main()->None:
     bufferSizes = np.array([value * 1024 for value in durationValues])
     measuredTime = np.array([measure_elapsed_time(time) for time in durationValues])
 
-    plot_and_savefig(bufferSizes, measure_elapsed_time)
+    # print(measuredTime[:10])
+    plot_and_savefig(bufferSizes, measuredTime)
 
 
 if __name__ == '__main__':
