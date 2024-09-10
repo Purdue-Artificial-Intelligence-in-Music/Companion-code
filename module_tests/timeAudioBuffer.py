@@ -28,24 +28,28 @@ def measure_elapsed_time(maxDuration: int)->float:
     # init AudioBuffer: testing empty 
     myAudioBuffer = AudioBuffer(max_duration=maxDuration)
     timeElapsed = time.perf_counter() - currTime
+    # timeElapsed = round(timeElapsed, 2) # round to 2 decimal places
     return timeElapsed
 
+def plot_and_savefig(x: np.array, y: np.array)->None:
+    # plotting
+    fig, ax = plt.subplots()
+    ax.plot(x, y)
+    ax.set_xlabel('bufferSizes', fontweight ='bold')
+    ax.set_ylabel('elapsed_time measured in s')
+    ax.grid(True)
+    ax.set_title('bufferSize vs elapsed_time', fontsize = 14, fontweight ='bold')
+    plt.savefig('AuioBufferInitTime.png')
 
 def main()->None:
+
     # set up values
-    durationValues = np.array([i for i in range(600, DURATION_UPPER_LIMIT, 100)])
+    durationValues = np.array([i for i in range(600, DURATION_UPPER_LIMIT, 50)])
     bufferSizes = np.array([value * 1024 for value in durationValues])
     measuredTime = np.array([measure_elapsed_time(time) for time in durationValues])
 
-    # plotting
-    fig, ax = plt.subplots()
-    ax.plot(durationValues, measuredTime)
-    ax.set_xlabel('bufferSizes', fontweight ='bold')
-    ax.set_ylabel('elapsed_time measured in ns')
-    ax.grid(True)
-    
-    ax.set_title('bufferSize vs elapsed_time', fontsize = 14, fontweight ='bold')
-    plt.savefig('AuioBufferInitTime.png')
+    plot_and_savefig(bufferSizes, measure_elapsed_time)
+
 
 if __name__ == '__main__':
     main()
