@@ -3,9 +3,9 @@ import time
 
 
 # create a synchronizer object
-synchronizer = Synchronizer(reference='data/bach/synthesized/track0.wav',
-                            accompaniment='data/bach/synthesized/track1.wav',
-                            source='data/bach/live/constant_tempo.wav',
+synchronizer = Synchronizer(reference= "D:\\Download\\bach\\synthesized\\solo.wav",
+                            accompaniment="D:\\Download\\bach\\synthesized\\accompaniment.wav",
+                            source="D:\\Download\\bach\\live\\constant_tempo.wav",
                             Kp=0.5,
                             Ki=0.001,
                             Kd=0.05,
@@ -39,4 +39,4 @@ try:
 except KeyboardInterrupt:
     synchronizer.stop()
 
-synchronizer.save_performance(path='data/bach/performance.wav')
+synchronizer.save_performance(path='performance.wav')
