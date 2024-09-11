@@ -128,4 +128,3 @@ def file_to_np_cens(filepath, params):
     hop_len = params['ref_hop_len']
 
     return audio_to_np_cens(y, sr, n_fft, hop_len)
-

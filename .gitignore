@@ -169,15 +169,6 @@ audio/
 *.mp3
 *.wav
 
-# MIDI
-midi/
-*.mid
-
-# MusicXML
-scores/
-*.musicxml
-*.mxl
-
 # BeatNet
 beat_cache/
 

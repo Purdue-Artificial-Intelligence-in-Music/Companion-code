@@ -1,11 +1,15 @@
 from Synchronizer import Synchronizer
 import time
+import os
 
+reference = os.path.join('audio', 'bach', 'synthesized', 'solo.wav')
+accompaniment = os.path.join('audio', 'bach', 'synthesized', 'accompaniment.wav')
+source = os.path.join('audio', 'bach', 'live', 'constant_tempo.wav')
 
 # create a synchronizer object
-synchronizer = Synchronizer(reference='data/bach/synthesized/track0.wav',
-                            accompaniment='data/bach/synthesized/track1.wav',
-                            source='data/bach/live/constant_tempo.wav',
+synchronizer = Synchronizer(reference=reference,
+                            accompaniment=accompaniment,
+                            source=source,
                             Kp=0.5,
                             Ki=0.001,
                             Kd=0.05,
@@ -14,7 +18,7 @@ synchronizer = Synchronizer(reference='data/bach/synthesized/track0.wav',
                             hop_length=1024,
                             c=20,
                             max_run_count=3,
-                            diag_weight=0.5,
+                            diag_weight=2,
                             channels=1,
                             frames_per_buffer=1024)
 
@@ -39,4 +43,4 @@ try:
 except KeyboardInterrupt:
     synchronizer.stop()
 
-synchronizer.save_performance(path='data/bach/performance.wav')
+synchronizer.save_performance(path='performance.wav')

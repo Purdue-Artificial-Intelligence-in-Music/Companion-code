@@ -2,10 +2,7 @@ import threading
 import time
 from AudioBuffer import AudioBuffer
 from AudioPlayer import AudioPlayer
-import speech_recognition as sr         #Defunct?
-import pyttsx3                          #Defunct?
 import numpy as np
-from nltk.stem import PorterStemmer     #Defunct?
 from transformers import pipeline
 
 import argparse
@@ -24,11 +21,9 @@ class VoiceAnalyzerThread(threading.Thread):
         self.buffer = buffer
         self.player = player
         self.stop_request = False
-        self.r = sr.Recognizer()        #Defunct?
-        self.ps = PorterStemmer()       #Defunct?
         self.output = ""
-        self.voice_length = voice_length #Defunct?
         # Initialize whatever stuff you need here
+        self.canHear = True
 
         #The following are all related to the use of Vosk and voice commanding
         self.q = queue.Queue()
@@ -43,17 +38,12 @@ class VoiceAnalyzerThread(threading.Thread):
             "start": "The action involves beginning something.",
             "exit": "The action involves the termination of something.",
             #"edit": "The action involves changing something."
+            "deafen": "The action involves the termination of listening",
         }
 
         # Initialize the zero-shot classification pipeline with the Roberta model
         self.classifier = pipeline('zero-shot-classification', model='roberta-large-mnli')
 
-    def convert_to_AudioData(self, arr: np.ndarray): #Defunct?
-        # sample_width=2 relies on the fact that AudioThreadWithBuffer's format is PyAudio.paFloat32, which has 4 bytes per sample
-        return sr.AudioData(frame_data=arr.tobytes(), 
-                            sample_rate=self.buffer.sample_rate, 
-                            sample_width=4)
-    
     def int_or_str(text):
     #Helper function for argument parsing, it allows for numbers to be converted into ints
         try:
@@ -90,6 +80,9 @@ class VoiceAnalyzerThread(threading.Thread):
             "don't go": "stop",
             "do not go": "stop",
             "never go": "stop",
+            "do not listen": "deafen",
+            "don't listen": "deafen",
+            "never listen": "deafen"
         }
         # Action phrases that directly map to commands
         action_phrases = {
@@ -104,6 +97,7 @@ class VoiceAnalyzerThread(threading.Thread):
             "pause": "stop", 
             "I can't hear": "volume up",
             "it's noisy": "volume down",
+            "return": "deafen", #Thinking of using it as a toggle
         }
 
         # First check for any negation adjustments
@@ -130,7 +124,12 @@ class VoiceAnalyzerThread(threading.Thread):
         Parameters: command: a string that is the highest scoring command found by roberta
         Returns: Nothing, but acts upon the AudioBuffer to do various actions
         """
-        if command == "start":
+        if command == "deafen":
+
+            #Reverse whatever if its allowed to process a command
+            self.canHear = not self.canHear
+
+        elif command == "start":
 
             #If audio is not playing from the AudioBuffer, then start playing audio
             print("start")
@@ -152,6 +151,17 @@ class VoiceAnalyzerThread(threading.Thread):
             self.buffer.stop()
             self.player.stop()
 
+        #TODO: Capture the % wanted for speed up and slow down
+        elif command == "speed up":
+
+            print("now 10 percent faster")
+            self.player.playback_rate = self.player.playback_rate * 1.1
+
+        elif command == "slow down":
+
+            print("now 10 percent slower")
+            self.player.playback_rate = self.player.playback_rate * 0.9
+
         else:
             #TODO: Look into ways to use LLM to create commands and have the code be able to run them
                 #Maybe have the user provide smaller step by step requests to gain a better chance of the command working
@@ -160,76 +170,6 @@ class VoiceAnalyzerThread(threading.Thread):
                 #Also possibly add an "Undo" command that can just reverse the last command sent?
                 #But only for custom commands?
             print("Run the user's defined command")
-
-
-    """
-    #TODO: Verify this code isn't needed anymore and remove it
-    """
-    # Function to convert text to
-    # speech
-    def SpeakText(command: str):
-        # Initialize the engine
-        engine = pyttsx3.init()
-        engine.say(command)
-        engine.runAndWait()
-
-    """
-    #TODO: Verify this code isn't needed anymore and remove it as run now should just do this
-    """
-    def getSpeech(self, audio: sr.AudioData):
-        # Exception handling to handle
-        # exceptions at the runtime
-        try:
-            # Using google to recognize audio
-            MyText = self.r.recognize_google(audio)
-            MyText = MyText.lower()
-            spokenWords = np.array(MyText.split())
-            
-
-            # TODO: Process the command and act upon the AudioBuffer
-            # MVP: Get start and stop to work
-
-            if self.output == "start":
-
-                print("start")
-                #If audio is not playing from the AudioBuffer, then start playing audio
-                self.buffer.unpause()
-                self.player.unpause()
-
-            elif self.output == "stop":
-
-                print("stop")
-                #Still run Buffer in the background, but don't play audio
-                self.buffer.pause()
-                self.player.pause()
-
-            elif self.output == "exit":
-
-                print("Detected interrupt")
-                #Stop both voice and buffer
-                self.stop_request = True
-                self.buffer.stop()
-                self.player.stop()
-
-            else:
-                #TODO: Look into ways to use LLM to create commands and have the code be able to run them
-                #Maybe have the user provide smaller step by step requests to gain a better chance of the command working
-                #^ like the idea provided by ()
-
-                #Also possibly add an "Undo" command that can just reverse the last command sent?
-                #But only for custom commands?
-                print("Run the user's defined command")
-
-            self.output = ""
-
-        except sr.RequestError as e:
-            print("Could not request results; {0}".format(e))
-            self.stop_request = True
-        except sr.UnknownValueError:
-            print("unknown error occurred")
-            self.stop_request = True
-
-        self.output = ""
 
     def run(self):
         """
@@ -294,21 +234,6 @@ class VoiceAnalyzerThread(threading.Thread):
                 while not self.stop_request:
                     data = self.q.get()
 
-                    #Possible optimization would be jut to ignore Result entirely,
-                    #but I don't think that would end up clearing the json buffer
-                    # if rec.AcceptWaveform(data) is False:
-                    #     print(rec.PartialResult())
-                    #     #print()
-
-                    #     #Possible optimization by using partials rather than whole
-                    #     #Parse the json text and find the command
-                    #     res = json.loads(rec.PartialResult())
-                    #     print(res["partial"])
-                    #     if res["partial"] != "":
-                    #         #print(toParse)
-                    #         toParse = self.classify_command(res["partial"])
-                    #         self.run_command(toParse)
-
                     if rec.AcceptWaveform(data):
                         #Print the result
                         print(rec.Result())
@@ -319,7 +244,13 @@ class VoiceAnalyzerThread(threading.Thread):
                         if res["text"] != "":
                             #print(toParse)                
                             toParse = self.classify_command(res['text'])
-                            self.run_command(toParse)
+
+                            #As long as the thread is allowed to hear, run any command
+                            if self.canHear:
+                                self.run_command(toParse)
+                            #As an elif canHear is false here, so only allow deafen to run
+                            elif toParse == "deafen":
+                                self.run_command(toParse)
 
                     else:
                         print(rec.PartialResult())
@@ -332,7 +263,13 @@ class VoiceAnalyzerThread(threading.Thread):
                         if res["partial"] != "":
                             #print(toParse)
                             toParse = self.classify_command(res["partial"])
-                            self.run_command(toParse)
+                            
+                            #As long as the thread is allowed to hear, run any command
+                            if self.canHear:
+                                self.run_command(toParse)
+                            #As an elif canHear is false here, so only allow deafen to run
+                            elif toParse == "deafen":
+                                self.run_command(toParse)
 
                     if dump_fn is not None:
                         dump_fn.write(data)
@@ -347,19 +284,33 @@ class VoiceAnalyzerThread(threading.Thread):
         except Exception as e:
             parser.exit(type(e).__name__ + ": " + str(e))
 
-# def main():
-#     #Todo: Change to your file path
-#     AThread = AudioBuffer(name="AThread", frames_per_buffer=1024, 
-#                                     wav_file = "new_src\hunt.wav",
-#                                     process_func=(lambda x, y, z: z))
-#     VThread = VoiceAnalyzerThread(BUFFER=AThread, name = "Vthread")
-#     try:
-#         AThread.start()
-#         VThread.start()
-#     except KeyboardInterrupt:
-#         AThread.stop_request = True
-#         VThread.stop_request = True
+#Mini Main for demo reasons
+if __name__ == '__main__':
+    #Change this to any wav file you want
+    player = AudioPlayer(path="C:\\Users\\Eddie\\miniconda3\\envs\\new_test\\Lib\\site-packages\\music21\\audioSearch\\test_audio.wav")
+    player.start()
+    buffer = AudioBuffer(sample_rate=22050,
+                         channels=1,
+                         frames_per_buffer=1024,
+                         num_chunks=100)
+    buffer.start()
 
+    commander = VoiceAnalyzerThread(name="test",buffer=buffer,player=player)
+    commander.start()
 
-# if __name__ == "__main__":
-#     main()
+    while not buffer.is_active():
+        time.sleep(0.01)
+        
+    while buffer.is_active():
+            time.sleep(0.1)
+    
+    while not player.is_active():
+        time.sleep(0.01)
+
+    try:
+        while player.is_active():
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        player.stop()
+        buffer.stop()
+        commander.join()
