@@ -312,9 +312,5 @@ if __name__ == '__main__':
             time.sleep(0.1)
     except KeyboardInterrupt:
         player.stop()
-        player.join()
         buffer.stop()
-        buffer.join()
-        commander.stop()
         commander.join()
-        
