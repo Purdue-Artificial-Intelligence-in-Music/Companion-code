@@ -183,3 +183,4 @@ src/midi_ddsp_local/*.sf2
 # FluidSynth
 /FluidR3_GM
 /fluidsynth-2.3.6-win10-x64
+soundfonts/
