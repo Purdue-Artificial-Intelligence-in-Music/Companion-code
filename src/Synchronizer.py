@@ -1,6 +1,5 @@
 from AudioPlayer import AudioPlayer
 from ScoreFollower import ScoreFollower
-from VoiceCommandThread import VoiceAnalyzerThread
 from simple_pid import PID
 import soundfile
 import numpy as np
@@ -44,8 +43,6 @@ class Synchronizer:
         AudioPlayer object to play accompaniment
     PID : simple_pid.PID
         PID controller to adjust playback rate
-    listener : VoiceCommandThread
-        VoiceAnalyzerThread object to update settings on the fly
     """
     def __init__(self, reference: str, accompaniment: str, source: str = None, Kp: int = 0.2, Ki: int = 0.00, Kd=0.05, 
                  sample_rate: int = 16000, win_length: int = 4096, hop_length: int = 1024, c: int = 10, max_run_count: int = 3, diag_weight: int=0.5, **kwargs):
@@ -70,9 +67,6 @@ class Synchronizer:
         self.PID = PID(Kp=Kp, Ki=Ki, Kd=Kd, setpoint=0, starting_output=1.0, 
                        output_limits=(1 / max_run_count, max_run_count), 
                        sample_time = win_length / sample_rate)
-        
-        # Voice Command thread
-        self.listener = VoiceAnalyzerThread(name="Listener", buffer=self.score_follower.mic, player=self.player)
         
         self.accompanist_time_log = []
 

@@ -151,6 +151,30 @@ class ScoreFollower:
     def get_estimated_time(self):
         return self.otw.j * self.win_length / self.sample_rate
 
+    def get_backwards_path(self, b):
+        cost_matrix = self.otw.D
+        ref_index = self.otw.j # row index
+        live_index = self.otw.t # column index
+
+        j = ref_index
+        t = live_index
+        backwards_path = []
+
+        while j > ref_index - b and (0, 0) not in backwards_path:
+            down, left, diagonal = cost_matrix[j-1, t], cost_matrix[j, t-1], cost_matrix[j-1, t-1]
+            minimum_cost = min(down, left, diagonal)
+            if minimum_cost == down:
+                backwards_path.append((j-1, t))
+                j -= 1
+            elif minimum_cost == left:
+                backwards_path.append((j, t-1))
+                t -= 1
+            else:
+                backwards_path.append((j-1, t-1))
+                j -= 1
+                t -= 1
+        
+        return backwards_path
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
