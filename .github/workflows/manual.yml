@@ -1,0 +1,18 @@
+# This is a basic workflow that tries to greet committer on every push
+ 
+name: Greet on Push workflow
+ 
+# Controls when the action will run. Workflow runs when manually triggered using the UI
+# or API.
+on:
+  push:
+jobs:
+  greet:
+    runs-on: ${{ matrix.os }}  # This will run on the OS defined in the matrix
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]  # Defines the OSes to run on
+    steps:
+      - name: Print greeting
+        run: |
+          echo "Hello from ${{ matrix.os }}!"  # This will run on any OS
