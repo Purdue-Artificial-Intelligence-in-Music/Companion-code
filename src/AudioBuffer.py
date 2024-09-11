@@ -15,7 +15,7 @@ class AudioBuffer:
         Number of channels
     frames_per_buffer : int, optional
         Number of frames per buffer for PyAudio stream : upper limit of frames the object could take before buffer reset
-    max_length : int, optional
+    max_duration: int, optional
         Maximum number of frames in buffer
 
     Returns
@@ -29,7 +29,7 @@ class AudioBuffer:
         Number of channels
     frames_per_buffer : int
         Number of frames per buffer for PyAudio stream
-    max_length : int
+    length : int
         Maximum number of frames in buffer
     buffer : np.ndarray
         Array containing audio frames
@@ -71,7 +71,7 @@ class AudioBuffer:
         # Track buffer
         self.write_index = 0
         self.read_index = 0
-        self.count = 0
+        self.count = 0  # how much does read and write indeces differ (?)
 
         # PyAudio
         self.p = pyaudio.PyAudio()
