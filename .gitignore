@@ -172,15 +172,11 @@ audio/
 # BeatNet
 beat_cache/
 
-# MIDI-DDSP
-*/FluidR3_GM.zip
-*.pt
-src/midi_ddsp_local/midi_ddsp_model_weights_urmp_9_10/*
-src/midi_ddsp_local/*.sf2
+# FluidSynth
+soundfonts/
+data/audio
 
 *.png
 
 # FluidSynth
-/FluidR3_GM
-/fluidsynth-2.3.6-win10-x64
 soundfonts/

@@ -2,9 +2,9 @@ from Synchronizer import Synchronizer
 import time
 import os
 
-reference = os.path.join('audio', 'bach', 'synthesized', 'solo.wav')
-accompaniment = os.path.join('audio', 'bach', 'synthesized', 'accompaniment.wav')
-source = os.path.join('audio', 'bach', 'live', 'constant_tempo.wav')
+reference = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
+accompaniment = os.path.join('data', 'audio', 'bach', 'synthesized', 'accompaniment.wav')
+source = os.path.join('data', 'audio', 'bach', 'live', 'constant_tempo.wav')
 
 # create a synchronizer object
 synchronizer = Synchronizer(reference=reference,
