@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+
 def load_data(filepath: str) -> pd.DataFrame:
     """
     Load data from an Excel spreadsheet and return a pandas DataFrame.
@@ -14,29 +15,22 @@ def load_data(filepath: str) -> pd.DataFrame:
     -------
     pandas.DataFrame
         A dataframe with columns 'measure', 'live', and 'ref'.
+    
+    Raises
+    ------
+    ValueError
+        If the required columns are not present in the spreadsheet.
     """
+    # Load the Excel file into a pandas DataFrame
+    df = pd.read_excel(filepath)
 
-    pass
+    # Ensure the required columns are present
+    required_columns = ['measure', 'live', 'ref']
+    if not all(col in df.columns for col in required_columns):
+        raise ValueError(f"Missing one or more required columns: {required_columns}")
 
-
-def find_nearest(short_array: np.ndarray, long_array: np.ndarray) -> np.ndarray:
-    """
-    Find the indices of the nearest floats in the long_array for each float in the short_array.
-
-    Parameters
-    ----------
-    short_array : numpy.ndarray
-        The shorter array of floats.
-    long_array : numpy.ndarray
-        The longer array of floats.
-
-    Returns
-    -------
-    numpy.ndarray
-        An array of indices representing the nearest floats in the `long_array` for each float in the `short_array`.
-    """
-
-    pass
+    # Return the dataframe with the required columns
+    return df[required_columns]
 
 
 def calculate_alignment_error(df: pd.DataFrame, warping_path: np.ndarray) -> pd.DataFrame:
