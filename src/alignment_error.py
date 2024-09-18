@@ -68,3 +68,28 @@ def calculate_alignment_error(df: pd.DataFrame, warping_path: np.ndarray) -> pd.
     # Create an array estimated_ref_tmes[indices] to get the estimated reference times for each measure
     # Calculate the alignment error as the difference between the estimated reference times and the reference times
     # Add the estimated_ref and alignment_error columns to the DataFrame
+
+    # I convert the live and ref columns of the passed dataframe to numpy arrays
+    live_times = df['live'].to_numpy()
+    ref_times = df['ref'].to_numpy()
+
+    # Below, we convert the columns from the 2D warping_path array to 1D numpy arrays
+    estimated_ref_times = warping_path[:, 0]
+    live_times_from_warping = warping_path[:, 1]
+
+    closest_indices = []
+
+    # In the loop below, we find the closest indices in the warping path for each live time in the given dataframe
+    for time in live_times:
+        difference = np.abs(live_times_from_warping - time)
+        closest_index = np.argmin(difference)
+        closest_indices.append(closest_index)
+
+    estimated_ref = estimated_ref_times[closest_indices]
+
+    alignment_error = estimated_ref - ref_times
+
+    df['estimated_ref'] = estimated_ref
+    df['alignment_error'] = alignment_error
+
+    return df
