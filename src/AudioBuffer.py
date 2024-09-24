@@ -18,9 +18,6 @@ class AudioBuffer:
     max_duration: int, optional
         Maximum number of frames in buffer
 
-    Returns
-    -------
-
     Attributes
     ----------
     sample_rate : int
