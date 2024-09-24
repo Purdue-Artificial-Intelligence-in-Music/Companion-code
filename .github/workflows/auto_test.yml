@@ -1,0 +1,82 @@
+name: Auto Test Python Code
+ 
+on:
+  push:
+    branches:
+      - main  # Runs the workflow on push to the main branch
+  pull_request:
+    branches:
+      - main  # Runs the workflow on pull requests to the main branch
+ 
+jobs:
+  lint:
+    runs-on: ${{ matrix.os }}  # This will run on the OS defined in the matrix
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]  # Defines the OSes to run on
+ 
+    steps:
+      # Checkout the repository code
+      - name: Checkout code
+        uses: actions/checkout@v3
+ 
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.10'  # Downgrade to Python 3.10 to be compatible with your packages
+ 
+      # Install pylint
+      - name: Install pylint
+        run: |
+          pip install pylint
+ 
+      # Run pylint on the code
+      - name: Run pylint
+        run: |
+          pylint **/*.py  # Lints all Python files in the repository
+ 
+      # Show results in the logs
+      - name: Print greeting
+        run: |
+          echo "Linting completed on ${{ matrix.os }}!"
+ 
+  test:
+    runs-on: ${{ matrix.os }}  # Run the tests on the same matrix of operating systems
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+ 
+    steps:
+      # Checkout the repository code
+      - name: Checkout code
+        uses: actions/checkout@v3
+ 
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.10'  # Downgrade to Python 3.10 to match dependencies
+ 
+      # Install test dependencies
+      - name: Install dependencies
+        run: |
+          pip install pytest  # Install pytest or your testing framework
+          pip install -r requirements.txt  # Install project dependencies
+ 
+      # Run the tests
+      - name: Run tests
+        run: |
+            python -m unittest module_tests.*   # Run the tests in module_tests/ using the unittest module
+      
+       # getting coverage score
+      - name: Coverage
+        run: |
+          coverage run -m unittest module_tests.*  # Run the tests with coverage
+          coverage report  # Show the coverage report
+
+ 
+      # Show results in the logs
+      - name: Print test completion message
+        run: |
+          echo "Tests completed on ${{ matrix.os }}!"
