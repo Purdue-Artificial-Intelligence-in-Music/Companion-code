@@ -1,5 +1,5 @@
-name: Lint Python Code with Pylint
- 
+name: Lint and Test Python Code
+
 on:
   push:
     branches:
@@ -14,29 +14,62 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]  # Defines the OSes to run on
- 
+
     steps:
       # Checkout the repository code
       - name: Checkout code
         uses: actions/checkout@v3
- 
+
       # Set up Python environment
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
           python-version: '3.x'  # Specify the Python version you are using
- 
+
       # Install pylint
       - name: Install pylint
         run: |
           pip install pylint
- 
+
       # Run pylint on the code
       - name: Run pylint
         run: |
           pylint **/*.py  # Lints all Python files in the repository
- 
+
       # Show results in the logs
       - name: Print greeting
         run: |
           echo "Linting completed on ${{ matrix.os }}!"
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      # Checkout the repository code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.x'  # Ensure it uses the correct Python version
+
+      # Install test dependencies
+      - name: Install dependencies
+        run: |
+          pip install pytest  # Install pytest or your testing framework
+          pip install -r requirements.txt  # Install any project dependencies
+
+      # Run the tests
+      - name: Run tests
+        run: |
+          pytest  # or python -m unittest discover if you are using unittest
+
+      # Show results in the logs
+      - name: Print test completion message
+        run: |
+          echo "Tests completed on ${{ matrix.os }}!"
