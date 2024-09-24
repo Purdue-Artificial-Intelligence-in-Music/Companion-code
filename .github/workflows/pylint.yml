@@ -7,7 +7,7 @@ on:
   pull_request:
     branches:
       - main  # Runs the workflow on pull requests to the main branch
- 
+
 jobs:
   lint:
     runs-on: ${{ matrix.os }}  # This will run on the OS defined in the matrix
