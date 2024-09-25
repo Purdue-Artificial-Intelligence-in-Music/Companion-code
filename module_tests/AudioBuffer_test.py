@@ -2,16 +2,10 @@ import sys
 import os
 
 # importing AudioBuffer to this script
-directory = r'C:\Users\Nick\github\Nick-Ko-Companion-code\src'
-assert os.path.exists(directory), f"{directory} does not exists"
-sys.path.append(directory)
-print(directory in sys.path)
-
 try:
-    from AudioBuffer import AudioBuffer
+    from src.AudioBuffer import AudioBuffer
 except:
-    print("remember to use SET PYTHONPATH=\"C:\\Users\\Nick\\github\\Nick-Ko-Companion-code\\src\"")
-    print("on Windows machines")
+    print("something went wrong with importing")
     exit(1)
 
 import numpy as np
@@ -57,5 +51,23 @@ class AudioBufferTests(unittest.TestCase):
         with self.assertRaises(Exception) as context:   #ensure Exception is raised at overflow
                 self.audio_buffer.write(frames)
                 self.assertTrue('Not enough space left in buffer' in str(context.exception))
+
+    def test_read_from_buffer(self):
+        # Test reading frames from the buffer
+        frames = np.random.rand(self.channels, 100).astype(np.float32)
+        self.audio_buffer.write(frames)
+        read_frames = self.audio_buffer.read(50)
+        self.assertEqual(self.audio_buffer.read_index, 50)
+        self.assertEqual(self.audio_buffer.count, 50)
+        np.testing.assert_array_equal(read_frames, frames[:, :50])
+    
+    def test_read_from_buffer_overflow(self):
+        # Test reading more frames than alloted
+        frames = np.random.rand(self.channels, 100).astype(np.float32)
+        self.audio_buffer.write(frames)
+        with self.assertRaises(Exception) as context:
+            self.audio_buffer.read(101)
+            self.assertTrue('Not enough frames in buffer' in str(context.exception))
+
 
     
