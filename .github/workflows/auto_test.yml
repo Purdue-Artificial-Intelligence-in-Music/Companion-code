@@ -1,0 +1,52 @@
+name: Auto Test Python Code
+ 
+on:
+  push:
+    branches:
+      - main  # Runs the workflow on push to the main branch
+  pull_request:
+    branches:
+      - main  # Runs the workflow on pull requests to the main branch
+ 
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}  # Run the tests on the same matrix of operating systems
+    strategy:
+      matrix:
+        os: [ubuntu-latest]  # Only run on Ubuntu for testing
+        # os: [ubuntu-latest, windows-latest, macos-latest]
+ 
+    steps:
+      # Checkout the repository code
+      - name: Checkout code
+        uses: actions/checkout@v3
+ 
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.8'  # using the version specified in conda env
+
+      # this rule configures gitHub environment to install all dependencies
+      - name: install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+ 
+      # Run tests present in module_tests/
+      - name: Run tests
+        # Run the tests in module_tests/ using the unittest module
+        run: |
+            python -m unittest discover -s module_tests -p "*_test.py" -v
+      
+       # getting coverage score: figure it out later maybe ?
+      # - name: Coverage
+      #   run: |
+      #       coverage run -m unittest discover -s module_tests -p "*.py"
+      #       coverage report
+
+ 
+      # Show results in the logs
+      - name: Print test completion message
+        run: |
+          echo "Tests completed on ${{ matrix.os }}!"
