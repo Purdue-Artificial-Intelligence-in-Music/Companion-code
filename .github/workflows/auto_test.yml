@@ -48,12 +48,12 @@ jobs:
       - name: Run tests
         # Run the tests in module_tests/ using the unittest module
         run: |
-            python -m unittest discover -s module_tests -p "*.py"
+            python -m unittest discover -s module_tests -p "*_test.py"
       
        # getting coverage score
       - name: Coverage
         run: |
-            coverage run -m unittest discover -s module_tests -p "*.py"
+            coverage run -m unittest discover -s module_tests -p "*_test.py"
             coverage report
 
  
