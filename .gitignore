@@ -165,7 +165,7 @@ cython_debug/
 .vscode/
 
 # audio files
-audio/
+data/audio/*
 *.mp3
 *.wav
 
