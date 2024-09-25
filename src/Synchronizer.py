@@ -48,7 +48,7 @@ class Synchronizer:
         VoiceAnalyzerThread object to update settings on the fly
     """
     def __init__(self, reference: str, accompaniment: str, source: str = None, Kp: int = 0.2, Ki: int = 0.00, Kd=0.05, 
-                 sample_rate: int = 16000, win_length: int = 4096, hop_length: int = 1024, c: int = 10, max_run_count: int = 3, diag_weight: int=0.5, **kwargs):
+                 sample_rate: int = 16000, win_length: int = 4096, hop_length: int = 1024, c: int = 10, max_run_count: int = 3, diag_weight: int=0.5, channels: int = 1, frames_per_buffer: int = 1024, **kwargs):
 
         self.sample_rate = sample_rate
         self.c = c
@@ -61,10 +61,17 @@ class Synchronizer:
                                             diag_weight=diag_weight,
                                             sample_rate=sample_rate,
                                             win_length=win_length,
-                                            **kwargs)
+                                            channels=channels,
+                                            frames_per_buffer=frames_per_buffer)
         
         # AudioPlayer needs accompanist audio
-        self.player = AudioPlayer(path=accompaniment, playback_rate=1.0, hop_length=hop_length, **kwargs)
+        self.player = AudioPlayer(path=accompaniment, 
+                                  playback_rate=1.0, 
+                                  sample_rate=sample_rate,
+                                  channels=channels,
+                                  n_fft=win_length,
+                                  hop_length=hop_length, 
+                                  frames_per_buffer=frames_per_buffer)
         
         # PID Controller
         self.PID = PID(Kp=Kp, Ki=Ki, Kd=Kd, setpoint=0, starting_output=1.0, 
@@ -72,7 +79,7 @@ class Synchronizer:
                        sample_time = win_length / sample_rate)
         
         # Voice Command thread
-        self.listener = VoiceAnalyzerThread(name="Listener", buffer=self.score_follower.mic, player=self.player)
+        # self.listener = VoiceAnalyzerThread(name="Listener", buffer=self.score_follower.mic, player=self.player)
 
         self.accompanist_time_log = []
 
@@ -80,6 +87,7 @@ class Synchronizer:
         """Start the score follower and audio player. """
         self.score_follower.start()
         self.player.start()
+    
 
     def pause(self):
         self.score_follower.pause()
@@ -96,7 +104,6 @@ class Synchronizer:
 
     def update(self):
         """Update the audio player playback rate  """
-
         ref_index = self.score_follower.step()
 
         if ref_index is None:

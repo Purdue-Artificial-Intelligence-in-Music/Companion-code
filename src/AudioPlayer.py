@@ -263,13 +263,15 @@ class AudioPlayer:
 
     def get_time(self) -> int:
         """Get the timestamp in the audio being played."""
-        return self.k * self.hop_length / self.sample_rate
+        return self.index / self.sample_rate
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import soundfile
-
-    player = AudioPlayer(path='data/bach/synthesized/track1.wav', 
+    import os
+    
+    reference = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
+    player = AudioPlayer(path=reference, 
                          sample_rate=16000,
                          channels=1,
                          frames_per_buffer=1024,
