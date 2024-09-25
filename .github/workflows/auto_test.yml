@@ -24,7 +24,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
-          python-version: '3.8.19'  # Downgrade to Python 3.10 to be compatible with your packages
+          python-version: '3.8'  # Downgrade to Python 3.10 to be compatible with your packages
  
   test:
     runs-on: ${{ matrix.os }}  # Run the tests on the same matrix of operating systems
@@ -42,7 +42,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
-          python-version: '3.8.19'  # Downgrade to Python 3.10 to match dependencies
+          python-version: '3.8'  # Downgrade to Python 3.10 to match dependencies
  
       # Run the tests
       - name: Run tests
