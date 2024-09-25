@@ -175,6 +175,9 @@ class ScoreFollower:
                 t -= 1
         
         return backwards_path
+    
+    def get_path_difference(self, back_path):
+        return [x for x in self.path if x not in back_path]
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
@@ -182,7 +185,7 @@ if __name__ == '__main__':
     reference = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
     source = os.path.join('data', 'audio', 'bach', 'live', 'constant_tempo.wav')
     score_follower = ScoreFollower(reference=reference,
-                                   source=None,
+                                   source=source,
                                    c=50,
                                    max_run_count=3,
                                    diag_weight=0.5,
@@ -206,6 +209,18 @@ if __name__ == '__main__':
     cost_matrix = score_follower.otw.accumulated_cost
     indices = np.asarray(score_follower.path).T
     cost_matrix[(indices[0], indices[1])] = np.inf
+
+    t = score_follower.otw.t
+    j = (score_follower.otw.j)/(score_follower.ref.shape[-1] - 1)
+
+    if t > j:
+        back_path = score_follower.get_backwards_path(t)
+    else:
+        back_path = score_follower.get_backwards_path(j)
+
+    print(f'Backwards path: {back_path}')
+    print(f'Forward path: {score_follower.path}')
+    print(f'Difference: {score_follower.get_path_difference(back_path)}')
 
     plt.figure()
     plt.imshow(cost_matrix)

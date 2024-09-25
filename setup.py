@@ -25,4 +25,3 @@ if response.status_code == 200:
     os.remove(zip_path)
 else:
     print(f"Failed to download file. Status code: {response.status_code}")
-
