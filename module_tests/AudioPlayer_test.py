@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
 import pyaudio
-from audio_player_module import AudioPlayer, normalize_audio  # Assume the above code is in audio_player_module.py
+from audio_player_module import AudioPlayer, normalize_audio
 
 
 class TestNormalizeAudio(unittest.TestCase):
