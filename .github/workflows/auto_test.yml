@@ -25,9 +25,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
-          python-version: '3.8'  # Downgrade to Python 3.10 to match dependencies
+          python-version: '3.8'  # using the version specified in conda env
+
+      # this rule configures gitHub environment to install all dependencies
+      - name: install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
  
-      # Run the tests
+      # Run tests present in module_tests/
       - name: Run tests
         # Run the tests in module_tests/ using the unittest module
         run: |
