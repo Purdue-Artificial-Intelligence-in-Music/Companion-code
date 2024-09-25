@@ -64,10 +64,3 @@ def classify_command(user_input):
     highest_score = max(result['scores'])
     highest_scoring_command = [cmd for cmd, desc in commands.items() if f"The action is: {desc}" == result['labels'][result['scores'].index(highest_score)]][0]
     return highest_scoring_command
-
-# Get the user's command as input
-user_input = input("The user command is: ")
-command = classify_command(user_input)
-
-# Print out the command that matches the user's input
-print(f"The closest command to the user's input is: {command}")
