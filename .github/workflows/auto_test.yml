@@ -33,11 +33,11 @@ jobs:
         run: |
             python -m unittest discover -s module_tests -p "*_test.py -v"
       
-       # getting coverage score
-      - name: Coverage
-        run: |
-            coverage run -m unittest discover -s module_tests -p "*_test.py"
-            coverage report
+       # getting coverage score: figure it out later maybe ?
+      # - name: Coverage
+      #   run: |
+      #       coverage run -m unittest discover -s module_tests -p "*_test.py"
+      #       coverage report
 
  
       # Show results in the logs
