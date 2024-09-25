@@ -2,10 +2,6 @@ import sys
 import os
 
 # importing AudioBuffer to this script
-
-# Add the parent directory of src to the system path: do this so python can find src when it looks through PATH (an env var)
-(sys.path).append('..')
-
 try:
     from src.AudioBuffer import AudioBuffer
 except:
