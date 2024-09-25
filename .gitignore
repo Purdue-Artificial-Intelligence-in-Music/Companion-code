@@ -180,3 +180,6 @@ data/audio
 
 # FluidSynth
 soundfonts/
+
+# test coverage report xml/html
+.coverage

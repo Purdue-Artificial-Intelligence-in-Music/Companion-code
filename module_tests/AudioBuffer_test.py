@@ -2,16 +2,14 @@ import sys
 import os
 
 # importing AudioBuffer to this script
-# directory = r'C:\Users\Nick\github\Nick-Ko-Companion-code\src'
-# assert os.path.exists(directory), f"{directory} does not exists"
-# sys.path.append(directory)
-# print(directory in sys.path)
+
+# Add the parent directory of src to the system path: do this so python can find src when it looks through PATH (an env var)
+(sys.path).append('..')
 
 try:
-    from AudioBuffer import AudioBuffer
+    from src.AudioBuffer import AudioBuffer
 except:
-    print("remember to use SET PYTHONPATH=\"C:\\Users\\Nick\\github\\Nick-Ko-Companion-code\\src\"")
-    print("on Windows machines")
+    print("something went wrong with importing")
     exit(1)
 
 import numpy as np
