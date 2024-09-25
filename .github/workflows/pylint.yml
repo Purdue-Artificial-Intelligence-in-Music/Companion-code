@@ -1,6 +1,6 @@
 name: Lint Python Code with Pylint
  
-on:
+on: #specifies when this action will be triggered
   push:
     branches:
       - main  # Runs the workflow on push to the main branch
