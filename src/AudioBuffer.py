@@ -3,6 +3,7 @@ import numpy as np
 import time
 import librosa
 import soundfile
+from threading import Lock
 
 class AudioBuffer:
     """Thread to save microphone audio to a buffer.
@@ -76,6 +77,8 @@ class AudioBuffer:
 
         self.paused = False
 
+        self.lock = Lock()
+
     def write(self, frames: np.ndarray):
         """Write audio frames to buffer.
 
@@ -97,7 +100,8 @@ class AudioBuffer:
             raise Exception('Error: Not enough space left in buffer')
         
         # Write frames
-        self.buffer[:, self.write_index:self.write_index + num_frames] = frames
+        with self.lock:
+            self.buffer[:, self.write_index:self.write_index + num_frames] = frames
         
         # Increment the write index
         self.write_index += num_frames
@@ -125,7 +129,9 @@ class AudioBuffer:
             print('AudioBuffer read error')
             raise Exception(f'Error: Attempted to read {num_frames} frames but count is {self.count}')
         
-        frames = self.buffer[:, self.read_index:self.read_index+num_frames]
+        frames = np.empty((self.channels, num_frames), dtype=np.float32)
+        with self.lock:
+            frames = self.buffer[:, self.read_index:self.read_index+num_frames]
         
         # Increment the read index
         self.read_index += num_frames
@@ -186,7 +192,8 @@ class AudioBuffer:
                                   input=True,
                                   output=False,
                                   stream_callback=self.callback,
-                                  frames_per_buffer=self.frames_per_buffer)
+                                  frames_per_buffer=self.frames_per_buffer,
+                                  input_device_index=0)
         
     def is_active(self) -> bool:
         """Return True if the stream is active. False otherwise. """
@@ -245,6 +252,7 @@ if __name__ == '__main__':
     while not buffer.is_active():
         time.sleep(0.01)
 
+    print('Mic is active')
     try:
         while buffer.is_active():
             time.sleep(0.1)
