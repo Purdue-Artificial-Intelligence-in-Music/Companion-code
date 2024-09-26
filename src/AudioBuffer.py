@@ -44,7 +44,7 @@ class AudioBuffer:
     paused : bool
         If True, read and write operations are paused
     """
-    def __init__(self, source: str = None, max_duration: int = 600, sample_rate: int = 16000, channels: int = 1, frames_per_buffer: int = 1024):
+    def __init__(self, source: str = None, max_duration: int = 600, sample_rate: int = 44100, channels: int = 1, frames_per_buffer: int = 1024):
 
         # Params
         self.sample_rate = sample_rate
@@ -244,7 +244,7 @@ class AudioBuffer:
 if __name__ == '__main__':
     buffer = AudioBuffer(source=None,
                          max_duration=600,
-                         sample_rate=16000,
+                         sample_rate=44100,
                          channels=1,
                          frames_per_buffer=1024)
     buffer.start()
@@ -259,4 +259,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         buffer.stop()
 
-    buffer.save('test.wav')
+    buffer.save('mic_test.wav')

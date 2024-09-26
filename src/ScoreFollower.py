@@ -50,7 +50,7 @@ class ScoreFollower:
         Alignment path between live and reference sequences
 
     """
-    def __init__(self, reference: str, source: str = None, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4, sample_rate: int = 16000, win_length: int = 4096, channels: int = 1, frames_per_buffer: int = 1024):
+    def __init__(self, reference: str, source: str = None, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4, sample_rate: int = 44100, win_length: int = 8192, channels: int = 1, frames_per_buffer: int = 1024):
 
         self.sample_rate = sample_rate
         self.win_length = win_length

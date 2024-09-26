@@ -48,7 +48,7 @@ class Synchronizer:
         VoiceAnalyzerThread object to update settings on the fly
     """
     def __init__(self, reference: str, accompaniment: str, source: str = None, Kp: int = 0.2, Ki: int = 0.00, Kd=0.05, 
-                 sample_rate: int = 16000, win_length: int = 4096, hop_length: int = 1024, c: int = 10, max_run_count: int = 3, diag_weight: int=0.5, channels: int = 1, frames_per_buffer: int = 1024, **kwargs):
+                 sample_rate: int = 44100, win_length: int = 8192, hop_length: int = 4096, c: int = 10, max_run_count: int = 3, diag_weight: int=0.4, channels: int = 1, frames_per_buffer: int = 1024):
 
         self.sample_rate = sample_rate
         self.c = c
@@ -70,8 +70,7 @@ class Synchronizer:
                                   sample_rate=sample_rate,
                                   channels=channels,
                                   n_fft=win_length,
-                                  hop_length=hop_length, 
-                                  frames_per_buffer=frames_per_buffer)
+                                  hop_length=hop_length, )
         
         # PID Controller
         self.PID = PID(Kp=Kp, Ki=Ki, Kd=Kd, setpoint=0, starting_output=1.0, 
