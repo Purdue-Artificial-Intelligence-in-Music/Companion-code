@@ -79,6 +79,20 @@ class AudioBuffer:
 
         self.lock = Lock()
 
+    def get_input_device(self):
+        device_count = self.p.get_device_count()
+        for i in range(device_count):
+            device_info = self.p.get_device_info_by_index(i)
+            channels = device_info['maxInputChannels']
+            name = device_info['name']
+            sample_rate = device_info['defaultSampleRate']
+            host_api = device_info['hostApi']
+            if channels > 0 and name.find('AT2005USB') != -1 and sample_rate == self.sample_rate and host_api==3:
+                print(f'Found device: {name}')
+                return i
+        print('Default device not found. Using default device')
+        return 0
+
     def write(self, frames: np.ndarray):
         """Write audio frames to buffer.
 
@@ -193,7 +207,7 @@ class AudioBuffer:
                                   output=False,
                                   stream_callback=self.callback,
                                   frames_per_buffer=self.frames_per_buffer,
-                                  input_device_index=0)
+                                  input_device_index=self.get_input_device())
         
     def is_active(self) -> bool:
         """Return True if the stream is active. False otherwise. """
@@ -242,6 +256,7 @@ class AudioBuffer:
 
         
 if __name__ == '__main__':
+    source = 'data/audio/bach/live/variable_tempo.wav'
     buffer = AudioBuffer(source=None,
                          max_duration=600,
                          sample_rate=44100,

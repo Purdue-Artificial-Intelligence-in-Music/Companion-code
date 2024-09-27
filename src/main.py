@@ -1,10 +1,12 @@
 from Synchronizer import Synchronizer
 import time
 import os
+from alignment_error import load_data, calculate_alignment_error
+import numpy as np
 
 reference = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
 accompaniment = os.path.join('data', 'audio', 'bach', 'synthesized', 'accompaniment.wav')
-source = os.path.join('data', 'audio', 'bach', 'live', 'constant_tempo.wav')
+source = os.path.join('data', 'audio', 'bach', 'live', 'variable_tempo.wav')
 
 # create a synchronizer object
 synchronizer = Synchronizer(reference=reference,
@@ -22,6 +24,7 @@ synchronizer = Synchronizer(reference=reference,
                             channels=1,
                             frames_per_buffer=1024)
 
+input('Press Enter to start the performance')
 # start the synchronizer
 synchronizer.start()
 
@@ -45,3 +48,12 @@ except KeyboardInterrupt:
     synchronizer.stop()
 
 synchronizer.save_performance(path='performance.wav')
+
+# Measure the alignment error
+score_follower = synchronizer.score_follower
+
+df = load_data('data\\alignments\\variable_tempo.csv')
+warping_path = np.asarray(score_follower.path, dtype=np.float32)
+warping_path = warping_path * score_follower.win_length / score_follower.sample_rate
+df = calculate_alignment_error(df, warping_path)
+df.to_csv('output\\variable_tempo_live.csv', index=False)
