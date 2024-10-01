@@ -13,7 +13,7 @@ import unittest
 
 class AudioBufferTests(unittest.TestCase):
     def setUp(self):
-        """ Set up test cases: so AudioBuffer is a class attribute 
+        """ Set up test cases: so audio_buffer is a class attribute 
             accessible to other class methods
         """
         self.sample_rate = 16000
