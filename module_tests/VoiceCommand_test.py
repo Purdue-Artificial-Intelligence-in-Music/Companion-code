@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from textTesting import classify_command
+from .textTesting import classify_command
 
 # Test cases for classify_command
 class TestClassifyCommand(unittest.TestCase):

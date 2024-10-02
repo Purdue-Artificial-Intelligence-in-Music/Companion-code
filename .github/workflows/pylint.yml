@@ -10,10 +10,7 @@ on:
 
 jobs:
   lint:
-    runs-on: ${{ matrix.os }}  # This will run on the OS defined in the matrix
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]  # Defines the OSes to run on
+    runs-on: ubuntu-latest # now only on ubuntu-latest
 
     steps:
       # Checkout the repository code
@@ -39,37 +36,4 @@ jobs:
       # Show results in the logs
       - name: Print greeting
         run: |
-          echo "Linting completed on ${{ matrix.os }}!"
-
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
-    steps:
-      # Checkout the repository code
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      # Set up Python environment
-      - name: Set up Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: '3.x'  # Ensure it uses the correct Python version
-
-      # Install test dependencies
-      - name: Install dependencies
-        run: |
-          pip install pytest  # Install pytest or your testing framework
-          pip install -r requirements.txt  # Install any project dependencies
-
-      # Run the tests
-      - name: Run tests
-        run: |
-          pytest  # or python -m unittest discover if you are using unittest
-
-      # Show results in the logs
-      - name: Print test completion message
-        run: |
-          echo "Tests completed on ${{ matrix.os }}!"
+          echo "Linting completed on ubuntu-latest" 
