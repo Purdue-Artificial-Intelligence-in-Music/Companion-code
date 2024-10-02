@@ -183,3 +183,6 @@ soundfonts/
 
 # test coverage report xml/html
 .coverage
+
+# output folder
+output/

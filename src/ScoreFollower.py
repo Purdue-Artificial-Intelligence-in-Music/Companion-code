@@ -50,7 +50,7 @@ class ScoreFollower:
         Alignment path between live and reference sequences
 
     """
-    def __init__(self, reference: str, source: str = None, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4, sample_rate: int = 16000, win_length: int = 4096, channels: int = 1, frames_per_buffer: int = 1024):
+    def __init__(self, reference: str, source: str = None, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4, sample_rate: int = 44100, win_length: int = 8192, channels: int = 1, frames_per_buffer: int = 1024):
 
         self.sample_rate = sample_rate
         self.win_length = win_length
@@ -122,13 +122,13 @@ class ScoreFollower:
         chroma = self.get_chroma(audio)
 
         # Calculate position in reference audio
-        j = self.otw.insert(chroma)
+        ref_index = self.otw.insert(chroma)
 
         # Record position in alignment path
-        self.path.append((j, self.otw.live_index))
+        self.path.append((ref_index, self.otw.live_index))
 
         # Return position in reference audio
-        return j
+        return ref_index
 
     def start(self):
         """Start the microphone input stream. """
@@ -149,7 +149,8 @@ class ScoreFollower:
         return self.mic.is_active() and self.otw.live_index < self.otw.live.shape[-1] - 1
     
     def get_estimated_time(self):
-        return self.otw.live_index * self.win_length / self.sample_rate
+        # TODO: Check that this formula is correct
+        return self.otw.ref_index * self.win_length / self.sample_rate
 
     def get_backwards_path(self, b):
         cost_matrix = self.otw.accumulated_cost
@@ -183,16 +184,16 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import os
     reference = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
-    source = os.path.join('data', 'audio', 'bach', 'live', 'constant_tempo.wav')
+    source = os.path.join('data', 'audio', 'bach', 'live', 'variable_tempo.wav')
     score_follower = ScoreFollower(reference=reference,
-                                   source=source,
-                                   c=50,
+                                   source=None,
+                                   c=10,
                                    max_run_count=3,
                                    diag_weight=0.5,
                                    sample_rate=44100,
                                    win_length=8192,
                                    channels=1,
-                                   frames_per_buffer=1024)
+                                   frames_per_buffer=2048)
 
     score_follower.start()
 
@@ -206,29 +207,29 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         score_follower.stop()
 
-    cost_matrix = score_follower.otw.accumulated_cost
-    indices = np.asarray(score_follower.path).T
-    cost_matrix[(indices[0], indices[1])] = np.inf
+    # cost_matrix = score_follower.otw.accumulated_cost
+    # indices = np.asarray(score_follower.path).T
+    # cost_matrix[(indices[0], indices[1])] = np.inf
 
-    t = score_follower.otw.t
-    j = (score_follower.otw.j)/(score_follower.ref.shape[-1] - 1)
+    # t = score_follower.otw.live_index
+    # j = (score_follower.otw.ref_index)/(score_follower.ref.shape[-1] - 1)
 
-    if t > j:
-        back_path = score_follower.get_backwards_path(t)
-    else:
-        back_path = score_follower.get_backwards_path(j)
+    # if t > j:
+    #     back_path = score_follower.get_backwards_path(t)
+    # else:
+    #     back_path = score_follower.get_backwards_path(j)
 
-    print(f'Backwards path: {back_path}')
-    print(f'Forward path: {score_follower.path}')
-    print(f'Difference: {score_follower.get_path_difference(back_path)}')
+    # print(f'Backwards path: {back_path}')
+    # print(f'Forward path: {score_follower.path}')
+    # print(f'Difference: {score_follower.get_path_difference(back_path)}')
 
-    plt.figure()
-    plt.imshow(cost_matrix)
-    plt.title('OTW Cost Matrix')
-    plt.xlabel('Live Sequence')
-    plt.ylabel('Reference Sequence')
-    plt.show()
-    plt.close()
+    # plt.figure()
+    # plt.imshow(cost_matrix)
+    # plt.title('OTW Cost Matrix')
+    # plt.xlabel('Live Sequence')
+    # plt.ylabel('Reference Sequence')
+    # plt.show()
+    # plt.close()
     
     from librosa.display import specshow, waveshow
     fig, ax = plt.subplots(nrows=2, sharex=False, sharey=True)
@@ -239,3 +240,13 @@ if __name__ == '__main__':
             sr=score_follower.sample_rate, hop_length=score_follower.win_length, 
             win_length=score_follower.win_length, ax=ax[1])
     plt.show()
+
+    from alignment_error import load_data, calculate_alignment_error
+    
+    df = load_data('data\\alignments\\variable_tempo.csv')
+    warping_path = np.asarray(score_follower.path, dtype=np.float32)
+    warping_path = warping_path * score_follower.win_length / score_follower.sample_rate
+    df = calculate_alignment_error(df, warping_path)
+    df.to_csv('output\\variable_tempo_live.csv', index=False)
+
+    
