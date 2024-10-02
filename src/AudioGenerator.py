@@ -1,7 +1,6 @@
 import os
 import pretty_midi
 from music21 import *
-import numpy as np
 import subprocess
 import mido
 
@@ -91,7 +90,7 @@ class AudioGenerator:
         
         title = os.path.basename(score_path)
         if score_path.endswith('.musicxml'):
-            self.score_path = musicxml_to_midi(score_path, os.path.join('midi', title.replace('.musicxml', '.mid')))
+            self.score_path = musicxml_to_midi(score_path, os.path.join('data', 'midi', title.replace('.musicxml', '.mid')))
         else:
             self.score_path = score_path
 
@@ -150,10 +149,10 @@ class AudioGenerator:
 
 if __name__ == '__main__':
 
-    SCORE = os.path.join('scores', 'air_on_the_g_string.musicxml')
-    OUTPUT_DIR = os.path.join('audio', 'air_on_the_g_string')
+    SCORE = os.path.join('data', 'musicxml','twelve_duets.musicxml')
+    OUTPUT_DIR = os.path.join('data', 'audio', 'twelve_duets')
     SAMPLE_RATE = 44100
-    TEMPO = 240
+    TEMPO = 120
 
     generator = AudioGenerator(score_path=SCORE)
     generator.generate_audio(output_dir=OUTPUT_DIR, tempo=TEMPO)

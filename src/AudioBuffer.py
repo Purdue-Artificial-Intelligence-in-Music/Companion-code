@@ -74,6 +74,8 @@ class AudioBuffer:
         # PyAudio
         self.p = pyaudio.PyAudio()
         self.stream = None
+        self.input_device = self.get_input_device()
+        print(f'Using input device: {self.p.get_device_info_by_index(self.input_device)["name"]}')
 
         self.paused = False
 
@@ -84,13 +86,9 @@ class AudioBuffer:
         for i in range(device_count):
             device_info = self.p.get_device_info_by_index(i)
             channels = device_info['maxInputChannels']
-            name = device_info['name']
             sample_rate = device_info['defaultSampleRate']
-            host_api = device_info['hostApi']
-            if channels > 0 and name.find('AT2005USB') != -1 and sample_rate == self.sample_rate and host_api==3:
-                print(f'Found device: {name}')
+            if channels > 0 and sample_rate == self.sample_rate:
                 return i
-        print('Default device not found. Using default device')
         return 0
 
     def write(self, frames: np.ndarray):
@@ -207,7 +205,7 @@ class AudioBuffer:
                                   output=False,
                                   stream_callback=self.callback,
                                   frames_per_buffer=self.frames_per_buffer,
-                                  input_device_index=self.get_input_device())
+                                  input_device_index=self.input_device)
         
     def is_active(self) -> bool:
         """Return True if the stream is active. False otherwise. """

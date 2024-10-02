@@ -122,13 +122,13 @@ class ScoreFollower:
         chroma = self.get_chroma(audio)
 
         # Calculate position in reference audio
-        j = self.otw.insert(chroma)
+        ref_index = self.otw.insert(chroma)
 
         # Record position in alignment path
-        self.path.append((j, self.otw.live_index))
+        self.path.append((ref_index, self.otw.live_index))
 
         # Return position in reference audio
-        return j
+        return ref_index
 
     def start(self):
         """Start the microphone input stream. """
@@ -149,6 +149,7 @@ class ScoreFollower:
         return self.mic.is_active() and self.otw.live_index < self.otw.live.shape[-1] - 1
     
     def get_estimated_time(self):
+        # TODO: Check that this formula is correct
         return self.otw.ref_index * self.win_length / self.sample_rate
 
     def get_backwards_path(self, b):
