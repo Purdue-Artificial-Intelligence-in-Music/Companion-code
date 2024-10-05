@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar'; // Manages the status bar on mobile
 import { StyleSheet, Text, View, SafeAreaView, Pressable } from 'react-native'; // Imports styling and layout components
 import React, { MutableRefObject, useEffect, useRef, useState } from 'react'; // Imports React and hooks
 import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay'; // Imports the OpenSheetMusicDisplay library for rendering sheet music
-import { Play_Button, Next_Button, Score_Select } from './assets/Components';
+import { Play_Button, Next_Button, Score_Select, RenderSomethingButton } from './assets/Components';
 
 // Define the main application component
 export default function App() {
