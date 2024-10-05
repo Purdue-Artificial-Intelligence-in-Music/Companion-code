@@ -1,23 +1,39 @@
 // Import necessary modules and components from the Expo and React Native libraries
 import { StatusBar } from 'expo-status-bar'; // Manages the status bar on mobile devices
 import { StyleSheet, Text, View, SafeAreaView } from 'react-native'; // Imports styling and layout components
-import React, { useEffect, useRef } from 'react'; // Imports React and hooks
+import React, { useEffect, useRef, useState } from 'react'; // Imports React and hooks
 import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay'; // Imports the OpenSheetMusicDisplay library for rendering sheet music
+import { Score_Select } from './assets/Components';
 
 // Define the main application component
 export default function App() {
   // Create a reference to the SVG container where sheet music will be rendered
   const osmContainerRef = useRef<HTMLDivElement | null>(null); // Reference for the SVG container
 
+    const scores = 
+    [{"filename":"air_on_the_g_string.musicxml", "piece":"Bach - Air on the G String"},
+    {"filename":"twelve_duets.musicxml", "piece":"Mozart - Twelve Duets"}]
+
+  const [score, setScore] = useState("air_on_the_g_string.musicxml");
+
   // useEffect hook to handle side effects (like loading music) after the component mounts
+  // and when a piece is selected
   useEffect(() => {
+
+    // Remove any previously-loaded music
+    if (osmContainerRef.current) {
+        while (osmContainerRef.current.children[0]) {
+          osmContainerRef.current.removeChild(osmContainerRef.current.children[0]);
+        }
+      }
+
     // Create an instance of OpenSheetMusicDisplay, passing the reference to the container
     const osm = new OpenSheetMusicDisplay(osmContainerRef.current as HTMLElement, {
       autoResize: true, // Enable automatic resizing of the sheet music display
     });
 
     // Load the music XML file from the assets folder
-    osm.load('assets/air_on_the_g_string.musicxml')
+    osm.load('assets/' + score)
       .then(() => {
         // Render the sheet music once it's loaded
         osm.render();
@@ -31,12 +47,14 @@ export default function App() {
     // Cleanup function to dispose of the OpenSheetMusicDisplay instance if needed
     return () => {
     };
-  }, []); // Empty dependency array means this effect runs once when the component mounts
+  }, [score]); // Empty dependency array means this effect runs once when the component mounts
 
   // Render the component's UI
   return (
     <SafeAreaView style={styles.container}> {/* Provides safe area insets for mobile devices */}
-      <Text style={styles.title}>OpenSheetMusicDisplay Example</Text> {/* Title text */}
+      <Text style={styles.title}>Companion, the digital accompanist</Text> {/* Title text */}
+      <Score_Select score={score} scoreOptions={scores} setScore={setScore}/>
+      <Text style={styles.title}>{score}</Text> {/* Title text */}
       <div style={styles.scrollContainer}> {/* Container for scrolling the sheet music */}
         <div ref={osmContainerRef} style={styles.osmContainer}></div> {/* Reference to the SVG container for sheet music */}
       </div>
