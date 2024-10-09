@@ -150,3 +150,6 @@ class Synchronizer:
 
         # Save performance to wave file
         soundfile.write(path, audio, self.sample_rate)
+        
+    def get_warping_path(self):
+        return self.score_follower.path
