@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch, MagicMock
-from textTesting import classify_command
+#from textTesting import classify_command
 try:
     from src.VoiceCommandThread.py import VoiceAnalyzerThread
 except:
