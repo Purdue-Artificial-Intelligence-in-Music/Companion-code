@@ -59,7 +59,7 @@ try:
 except KeyboardInterrupt:
     synchronizer.stop()
 
-synchronizer.save_performance(path='/Users/ranavsethi/aim_practice/Companion-code/data/bach/performance.wav')
+synchronizer.save_performance(path='performance.wav')
 output_file.close()
 
 soloist_times_np = np.array(soloist_times)
