@@ -1,4 +1,4 @@
-name: Lint and Test Python Code
+name: Lint Python Code with Pylint
 
 on:
   push:
@@ -38,16 +38,10 @@ jobs:
       # C0115: Missing class docstring
       # C0116: Missing function or method docstring
       # C0411: wrong-import-order
-      - name: disable unwanted rules
-        run: |
-          pylint --generate-rcfile > .pylintrc
-          echo "disable=C0114,C0115,C0116,C0411" >> .pylintrc
-          echo "max-line-length: 120" >> .pylintrc  
-
-      # Run pylint on the code
+      # Run pylint on the code with above rules disabled
       - name: Run pylint
         run: |
-          pylint **/*.py  # Lints all Python files in the repository
+          pylint **/*.py --rcfile=.pylintrc
 
       # Show results in the logs
       - name: Print greeting
