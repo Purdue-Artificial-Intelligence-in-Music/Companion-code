@@ -42,3 +42,5 @@ coverage
 # VoiceCommand seems to rely on transformers (as for now, I'll have requirements install the latest version)
 # however, transformers depends on PyTorch or TensorFlow, may have to discuss if they are needed for the project
 transformers
+# may need for this project's cicd
+pylint
