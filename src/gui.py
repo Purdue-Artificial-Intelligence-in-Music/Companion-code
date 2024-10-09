@@ -24,8 +24,8 @@ class WorkerThread(QThread):
     def __init__(self):
         super().__init__()
 
-        self.sync = Synchronizer(reference='data/bach/synthesized/track0.wav',
-                                 accompaniment='data/bach/synthesized/track1.wav',
+        self.sync = Synchronizer(reference='data/bach/synthesized/solo.wav',
+                                 accompaniment='data/bach/synthesized/accompaniment.wav',
                                  source='data/bach/live/constant_tempo.wav',
                                  Kp=0.5,
                                  Ki=0.001,
@@ -167,7 +167,7 @@ class Demo(QWidget):
     def set_sheet(self):
         #readfile = self.thread.buffer.wav_file.split('.')[0]
         #xml_file = readfile + ".musicxl"
-        mus = converter.parse("scores\ode_to_joy.musicxml")
+        mus = converter.parse("scores\\ode_to_joy.musicxml")
         mus.write('xml.png', 'sheet.png')
 
         pixmap = QPixmap("sheet-1.png")
