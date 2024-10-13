@@ -25,7 +25,16 @@ export default function App() {
 
   // useEffect hook to handle side effects (like loading music) after the component mounts
   // and when a piece is selected
+  // and when a piece is selected
   useEffect(() => {
+
+    // Remove any previously-loaded music
+    if (osmContainerRef.current) {
+        while (osmContainerRef.current.children[0]) {
+          osmContainerRef.current.removeChild(osmContainerRef.current.children[0]);
+        }
+      }
+
 
     // Remove any previously-loaded music
     if (osmContainerRef.current) {
@@ -41,12 +50,17 @@ export default function App() {
 
     osdRef.current = osm;
 
+    osdRef.current = osm;
+
     // Load the music XML file from the assets folder
+    osm.load('assets/' + score)
     osm.load('assets/' + score)
       .then(() => {
         // Render the sheet music once it's loaded
         osm.render();
         console.log('Music XML loaded successfully'); // Log success message to console
+        cursor.current = osm.cursor; // Pass reference to cursor
+    })
         cursor.current = osm.cursor; // Pass reference to cursor
     })
       .catch((error) => {
@@ -57,6 +71,7 @@ export default function App() {
     // Cleanup function to dispose of the OpenSheetMusicDisplay instance if needed
     return () => {
     };
+  }, [score]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
   }, [score]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
 
   // Render the component's UI
