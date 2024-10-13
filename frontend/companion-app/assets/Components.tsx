@@ -1,7 +1,7 @@
-import { Pressable } from "react-native";
+import { Pressable, TextInput } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 import { View, Text } from 'react-native';
-import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay';
+import { OpenSheetMusicDisplay, Cursor, Fraction } from 'opensheetmusicdisplay';
 import { MutableRefObject, useEffect, useState, useRef } from 'react';
 
 export function Score_Select( {score, scoreOptions, setScore}:
@@ -37,7 +37,6 @@ export function Play_Button( { my_cursor, playing, setPlaying,
         if (playing) {
             console.log("Effect is running; cursorPos:", cursorPos);
             if (my_cursor.current) {
-                console.log("Cursor should be advanced.");
                 my_cursor.current.next();
                 osdRef.current?.render();
             } else console.log("Cursor somehow null.");
@@ -52,7 +51,7 @@ export function Play_Button( { my_cursor, playing, setPlaying,
     //    If the function below is uncommented - even if it isn't called - the cursor doesn't appear
     const move_function = () => {
         if (my_cursor.current) {
-            console.log("Move function running, cursorPos: ", cursorPos);
+            // console.log("Move function running, cursorPos: ", cursorPos);
             setCursorPos(cursorPos + 1);
         }
     }
@@ -99,4 +98,47 @@ export function RenderSomethingButton( { osdRef } : { osdRef: MutableRefObject<O
     }}>
         <Text>RENDER SOMETHING!!!</Text>
     </Pressable>)
+}
+
+export function TimeStampBox( { timestamp, setTimestamp } : 
+    { timestamp: string, setTimestamp: (text: string) => void }) {
+    return(
+        <TextInput
+        onChangeText={setTimestamp}
+        value={timestamp}
+        placeholder="useless placeholder"
+        inputMode="numeric"
+      />
+    )
+}
+
+export function UpdateCursorBox( { timestamp, cursorRef, osdRef, cursorPos, setCursorPos } : 
+    { timestamp: string, cursorRef: MutableRefObject<Cursor | null>,
+        osdRef: MutableRefObject<OpenSheetMusicDisplay | null>,
+        cursorPos: number, setCursorPos: Function
+     }) {
+    return(<Pressable onPress={ () => {
+        if (cursorRef.current?.hidden) cursorRef.current?.show();
+        var ts = Number(timestamp);
+        var ct = cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue;
+        var nct;
+        var cpos = cursorPos;
+        console.log("ts: ", ts, "\tct: ", ct);
+        if (ct !== undefined) {
+            while (ct < ts && !(cursorRef.current?.Iterator.EndReached)) {
+                // cursorRef.current?.Iterator.moveToNext()
+                cursorRef.current?.next();
+                cpos += 1;
+                nct = cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue
+                if (nct !== undefined) ct = nct;
+                console.log("ts: ", ts, "\tct: ", ct);
+            }
+            if (!(cursorRef.current?.Iterator.EndReached)) {
+                // cursorRef.current?.Iterator.moveToPrevious()
+                cursorRef.current?.previous();
+                setCursorPos(cpos - 1);
+            }
+        }
+        osdRef.current?.render();
+    }}><Text>Update cursor to timestamp</Text></Pressable>)
 }
