@@ -1,6 +1,6 @@
 from AudioPlayer import AudioPlayer
 from ScoreFollower import ScoreFollower
-from VoiceCommandThread import VoiceAnalyzerThread
+# from VoiceCommandThread import VoiceAnalyzerThread
 from simple_pid import PID
 import soundfile
 import numpy as np
@@ -150,3 +150,6 @@ class Synchronizer:
 
         # Save performance to wave file
         soundfile.write(path, audio, self.sample_rate)
+        
+    def get_warping_path(self):
+        return self.score_follower.path
