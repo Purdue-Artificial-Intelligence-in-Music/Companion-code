@@ -35,33 +35,22 @@ export default function App() {
         }
       }
 
-
-    // Remove any previously-loaded music
-    if (osmContainerRef.current) {
-        while (osmContainerRef.current.children[0]) {
-          osmContainerRef.current.removeChild(osmContainerRef.current.children[0]);
-        }
-      }
-
     // Create an instance of OpenSheetMusicDisplay, passing the reference to the container
     const osm = new OpenSheetMusicDisplay(osmContainerRef.current as HTMLElement, {
       autoResize: true, // Enable automatic resizing of the sheet music display
+      followCursor: true, // And follow the cursor
     });
 
     osdRef.current = osm;
 
-    osdRef.current = osm;
-
     // Load the music XML file from the assets folder
-    osm.load('assets/' + score)
     osm.load('assets/' + score)
       .then(() => {
         // Render the sheet music once it's loaded
         osm.render();
         console.log('Music XML loaded successfully'); // Log success message to console
         cursor.current = osm.cursor; // Pass reference to cursor
-    })
-        cursor.current = osm.cursor; // Pass reference to cursor
+        cursor.current.CursorOptions = { ...cursor.current.CursorOptions, ... { "follow": true} }
     })
       .catch((error) => {
         // Handle errors in loading the music XML file
@@ -71,7 +60,6 @@ export default function App() {
     // Cleanup function to dispose of the OpenSheetMusicDisplay instance if needed
     return () => {
     };
-  }, [score]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
   }, [score]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
 
   // Render the component's UI

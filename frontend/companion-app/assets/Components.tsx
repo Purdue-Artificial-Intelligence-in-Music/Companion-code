@@ -26,11 +26,11 @@ export function Play_Button( { my_cursor, playing, setPlaying,
     const timeoutRef = useRef<Number>();
 
     function find_the_time() {
-        if (my_cursor.current) {
+        if (my_cursor.current && my_cursor.current.NotesUnderCursor().length > 0 ) {
             const bpm = my_cursor.current?.Iterator.CurrentBpm ? my_cursor.current?.Iterator.CurrentBpm : 100
             const note_dur = my_cursor.current?.NotesUnderCursor().map( note => note.Length ).reduce( (prev, cur) => (prev < cur ? prev : cur));
             return 60000 / bpm * note_dur.RealValue
-        } else return 1000;
+        } else return 0;
     }
 
     useEffect(() => {
@@ -41,8 +41,11 @@ export function Play_Button( { my_cursor, playing, setPlaying,
                 my_cursor.current.next();
                 osdRef.current?.render();
             } else console.log("Cursor somehow null.");
-            setTimeout(move_function, find_the_time());
-            console.log("Effect has set find_the_time(): ", find_the_time());
+            const t = find_the_time();
+            if (t) {
+                setTimeout(move_function, t);
+                console.log("Effect has set find_the_time(): ", t);
+            }
         }
     }, [cursorPos]);
     
@@ -60,6 +63,7 @@ export function Play_Button( { my_cursor, playing, setPlaying,
             console.log("And it has a valid ref");
             my_cursor.current.reset();
             my_cursor.current.show();
+            // osdRef.current?.render();
             console.log("Cursor should show.");
             setPlaying(true);
             // const bpm = my_cursor.current?.Iterator.CurrentBpm ? my_cursor.current?.Iterator.CurrentBpm : 100
@@ -76,7 +80,6 @@ export function Next_Button( { my_cursor } :
         console.log("The NEXT button's on_press runs.");
         if (my_cursor.current) {
             console.log("And it has a valid ref");
-            my_cursor.current.Iterator.CurrentVoiceEntries[0].Notes[0].NoteheadColor = "#22ee55";
             my_cursor.current.next();
         }
     }}><Text>NEXT</Text></Pressable>
