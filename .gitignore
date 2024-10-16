@@ -165,7 +165,7 @@ cython_debug/
 .vscode/
 
 # audio files
-audio/
+data/audio/*
 *.mp3
 *.wav
 
@@ -180,3 +180,9 @@ data/audio
 
 # FluidSynth
 soundfonts/
+<<<<<<< HEAD
+=======
+
+# test coverage report xml/html
+.coverage
+>>>>>>> main

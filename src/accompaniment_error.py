@@ -110,11 +110,9 @@ def calculate_accompaniment_error(df: pd.DataFrame, estimated_times: np.ndarray,
     2        3  1.55  1.50           1.50             0.00           1.52               0.02
     3        4  2.10  2.00           2.00             0.10           2.05               0.05
     """
+    
     ref = df["estimated_ref"].to_numpy()
-    if ref.size > estimated_times.size:
-        nearest = find_nearest(estimated_times, ref)
-    else:
-        nearest = find_nearest(ref, estimated_times)
+    nearest = find_nearest(ref, estimated_times)
     nearest_acc = accompanist_times[nearest]
     accompaniment_error = nearest_acc - ref
     result = df.assign(accompaniment=nearest_acc, accompaniment_error=accompaniment_error)
