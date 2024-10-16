@@ -2,7 +2,6 @@ import sys
 import os
 
 # importing AudioBuffer to this script
-
 try:
     from src.AudioBuffer import AudioBuffer
 except:
@@ -19,16 +18,20 @@ class AudioBufferTests(unittest.TestCase):
             accessible to other class methods
         """
         # mock PyAudio class used in AudioBuffer
-        self.p = mock.MagicMock()
         self.sample_rate = 16000
         self.channels = 2
         self.frames_per_buffer = 1024
         self.max_duration = 600
+
         self.audio_buffer = AudioBuffer(
             sample_rate=self.sample_rate,
             channels=self.channels,
             frames_per_buffer=self.frames_per_buffer,
             max_duration=self.max_duration)
+
+        self.audio_buffer.p = mock.Mock()
+        self.audio_buffer.p.get_device_count.return_value = 1
+
 
     def test_AudioBuffer_constructor(self):
         # Test the initialization of the AudioBuffer
