@@ -2,10 +2,6 @@ import sys
 import os
 
 # importing AudioBuffer to this script
-directory = r'C:\Users\Nick\github\Nick-Ko-Companion-code\src'
-assert os.path.exists(directory), f"{directory} does not exists"
-sys.path.append(directory)
-print(directory in sys.path)
 
 try:
     from AudioBuffer import AudioBuffer

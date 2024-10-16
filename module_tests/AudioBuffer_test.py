@@ -2,10 +2,6 @@ import sys
 import os
 
 # importing AudioBuffer to this script
-directory = r'C:\Users\Nick\github\Nick-Ko-Companion-code\src'
-assert os.path.exists(directory), f"{directory} does not exists"
-sys.path.append(directory)
-print(directory in sys.path)
 
 try:
     from AudioBuffer import AudioBuffer
@@ -16,12 +12,15 @@ except:
 
 import numpy as np
 import unittest
+import unittest.mock as mock
 
 class AudioBufferTests(unittest.TestCase):
     def setUp(self):
         """ Set up test cases: so AudioBuffer is a class attribute 
             accessible to other class methods
         """
+        # mock PyAudio class used in AudioBuffer
+        self.p = mock.MagicMock()
         self.sample_rate = 16000
         self.channels = 2
         self.frames_per_buffer = 1024
