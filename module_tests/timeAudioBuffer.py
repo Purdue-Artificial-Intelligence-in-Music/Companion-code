@@ -21,8 +21,12 @@ def measure_elapsed_time(maxDuration: int)->float:
     if maxDuration <= 0:
         maxDuration = 600
     currTime = time.perf_counter()  #current time stamp
-    # init AudioBuffer: testing empty 
+    # init AudioBuffer  
     myAudioBuffer = AudioBuffer(max_duration=maxDuration)
+
+    # fill out the buffer so memory does not go unused (?)
+    myAudioBuffer.write(np.ones(myAudioBuffer.length))
+
     timeElapsed = time.perf_counter() - currTime
     # timeElapsed = round(timeElapsed, 2) # round to 2 decimal places
     return timeElapsed
@@ -40,12 +44,12 @@ def plot_and_savefig(x: np.array, y: np.array)->None:
 def main()->None:
 
     # set up values
-    durationValues = np.array([i for i in range(600, DURATION_UPPER_LIMIT, 50)])
-    bufferSizes = np.array([value * 1024 for value in durationValues])
-    measuredTime = np.array([measure_elapsed_time(time) for time in durationValues])
+    maxDurations = range(600, DURATION_UPPER_LIMIT, 100)
+    bufferSizes = np.array([value * 1024 for value in maxDurations])
+    timeMeasured = np.array([measure_elapsed_time(duration) for duration in maxDurations])
 
     # print(measuredTime[:10])
-    plot_and_savefig(bufferSizes, measuredTime)
+    plot_and_savefig(bufferSizes, timeMeasured)
 
 
 if __name__ == '__main__':

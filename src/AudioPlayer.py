@@ -59,8 +59,6 @@ class AudioPlayer:
         Length of the windowed signal before padding with zeros.
     hop_length : int
         Number of audio samples between adjacent windows.
-    frames_per_buffer : int
-        Number of frames per buffer for PyAudio stream
     audio : np.ndarray
         Numpy array containing audio frames of shape (channels, number of frames)
     audio_len : int
@@ -76,8 +74,8 @@ class AudioPlayer:
     output_log : np.ndarray
         Record of all audio frames given to PyAudio stream
     """
-    def __init__(self, path: str, playback_rate: int = 1.0, sample_rate: int = 16000, channels: int = 1, 
-                 n_fft: int = 4096, win_length: int = 4096, hop_length: int = 1024, frames_per_buffer: int = 1024):
+    def __init__(self, path: str, playback_rate: int = 1.0, sample_rate: int = 44100, channels: int = 1, 
+                 n_fft: int = 8192, win_length: int = 8192, hop_length: int = 2048):
         
         # AUDIO
         self.path = path
@@ -87,7 +85,7 @@ class AudioPlayer:
         self.n_fft = n_fft
         self.win_length = win_length
         self.hop_length = hop_length
-        self.frames_per_buffer = frames_per_buffer
+        self.frames_per_buffer = hop_length  # frames per buffer must match hop length
 
         # Check for mono audio
         mono = channels == 1
@@ -263,20 +261,25 @@ class AudioPlayer:
 
     def get_time(self) -> int:
         """Get the timestamp in the audio being played."""
-        return self.k * self.hop_length / self.sample_rate
+        return self.index / self.sample_rate
+    
+    def set_playback_rate(self, playback_rate: float):
+        """Set the playback rate of the audio."""
+        self.playback_rate = playback_rate
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import soundfile
-
-    player = AudioPlayer(path='data/bach/synthesized/track1.wav', 
-                         sample_rate=16000,
+    import os
+    
+    reference = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
+    player = AudioPlayer(path=reference, 
+                         sample_rate=44100,
                          channels=1,
-                         frames_per_buffer=1024,
-                         playback_rate=1,
-                         n_fft=4096,
-                         win_length=4096,
-                         hop_length=1024)
+                         playback_rate=2,
+                         n_fft=8192,
+                         win_length=8192,
+                         hop_length=2048)
     player.start()
 
     # the hop_length needs to match the frames_per_buffer
@@ -288,7 +291,7 @@ if __name__ == '__main__':
 
     try:
         while player.is_active():
-            player.playback_rate = 1 + 0.5 * np.sin(time.time())
+            player.set_playback_rate(1 + 0.1 * np.sin(time.time()))
             time.sleep(0.1)
     except KeyboardInterrupt:
         player.stop()
@@ -296,4 +299,4 @@ if __name__ == '__main__':
     audio = player.output_log.reshape((-1, ))
     plt.plot(audio)
     plt.show()
-    soundfile.write('test.wav', audio, 16000)
+    soundfile.write('player_test.wav', audio, 44100)
