@@ -11,9 +11,13 @@ export default function App() {
   const osmContainerRef = useRef<HTMLDivElement | null>(null); // Reference for the SVG container
 
   // Directory of scores with filenames and piece names (names for the selection display)
-  const scores = 
-    [{"filename":"air_on_the_g_string.musicxml", "piece":"Bach - Air on the G String"},
-    {"filename":"twelve_duets.musicxml", "piece":"Mozart - Twelve Duets"}]
+  // const scores = 
+  //   [{"filename":"air_on_the_g_string.musicxml", "piece":"Bach - Air on the G String"},
+  //   {"filename":"twelve_duets.musicxml", "piece":"Mozart - Twelve Duets"}]
+  const [scores, setScores] = useState([
+    { filename: "air_on_the_g_string.musicxml", piece: "Bach - Air on the G String" },
+    { filename: "twelve_duets.musicxml", piece: "Mozart - Twelve Duets" }
+  ]);
   // Create a state representing the file name of the current piece
   const [score, setScore] = useState("air_on_the_g_string.musicxml");
   // Create a state holding the cursor (a ref didn't work)
@@ -21,7 +25,21 @@ export default function App() {
   const osdRef = useRef<OpenSheetMusicDisplay | null>(null);
   // And one determining whether the piece is currently playing
   const [playing, setPlaying] = useState(false);
-
+    
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const xmlContent = e.target?.result as string;
+      const newScore = {
+        filename: file.name,
+        piece: file.name.replace(".musicxml", ""),
+        content: xmlContent
+      };
+      setScores([...scores, newScore]); //append the new score to scores list
+      setScore(file.name);
+    };
+    reader.readAsText(file);
+  };
   // useEffect hook to handle side effects (like loading music) after the component mounts
   // and when a piece is selected
   useEffect(() => {
@@ -32,37 +50,42 @@ export default function App() {
           osmContainerRef.current.removeChild(osmContainerRef.current.children[0]);
         }
       }
+    if (score) {
+      const selectedScore = scores.find(s => s.filename === score);
+      if (selectedScore) {
+        // Create an instance of OpenSheetMusicDisplay, passing the reference to the container
+        const osm = new OpenSheetMusicDisplay(osmContainerRef.current as HTMLElement, {
+          autoResize: false, // Enable automatic resizing of the sheet music display
+        });
 
-    // Create an instance of OpenSheetMusicDisplay, passing the reference to the container
-    const osm = new OpenSheetMusicDisplay(osmContainerRef.current as HTMLElement, {
-      autoResize: true, // Enable automatic resizing of the sheet music display
-    });
+        osdRef.current = osm;
 
-    osdRef.current = osm;
-
-    // Load the music XML file from the assets folder
-    osm.load('assets/' + score)
-      .then(() => {
-        // Render the sheet music once it's loaded
-        osm.render();
-        console.log('Music XML loaded successfully'); // Log success message to console
-        cursor.current = osm.cursor; // Pass reference to cursor
-    })
-      .catch((error) => {
-        // Handle errors in loading the music XML file
-        console.error('Error loading music XML:', error); // Log the error message
-      });
+        // Load the music XML file from the assets folder
+        osm.load('assets/' + score)
+          .then(() => {
+            // Render the sheet music once it's loaded
+            osm.render();
+            console.log('Music XML loaded successfully'); // Log success message to console
+            cursor.current = osm.cursor; // Pass reference to cursor
+        })
+          .catch((error) => {
+            // Handle errors in loading the music XML file
+            console.error('Error loading music XML:', error); // Log the error message
+          });
+      }
+    }
+    
 
     // Cleanup function to dispose of the OpenSheetMusicDisplay instance if needed
     return () => {
     };
-  }, [score]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
-
+  }, [score, scores]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
+  
   // Render the component's UI
   return (
     <SafeAreaView style={styles.container}> {/* Provides safe area insets for mobile devices */}
       <Text style={styles.title}>Companion, the digital accompanist</Text> {/* Title text */}
-      <Score_Select score={score} scoreOptions={scores} setScore={setScore}/>
+      <Score_Select scores={scores} setScore={setScore} onFileUpload={handleFileUpload}/>
       <Play_Button my_cursor={cursor} playing={playing} setPlaying={setPlaying}/>
       <Next_Button my_cursor={cursor}/>
       <div style={styles.scrollContainer}> {/* Container for scrolling the sheet music */}
