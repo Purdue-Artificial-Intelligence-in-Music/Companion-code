@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar'; // Manages the status bar on mobile
 import { StyleSheet, Text, View, SafeAreaView, Pressable } from 'react-native'; // Imports styling and layout components
 import React, { MutableRefObject, useEffect, useRef, useState } from 'react'; // Imports React and hooks
 import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay'; // Imports the OpenSheetMusicDisplay library for rendering sheet music
-import { Play_Button, Next_Button, Score_Select, RenderSomethingButton } from './Components';
+import { Play_Button, Next_Button, Score_Select, Stop_Button, RenderSomethingButton, TimeStampBox, UpdateCursorBox } from './assets/Components';
 
 // Define the main application component
 export default function App() {
@@ -21,8 +21,11 @@ export default function App() {
   const osdRef = useRef<OpenSheetMusicDisplay | null>(null);
   // And one determining whether the piece is currently playing
   const [playing, setPlaying] = useState(false);
+  const [cursorPos, setCursorPos] = useState<number>(-1);
+  const [timestamp, setTimestamp] = useState<string>("0.0")
 
   // useEffect hook to handle side effects (like loading music) after the component mounts
+  // and when a piece is selected
   // and when a piece is selected
   useEffect(() => {
 
@@ -36,6 +39,7 @@ export default function App() {
     // Create an instance of OpenSheetMusicDisplay, passing the reference to the container
     const osm = new OpenSheetMusicDisplay(osmContainerRef.current as HTMLElement, {
       autoResize: true, // Enable automatic resizing of the sheet music display
+      followCursor: true, // And follow the cursor
     });
 
     osdRef.current = osm;
@@ -47,6 +51,7 @@ export default function App() {
         osm.render();
         console.log('Music XML loaded successfully'); // Log success message to console
         cursor.current = osm.cursor; // Pass reference to cursor
+        cursor.current.CursorOptions = { ...cursor.current.CursorOptions, ... { "follow": true} }
     })
       .catch((error) => {
         // Handle errors in loading the music XML file
@@ -60,15 +65,25 @@ export default function App() {
 
   // Render the component's UI
   return (
-    <SafeAreaView style={styles.container}> {/* Provides safe area insets for mobile devices */}
-      <Text style={styles.title}>Companion, the digital accompanist</Text> {/* Title text */}
+    <SafeAreaView style={styles.container}>{/* Provides safe area insets for mobile devices */}
+      <Text style={styles.title}>Companion, the digital accompanist</Text>
       <Score_Select score={score} scoreOptions={scores} setScore={setScore}/>
-      <Play_Button my_cursor={cursor} playing={playing} setPlaying={setPlaying}/>
+      <Play_Button my_cursor={cursor} playing={playing} setPlaying={setPlaying}
+       cursorPos={cursorPos} setCursorPos={setCursorPos} osdRef={osdRef}
+      />
       <Next_Button my_cursor={cursor}/>
+      <Stop_Button setPlaying={setPlaying}/>
+      <TimeStampBox timestamp={timestamp} setTimestamp={setTimestamp}/>
+      <UpdateCursorBox timestamp={timestamp} cursorRef={cursor} osdRef={osdRef}
+       cursorPos={cursorPos} setCursorPos={setCursorPos}
+      />
+      <Pressable onPress={ () => { cursor.current?.reset() } }><Text>RESET CURSOR</Text></Pressable>
       <div style={styles.scrollContainer}> {/* Container for scrolling the sheet music */}
-        <div ref={osmContainerRef} style={styles.osmContainer}></div> {/* Reference to the SVG container for sheet music */}
+        <Text>Cursor position: {cursorPos}</Text>
+        <div ref={osmContainerRef} style={styles.osmContainer}>
+          </div> Reference to the SVG container for sheet music
       </div>
-      <StatusBar style="auto" /> {/* Automatically adjusts the status bar style */}
+      <StatusBar style="auto" />{/* Automatically adjusts the status bar style */}
     </SafeAreaView>
   );
 }
