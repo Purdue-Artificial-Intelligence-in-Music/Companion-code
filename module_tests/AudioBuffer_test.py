@@ -30,6 +30,8 @@ class AudioBufferTests(unittest.TestCase):
             max_duration=self.max_duration)
 
         self.audio_buffer.p = mock.Mock()
+        # try to mock the constructor of PyAudio here
+        self.audio_buffer.p.__init__ = mock.Mock()
         self.audio_buffer.p.get_device_count.return_value = 1
 
 

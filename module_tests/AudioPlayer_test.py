@@ -79,6 +79,8 @@ class TestAudioPlayer(unittest.TestCase):
 
     def test_get_time(self):
         """Test getting the current timestamp in the audio being played."""
+        
+        """needs a playback rate parameter, and do assertions based on this"""
         self.player.k = 160
         expected_time = (160 * self.player.hop_length) / self.player.sample_rate
         self.assertEqual(self.player.get_time(), expected_time)
