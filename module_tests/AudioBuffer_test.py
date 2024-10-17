@@ -10,21 +10,30 @@ except:
 
 import numpy as np
 import unittest
+import unittest.mock as mock
 
 class AudioBufferTests(unittest.TestCase):
     def setUp(self):
         """ Set up test cases: so audio_buffer is a class attribute 
             accessible to other class methods
         """
+        # mock PyAudio class used in AudioBuffer
         self.sample_rate = 16000
         self.channels = 2
         self.frames_per_buffer = 1024
         self.max_duration = 600
+
         self.audio_buffer = AudioBuffer(
             sample_rate=self.sample_rate,
             channels=self.channels,
             frames_per_buffer=self.frames_per_buffer,
             max_duration=self.max_duration)
+
+        self.audio_buffer.p = mock.Mock()
+        # try to mock the constructor of PyAudio here
+        self.audio_buffer.p.__init__ = mock.Mock()
+        self.audio_buffer.p.get_device_count.return_value = 1
+
 
     def test_AudioBuffer_constructor(self):
         # Test the initialization of the AudioBuffer
