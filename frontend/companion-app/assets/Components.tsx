@@ -123,6 +123,7 @@ export function UpdateCursorBox( { timestamp, cursorRef, osdRef, cursorPos, setC
         var ct = cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue;
         var nct;
         var cpos = cursorPos;
+        console.log("Number of cursors: ", osdRef?.current?.cursors.length)
         console.log("ts: ", ts, "\tct: ", ct);
         if (ct !== undefined) {
             while (ct < ts && !(cursorRef.current?.Iterator.EndReached)) {

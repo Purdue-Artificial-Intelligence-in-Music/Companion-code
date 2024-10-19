@@ -17,7 +17,7 @@ export default function App() {
   // Create a state representing the file name of the current piece
   const [score, setScore] = useState("air_on_the_g_string.musicxml");
   // Create a state holding the cursor (a ref didn't work)
-  const cursor = useRef<Cursor | null>(null);
+  const cursorRef = useRef<Cursor | null>(null);
   const osdRef = useRef<OpenSheetMusicDisplay | null>(null);
   // And one determining whether the piece is currently playing
   const [playing, setPlaying] = useState(false);
@@ -50,8 +50,8 @@ export default function App() {
         // Render the sheet music once it's loaded
         osm.render();
         console.log('Music XML loaded successfully'); // Log success message to console
-        cursor.current = osm.cursor; // Pass reference to cursor
-        cursor.current.CursorOptions = { ...cursor.current.CursorOptions, ... { "follow": true} }
+        cursorRef.current = osm.cursor; // Pass reference to cursor
+        cursorRef.current.CursorOptions = { ...cursorRef.current.CursorOptions, ... { "follow": true} }
     })
       .catch((error) => {
         // Handle errors in loading the music XML file
@@ -63,21 +63,53 @@ export default function App() {
     };
   }, [score]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
 
+  // useEffect to update the time-stamp
+  useEffect( () => {
+    // move the cursor based on the timestamp!
+    if (cursorRef.current?.hidden) cursorRef.current?.show();
+        var ts = Number(timestamp); // the timestamp is a string rn bc it's in an input box
+        var ct = cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue; // cursor time
+        var nct; // new cursor time
+        var cpos = cursorPos; // pointless? update to cursor state
+        console.log("Number of cursors: ", osdRef?.current?.cursors.length)
+        console.log("ts: ", ts, "\tct: ", ct);
+        if (ct !== undefined) { // if the cursor does exist...
+            while (ct < ts && !(cursorRef.current?.Iterator.EndReached)) {
+                // cursorRef.current?.Iterator.moveToNext()
+                cursorRef.current?.next(); // Move it until we pass the timestamp (or reach the end)
+                cpos += 1;
+                nct = cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue
+                if (nct !== undefined) ct = nct;
+                console.log("ts: ", ts, "\tct: ", ct);
+            }
+            if (!(cursorRef.current?.Iterator.EndReached)) {
+                // cursorRef.current?.Iterator.moveToPrevious()
+                cursorRef.current?.previous(); // Then if we haven't reached the end, move back
+                setCursorPos(cpos - 1);
+            }
+        }
+        if (osdRef.current !== undefined && osdRef.current?.Sheet !== undefined) {
+          osdRef.current.render();
+          console.log("Rendering anew");
+        }
+  }, [timestamp])
+
+
   // Render the component's UI
   return (
     <SafeAreaView style={styles.container}>{/* Provides safe area insets for mobile devices */}
       <Text style={styles.title}>Companion, the digital accompanist</Text>
       <Score_Select score={score} scoreOptions={scores} setScore={setScore}/>
-      <Play_Button my_cursor={cursor} playing={playing} setPlaying={setPlaying}
+      <Play_Button my_cursor={cursorRef} playing={playing} setPlaying={setPlaying}
        cursorPos={cursorPos} setCursorPos={setCursorPos} osdRef={osdRef}
       />
-      <Next_Button my_cursor={cursor}/>
+      <Next_Button my_cursor={cursorRef}/>
       <Stop_Button setPlaying={setPlaying}/>
       <TimeStampBox timestamp={timestamp} setTimestamp={setTimestamp}/>
-      <UpdateCursorBox timestamp={timestamp} cursorRef={cursor} osdRef={osdRef}
+      <UpdateCursorBox timestamp={timestamp} cursorRef={cursorRef} osdRef={osdRef}
        cursorPos={cursorPos} setCursorPos={setCursorPos}
       />
-      <Pressable onPress={ () => { cursor.current?.reset() } }><Text>RESET CURSOR</Text></Pressable>
+      <Pressable onPress={ () => { cursorRef.current?.reset() } }><Text>RESET CURSOR</Text></Pressable>
       <div style={styles.scrollContainer}> {/* Container for scrolling the sheet music */}
         <Text>Cursor position: {cursorPos}</Text>
         <div ref={osmContainerRef} style={styles.osmContainer}>
