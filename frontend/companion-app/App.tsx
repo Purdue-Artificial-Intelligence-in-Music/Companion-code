@@ -96,12 +96,15 @@ export default function App() {
     <SafeAreaView style={styles.container}>{/* Provides safe area insets for mobile devices */}
       <Text style={styles.title}>Companion, the digital accompanist</Text>
       <Score_Select score={score} scoreOptions={scores} setScore={setScore}/>
-      <Play_Button my_cursor={cursorRef} playing={playing} setPlaying={setPlaying}
-       cursorPos={cursorPos} setCursorPos={setCursorPos} osdRef={osdRef}
-      />
-      <Stop_Button setPlaying={setPlaying}/>
-      <TimeStampBox timestamp={timestamp} setTimestamp={setTimestamp}/>
-      <Pressable onPress={ () => { cursorRef.current?.reset() } }><Text>RESET CURSOR</Text></Pressable>
+      <View style={styles.button_wrapper}>
+        <Play_Button my_cursor={cursorRef} playing={playing} setPlaying={setPlaying}
+        button_style={styles.button} text_style={styles.button_text}
+        cursorPos={cursorPos} setCursorPos={setCursorPos} osdRef={osdRef}
+        />
+        <Stop_Button setPlaying={setPlaying} button_style={styles.button} text_style={styles.button_text}/>
+        <TimeStampBox timestamp={timestamp} setTimestamp={setTimestamp} style={styles.text_input}/>
+      </View>
+      {/* <Pressable onPress={ () => { cursorRef.current?.reset() } }><Text>RESET CURSOR</Text></Pressable> */}
       <div style={styles.scrollContainer}> {/* Container for scrolling the sheet music */}
         <Text>Cursor position (used by deprecated play button): {cursorPos}</Text>
         <div ref={osmContainerRef} style={styles.osmContainer}>
@@ -139,4 +142,27 @@ const styles = StyleSheet.create({
     borderColor: 'black', // Set border color to black
     overflow: 'hidden', // Ensure content doesn't overflow outside this container
   },
+  button: {
+    flex: 0.2,
+    borderColor: 'black',
+    borderRadius: 15,
+    backgroundColor: 'lightblue',
+  },
+  button_text: {
+    fontSize: 20,
+    textAlign: 'center'
+  },
+  button_wrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 10,
+    backgroundColor: 'lightgray',
+    width: '100%',
+    minHeight: 50
+  },
+  text_input: {
+    backgroundColor: 'white',
+    flex: 0.3
+  }
 });

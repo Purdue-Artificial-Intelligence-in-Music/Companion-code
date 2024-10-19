@@ -1,4 +1,4 @@
-import { Pressable, TextInput } from "react-native";
+import { Pressable, TextInput, TextStyle, ViewStyle } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 import { View, Text } from 'react-native';
 import { OpenSheetMusicDisplay, Cursor, Fraction } from 'opensheetmusicdisplay';
@@ -15,9 +15,11 @@ export function Score_Select( {score, scoreOptions, setScore}:
 }
 
 export function Play_Button( { my_cursor, playing, setPlaying, 
+    button_style, text_style,
     cursorPos, setCursorPos, osdRef
      } : 
     { my_cursor: MutableRefObject<Cursor | null>, playing: boolean, setPlaying: Function,
+        button_style: ViewStyle, text_style: TextStyle,
        cursorPos: number, setCursorPos: Function,
        osdRef: MutableRefObject<OpenSheetMusicDisplay | null>
      } ) {
@@ -56,7 +58,7 @@ export function Play_Button( { my_cursor, playing, setPlaying,
         }
     }
 
-    return <Pressable onPress={ () => {
+    return <Pressable style={ button_style } onPress={ () => {
         console.log("The play button's on_press runs.");
         if (my_cursor.current) {
             console.log("And it has a valid ref");
@@ -70,20 +72,22 @@ export function Play_Button( { my_cursor, playing, setPlaying,
             // const time = 60000 / bpm * note_dur.RealValue
             setCursorPos(0);
         }
-    }}><Text>PLAY</Text></Pressable>
+    }}>
+        <Text style={ text_style }>PLAY</Text>
+    </Pressable>
 }
 
-export function Stop_Button( { setPlaying } : 
-    { setPlaying: Function } ) {
-    return <Pressable onPress={ () => {
+export function Stop_Button( { setPlaying, button_style, text_style } : 
+    { setPlaying: Function, button_style: ViewStyle, text_style: TextStyle } ) {
+    return <Pressable style={button_style} onPress={ () => {
         setPlaying(false);
-    }}><Text>STOP</Text></Pressable>
+    }}><Text style={text_style}>STOP</Text></Pressable>
 }
 
-export function TimeStampBox( { timestamp, setTimestamp } : 
-    { timestamp: string, setTimestamp: (text: string) => void }) {
+export function TimeStampBox( { timestamp, setTimestamp, style } : 
+    { timestamp: string, setTimestamp: (text: string) => void, style: ViewStyle }) {
     return(
-        <View>
+        <View style={style}>
         <TextInput
             onChangeText={setTimestamp}
             value={timestamp}
