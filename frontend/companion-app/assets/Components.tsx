@@ -73,17 +73,6 @@ export function Play_Button( { my_cursor, playing, setPlaying,
     }}><Text>PLAY</Text></Pressable>
 }
 
-export function Next_Button( { my_cursor } : 
-    { my_cursor: MutableRefObject<Cursor | null> } ) {
-    return <Pressable onPress={ () => {
-        console.log("The NEXT button's on_press runs.");
-        if (my_cursor.current) {
-            console.log("And it has a valid ref");
-            my_cursor.current.next();
-        }
-    }}><Text>NEXT</Text></Pressable>
-}
-
 export function Stop_Button( { setPlaying } : 
     { setPlaying: Function } ) {
     return <Pressable onPress={ () => {
@@ -91,55 +80,17 @@ export function Stop_Button( { setPlaying } :
     }}><Text>STOP</Text></Pressable>
 }
 
-export function RenderSomethingButton( { osdRef } : { osdRef: MutableRefObject<OpenSheetMusicDisplay | null>}) {
-    return(<Pressable onPress={ () => {
-        osdRef.current?.setOptions( { autoResize: true });
-        console.log("The RENDER SOMETHING button was pressed");
-    }}>
-        <Text>RENDER SOMETHING!!!</Text>
-    </Pressable>)
-}
-
 export function TimeStampBox( { timestamp, setTimestamp } : 
     { timestamp: string, setTimestamp: (text: string) => void }) {
     return(
+        <View>
         <TextInput
-        onChangeText={setTimestamp}
-        value={timestamp}
-        placeholder="useless placeholder"
-        inputMode="numeric"
-      />
+            onChangeText={setTimestamp}
+            value={timestamp}
+            placeholder="useless placeholder"
+            inputMode="numeric"
+        />
+        </View>
+        
     )
-}
-
-export function UpdateCursorBox( { timestamp, cursorRef, osdRef, cursorPos, setCursorPos } : 
-    { timestamp: string, cursorRef: MutableRefObject<Cursor | null>,
-        osdRef: MutableRefObject<OpenSheetMusicDisplay | null>,
-        cursorPos: number, setCursorPos: Function
-     }) {
-    return(<Pressable onPress={ () => {
-        if (cursorRef.current?.hidden) cursorRef.current?.show();
-        var ts = Number(timestamp);
-        var ct = cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue;
-        var nct;
-        var cpos = cursorPos;
-        console.log("Number of cursors: ", osdRef?.current?.cursors.length)
-        console.log("ts: ", ts, "\tct: ", ct);
-        if (ct !== undefined) {
-            while (ct < ts && !(cursorRef.current?.Iterator.EndReached)) {
-                // cursorRef.current?.Iterator.moveToNext()
-                cursorRef.current?.next();
-                cpos += 1;
-                nct = cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue
-                if (nct !== undefined) ct = nct;
-                console.log("ts: ", ts, "\tct: ", ct);
-            }
-            if (!(cursorRef.current?.Iterator.EndReached)) {
-                // cursorRef.current?.Iterator.moveToPrevious()
-                cursorRef.current?.previous();
-                setCursorPos(cpos - 1);
-            }
-        }
-        osdRef.current?.render();
-    }}><Text>Update cursor to timestamp</Text></Pressable>)
 }

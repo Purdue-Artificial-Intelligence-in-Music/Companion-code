@@ -71,8 +71,6 @@ export default function App() {
         var ct = cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue; // cursor time
         var nct; // new cursor time
         var cpos = cursorPos; // pointless? update to cursor state
-        console.log("Number of cursors: ", osdRef?.current?.cursors.length)
-        console.log("ts: ", ts, "\tct: ", ct);
         if (ct !== undefined) { // if the cursor does exist...
             while (ct < ts && !(cursorRef.current?.Iterator.EndReached)) {
                 // cursorRef.current?.Iterator.moveToNext()
@@ -80,7 +78,6 @@ export default function App() {
                 cpos += 1;
                 nct = cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue
                 if (nct !== undefined) ct = nct;
-                console.log("ts: ", ts, "\tct: ", ct);
             }
             if (!(cursorRef.current?.Iterator.EndReached)) {
                 // cursorRef.current?.Iterator.moveToPrevious()
@@ -90,7 +87,6 @@ export default function App() {
         }
         if (osdRef.current !== undefined && osdRef.current?.Sheet !== undefined) {
           osdRef.current.render();
-          console.log("Rendering anew");
         }
   }, [timestamp])
 
