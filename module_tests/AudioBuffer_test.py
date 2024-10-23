@@ -21,6 +21,7 @@ class AudioBufferTests(unittest.TestCase):
         """ Set up test cases: so audio_buffer is a class attribute 
             accessible to other class methods
         """
+        # mock PyAudio class used in AudioBuffer
         self.sample_rate = 16000
         self.channels = 2
         self.frames_per_buffer = 1024
