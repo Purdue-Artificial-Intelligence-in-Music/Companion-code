@@ -176,8 +176,6 @@ beat_cache/
 soundfonts/
 data/audio
 
-*.png
-
 # FluidSynth
 soundfonts/
 <<<<<<< HEAD
@@ -185,4 +183,6 @@ soundfonts/
 
 # test coverage report xml/html
 .coverage
->>>>>>> main
+
+# output folder
+output/

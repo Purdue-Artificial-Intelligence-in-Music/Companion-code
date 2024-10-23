@@ -3,6 +3,7 @@ import numpy as np
 import time
 import librosa
 import soundfile
+from threading import Lock
 
 class AudioBuffer:
     """Thread to save microphone audio to a buffer.
@@ -43,7 +44,7 @@ class AudioBuffer:
     paused : bool
         If True, read and write operations are paused
     """
-    def __init__(self, source: str = None, max_duration: int = 600, sample_rate: int = 16000, channels: int = 1, frames_per_buffer: int = 1024):
+    def __init__(self, source: str = None, max_duration: int = 600, sample_rate: int = 44100, channels: int = 1, frames_per_buffer: int = 1024):
 
         # Params
         self.sample_rate = sample_rate
@@ -73,8 +74,22 @@ class AudioBuffer:
         # PyAudio
         self.p = pyaudio.PyAudio()
         self.stream = None
+        self.input_device = self.get_input_device()
+        print(f'Using input device: {self.p.get_device_info_by_index(self.input_device)["name"]}')
 
         self.paused = False
+
+        self.lock = Lock()
+
+    def get_input_device(self):
+        device_count = self.p.get_device_count()
+        for i in range(device_count):
+            device_info = self.p.get_device_info_by_index(i)
+            channels = device_info['maxInputChannels']
+            sample_rate = device_info['defaultSampleRate']
+            if channels > 0 and sample_rate == self.sample_rate:
+                return i
+        return 0
 
     def write(self, frames: np.ndarray):
         """Write audio frames to buffer.
@@ -97,7 +112,8 @@ class AudioBuffer:
             raise Exception('Error: Not enough space left in buffer')
         
         # Write frames
-        self.buffer[:, self.write_index:self.write_index + num_frames] = frames
+        with self.lock:
+            self.buffer[:, self.write_index:self.write_index + num_frames] = frames
         
         # Increment the write index
         self.write_index += num_frames
@@ -125,7 +141,9 @@ class AudioBuffer:
             print('AudioBuffer read error')
             raise Exception(f'Error: Attempted to read {num_frames} frames but count is {self.count}')
         
-        frames = self.buffer[:, self.read_index:self.read_index+num_frames]
+        frames = np.empty((self.channels, num_frames), dtype=np.float32)
+        with self.lock:
+            frames = self.buffer[:, self.read_index:self.read_index+num_frames]
         
         # Increment the read index
         self.read_index += num_frames
@@ -186,7 +204,8 @@ class AudioBuffer:
                                   input=True,
                                   output=False,
                                   stream_callback=self.callback,
-                                  frames_per_buffer=self.frames_per_buffer)
+                                  frames_per_buffer=self.frames_per_buffer,
+                                  input_device_index=self.input_device)
         
     def is_active(self) -> bool:
         """Return True if the stream is active. False otherwise. """
@@ -235,9 +254,10 @@ class AudioBuffer:
 
         
 if __name__ == '__main__':
+    source = 'data/audio/bach/live/variable_tempo.wav'
     buffer = AudioBuffer(source=None,
                          max_duration=600,
-                         sample_rate=16000,
+                         sample_rate=44100,
                          channels=1,
                          frames_per_buffer=1024)
     buffer.start()
@@ -245,10 +265,11 @@ if __name__ == '__main__':
     while not buffer.is_active():
         time.sleep(0.01)
 
+    print('Mic is active')
     try:
         while buffer.is_active():
             time.sleep(0.1)
     except KeyboardInterrupt:
         buffer.stop()
 
-    buffer.save('test.wav')
+    buffer.save('mic_test.wav')

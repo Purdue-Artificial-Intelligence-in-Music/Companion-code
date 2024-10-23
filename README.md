@@ -15,4 +15,9 @@ Companion is an app that not only plays along with a human player during a chamb
 2. In a python 3.8 environment, run the command ```python setup.py```
 4. Run ``src/main.py`` to start Companion.
 
-* All relevant work regarding note-tracking/music synchronization could be found in the folder get_notes_and_start_end_times
+## Getting started with the frontend
+1. Install Node.js found here: https://nodejs.org./en
+2. Install Expo CLI: `npm install -g expo-cli`
+3. Navigate to the frontend directory: `cd frontend/companion-app`
+4. Install project dependencies: `npm install`
+5. Start the development server: `npm run web`
