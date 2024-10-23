@@ -27,11 +27,10 @@ def musicxml_to_midi(input_path, output_path):
 
 def change_midi_tempo(midi_file_path, new_tempo_bpm):
     """
-    Change the tempo of a MIDI file and save it to a new file.
+    Change the tempo of a MIDI file and save it to the same file.
     
     Parameters:
     midi_file_path (str): Path to the original MIDI file.
-    output_file_path (str): Path to save the modified MIDI file.
     new_tempo_bpm (int or float): The new tempo in beats per minute (BPM).
     
     Returns:
@@ -43,17 +42,18 @@ def change_midi_tempo(midi_file_path, new_tempo_bpm):
     # Load the MIDI file
     mid = mido.MidiFile(midi_file_path)
     
-    # Create a new track to store tempo changes
+    # Create a new track list
     new_tracks = []
     
     for i, track in enumerate(mid.tracks):
         new_track = mido.MidiTrack()
+        
+        # Have the tempo message at the beginning of the track
+        new_track.append(mido.MetaMessage('set_tempo', tempo=microseconds_per_beat, time=0))
+        
         for msg in track:
-            # Look for tempo messages and modify them
-            if msg.type == 'set_tempo':
-                new_msg = mido.MetaMessage('set_tempo', tempo=microseconds_per_beat)
-                new_track.append(new_msg)
-            else:
+            # Skip other 'set_tempo' messages in the track to avoid conflicts
+            if msg.type != 'set_tempo':
                 new_track.append(msg)
         new_tracks.append(new_track)
     
