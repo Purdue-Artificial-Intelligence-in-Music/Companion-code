@@ -11,17 +11,23 @@ except:
 import numpy as np
 import unittest
 import unittest.mock as mock
+from unittest.mock import patch
 
 class AudioBufferTests(unittest.TestCase):
-    def setUp(self):
+    # use patch to mock PyAudio class
+    @patch('pyaudio.PyAudio')
+    def setUp(self, mock_pyaudio):
         """ Set up test cases: so audio_buffer is a class attribute 
             accessible to other class methods
         """
-        # mock PyAudio class used in AudioBuffer
         self.sample_rate = 16000
         self.channels = 2
         self.frames_per_buffer = 1024
         self.max_duration = 600
+
+        # mock PyAudio class used in AudioBuffer: with patcher
+        self.patcher = mock.patch('pyaudio.PyAudio')
+        self.mock_pyaudio = self.patcher.start()
 
         self.audio_buffer = AudioBuffer(
             sample_rate=self.sample_rate,
@@ -29,14 +35,22 @@ class AudioBufferTests(unittest.TestCase):
             frames_per_buffer=self.frames_per_buffer,
             max_duration=self.max_duration)
 
-        self.audio_buffer.p = mock.Mock()
-        # try to mock the constructor of PyAudio here
-        self.audio_buffer.p.__init__ = mock.Mock()
-        self.audio_buffer.p.get_device_count.return_value = 1
+        self.mock_pyaudio.get_device_count.return_value = 1
+        self.mock_pyaudio.get_device_info_by_index.return_value = {
+            'maxInputChannels': 2, 
+            'defaultSampleRate': 16000, 
+            'name': 'Mock Test Device'
+        }
 
+        assert isinstance(self.mock_pyaudio.get_device_info_by_index, mock.MagicMock)
+
+    def teardown(self):
+        self.patcher.stop()
 
     def test_AudioBuffer_constructor(self):
         # Test the initialization of the AudioBuffer
+        # self.audio_buffer.p.__init__.assert_called_once()   # ensure PyAudio is initialized (with the mock method tho)
+
         self.assertEqual(self.audio_buffer.sample_rate, self.sample_rate)
         self.assertEqual(self.audio_buffer.channels, self.channels)
         self.assertEqual(self.audio_buffer.frames_per_buffer, self.frames_per_buffer)
