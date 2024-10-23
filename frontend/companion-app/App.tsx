@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, SafeAreaView, Pressable } from 'react-native'; 
 import React, { MutableRefObject, useEffect, useRef, useState } from 'react'; // Imports React and hooks
 import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay'; // Imports the OpenSheetMusicDisplay library for rendering sheet music
 import { Play_Button, Next_Button, Score_Select, RenderSomethingButton } from './Components';
+import AudioRecorder from './components/AudioRecorder';
 
 // Define the main application component
 export default function App() {
@@ -59,17 +60,18 @@ export default function App() {
   }, [score]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
 
   // Render the component's UI
-  return (
-    <SafeAreaView style={styles.container}> {/* Provides safe area insets for mobile devices */}
-      <Text style={styles.title}>Companion, the digital accompanist</Text> {/* Title text */}
-      <Score_Select score={score} scoreOptions={scores} setScore={setScore}/>
-      <Play_Button my_cursor={cursor} playing={playing} setPlaying={setPlaying}/>
-      <Next_Button my_cursor={cursor}/>
-      <div style={styles.scrollContainer}> {/* Container for scrolling the sheet music */}
-        <div ref={osmContainerRef} style={styles.osmContainer}></div> {/* Reference to the SVG container for sheet music */}
-      </div>
-      <StatusBar style="auto" /> {/* Automatically adjusts the status bar style */}
-    </SafeAreaView>
+  return (    
+      <SafeAreaView style={styles.container}> {/* Provides safe area insets for mobile devices */}
+        <AudioRecorder />
+        <Text style={styles.title}>Companion, the digital accompanist</Text> {/* Title text */}
+        <Score_Select score={score} scoreOptions={scores} setScore={setScore}/>
+        <Play_Button my_cursor={cursor} playing={playing} setPlaying={setPlaying}/>
+        <Next_Button my_cursor={cursor}/>
+        <div style={styles.scrollContainer}> {/* Container for scrolling the sheet music */}
+          <div ref={osmContainerRef} style={styles.osmContainer}></div> {/* Reference to the SVG container for sheet music */}
+        </div>
+        <StatusBar style="auto" /> {/* Automatically adjusts the status bar style */}
+      </SafeAreaView>
   );
 }
 
