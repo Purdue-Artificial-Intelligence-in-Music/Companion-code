@@ -28,7 +28,6 @@ if __name__ == '__main__':
             print("or run all tests by providing no arguments")
             print("or write a test and put it in the module_tests/ directory")
             print("note: test names should follow the form: <name>_test.py'")
-
     elif argc == 1:
         print("running a total of {} tests".format(len(tests)))
         for test in tests:

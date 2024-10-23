@@ -9,11 +9,15 @@ except:
     exit(1)
 
 import numpy as np
+import pyaudio
 import unittest
 import unittest.mock as mock
+from unittest.mock import patch
 
 class AudioBufferTests(unittest.TestCase):
-    def setUp(self):
+    # use patch to mock PyAudio class for the entire test suite
+    @patch('pyaudio.PyAudio')
+    def setUp(self, mock_pyaudio):
         """ Set up test cases: so audio_buffer is a class attribute 
             accessible to other class methods
         """
@@ -23,17 +27,21 @@ class AudioBufferTests(unittest.TestCase):
         self.frames_per_buffer = 1024
         self.max_duration = 600
 
-        self.audio_buffer = AudioBuffer(
-            sample_rate=self.sample_rate,
-            channels=self.channels,
-            frames_per_buffer=self.frames_per_buffer,
-            max_duration=self.max_duration)
+        # mock this function and give it a dummy return value
+        mock_pyaudio.return_value.get_device_info_by_index.return_value = {
+            'name': 'Test Device', 
+            'maxInputChannels': 2, 
+            'defaultSampleRate': 16000
+        }
 
-        self.audio_buffer.p = mock.Mock()
-        # try to mock the constructor of PyAudio here
-        self.audio_buffer.p.__init__ = mock.Mock()
-        self.audio_buffer.p.get_device_count.return_value = 1
-
+        self.audio_buffer = AudioBuffer(sample_rate=self.sample_rate,
+                                        channels=self.channels,
+                                        frames_per_buffer=self.frames_per_buffer,
+                                        max_duration=self.max_duration)
+    def test_pyAudio_mock(self):
+        """ Test that the PyAudio class is being mocked correctly """
+        self.assertTrue(isinstance(self.audio_buffer.p, mock.MagicMock))
+        self.assertTrue(isinstance(self.audio_buffer.p.get_device_info_by_index(), dict))
 
     def test_AudioBuffer_constructor(self):
         # Test the initialization of the AudioBuffer
