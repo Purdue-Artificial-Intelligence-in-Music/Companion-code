@@ -104,12 +104,13 @@ export function Stop_Button( { setPlaying, button_style, text_style } :
 }
 
 export function TimeStampBox( { timestamp, setTimestamp, style } : 
-    { timestamp: string, setTimestamp: (text: string) => void, style: ViewStyle }) {
+    { timestamp: number, setTimestamp: (val: number) => void, style: ViewStyle }) {
     return(
         <View style={style}>
+            <Text>Old time stamp box:</Text>
         <TextInput
-            onChangeText={setTimestamp}
-            value={timestamp}
+            onChangeText={ (mytext) => { setTimestamp(Number(mytext)) } }
+            value={String(timestamp)}
             placeholder="useless placeholder"
             inputMode="numeric"
         />
