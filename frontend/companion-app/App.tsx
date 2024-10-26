@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, SafeAreaView} from 'react-native'; // Imports s
 import React, { useEffect, useRef, useState } from 'react'; // Imports React and hooks
 import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay'; // Imports the OpenSheetMusicDisplay library for rendering sheet music
 import { Play_Button, Score_Select, Stop_Button, TimeStampBox} from './Components';
+import { MeasureSetBox } from './components/MeasureSetter';
 
 // Define the main application component
 export default function App() {
@@ -72,6 +73,7 @@ export default function App() {
             osm.render();
             console.log('Music XML loaded successfully'); // Log success message to console
             cursorRef.current = osm.cursor; // Pass reference to cursor
+            cursorRef.current.show(); // and never hide it.  it should always be visible
             cursorRef.current.CursorOptions = { ...cursorRef.current.CursorOptions, ... { "follow": true} }
           })
           .catch((error) => {
@@ -125,7 +127,10 @@ export default function App() {
         cursorPos={cursorPos} setCursorPos={setCursorPos} osdRef={osdRef}
         />
         <Stop_Button setPlaying={setPlaying} button_style={styles.button} text_style={styles.button_text}/>
-        <TimeStampBox timestamp={timestamp} setTimestamp={setTimestamp} style={styles.text_input}/>
+        <MeasureSetBox timestamp={timestamp} setTimestamp={setTimestamp} 
+          cursorRef={cursorRef} osdRef={osdRef} style={styles.button_wrapper}
+        />
+        {/* <TimeStampBox timestamp={timestamp} setTimestamp={setTimestamp} style={styles.text_input}/> */}
       </View>
 
       <div style={styles.scrollContainer}> {/* Container for scrolling the sheet music */}
