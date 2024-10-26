@@ -107,11 +107,11 @@ export function TimeStampBox( { timestamp, setTimestamp, style } :
     { timestamp: number, setTimestamp: (val: number) => void, style: ViewStyle }) {
     return(
         <View style={style}>
-            <Text>Old time stamp box:</Text>
+            <Text>Go to time in seconds live:</Text>
         <TextInput
             onChangeText={ (mytext) => { setTimestamp(Number(mytext)) } }
             value={String(timestamp)}
-            placeholder="useless placeholder"
+            placeholder="0"
             inputMode="numeric"
         />
         </View>

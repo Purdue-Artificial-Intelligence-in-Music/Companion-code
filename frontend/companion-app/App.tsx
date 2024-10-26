@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: 'lightgray',
     width: '100%',
-    minHeight: 50
+    minHeight: 64
   },
   text_input: {
     backgroundColor: 'white',
