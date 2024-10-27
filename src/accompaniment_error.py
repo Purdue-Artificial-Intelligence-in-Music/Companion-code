@@ -118,19 +118,13 @@ def calculate_accompaniment_error(df: pd.DataFrame, estimated_times: np.ndarray,
     result = df.assign(accompaniment=nearest_acc, accompaniment_error=accompaniment_error)
     return result
 
-    # Convert the live and ref columns of the DataFrame to numpy arrays
-    # Find the estimated_times closest to the estimated_ref
-    # Get the corresponding accompanist_times
-    # Calculate the accompaniment_error
-    # Add the accompaniment and accompaniment_error columns to the DataFrame
-
 if __name__ == "__main__":
     data = {
         'measure': [1, 2, 3, 4],
         'live': [0.52, 1.08, 1.55, 2.10],
         'ref': [0.50, 1.05, 1.50, 2.00],
         'estimated_ref': [0.50, 1.00, 1.50, 2.00],
-        'alignment_error': [0.00, -0.05, 0.00, 0.10]  # Existing column
+        'alignment_error': [0.00, -0.05, 0.00, 0.10]
     }
     df = pd.DataFrame(data)
     estimated_times = np.array([0.45, 1.00, 1.50, 2.02])
