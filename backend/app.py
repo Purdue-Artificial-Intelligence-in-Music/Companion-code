@@ -54,6 +54,7 @@ def audioBuffer():
     
     #need to return the audio buffer in base64 format for compatability with native audio players
     audio_base64 = base64.b64encode(buffer_io.read()).decode('utf-8')
+    #NOTE: We will need to constantly encode stuff. Need to figure this out (maybe encode in frontend?)
     
     data = {
         "buffer" : audio_base64,
