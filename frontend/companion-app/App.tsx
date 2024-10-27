@@ -3,7 +3,8 @@ import { StatusBar } from 'expo-status-bar'; // Manages the status bar on mobile
 import { StyleSheet, Text, View, SafeAreaView, Pressable } from 'react-native'; // Imports styling and layout components
 import React, { MutableRefObject, useEffect, useRef, useState } from 'react'; // Imports React and hooks
 import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay'; // Imports the OpenSheetMusicDisplay library for rendering sheet music
-import { Play_Button, Next_Button, Score_Select, RenderSomethingButton, GET_Request, POST_Request } from './Components';
+import { Play_Button, Next_Button, Score_Select, RenderSomethingButton } from './Components';
+import {GET_Request, POST_Request, Play_Audio} from "./components/Api_Caller"
 
 // Define the main application component
 export default function App() {
@@ -68,6 +69,7 @@ export default function App() {
 
       <GET_Request/>
       <POST_Request/>
+      <Play_Audio/>
 
       <div style={styles.scrollContainer}> {/* Container for scrolling the sheet music */}
         <div ref={osmContainerRef} style={styles.osmContainer}></div> {/* Reference to the SVG container for sheet music */}

@@ -1,5 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import librosa
+import io
+import base64
+import soundfile as sf
 
 app = Flask(__name__)
 app.jinja_options = {}
@@ -38,6 +42,24 @@ def squareInt():
     else:
         data = {'output': 'Not an integer'}
     return data
+
+@app.route('/audioBuffer', methods=["POST", "GET"])
+def audioBuffer():
+    filename = librosa.ex('trumpet')
+    y, sr = librosa.load(filename)
+    
+    buffer_io = io.BytesIO()
+    sf.write(buffer_io, y, sr, format='WAV')
+    buffer_io.seek(0)
+    
+    #need to return the audio buffer in base64 format for compatability with native audio players
+    audio_base64 = base64.b64encode(buffer_io.read()).decode('utf-8')
+    
+    data = {
+        "buffer" : audio_base64,
+        "sr" : sr
+    }
+    return jsonify(data)
 
 if __name__ == "__main__":
     app.run(debug=True)
