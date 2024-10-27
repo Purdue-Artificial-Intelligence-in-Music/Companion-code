@@ -130,9 +130,7 @@ export default function App() {
   // Render the component's UI
   return (
     <SafeAreaView style={styles.container}>{/* Provides safe area insets for mobile devices */}
-      {/* <GET_Request/>
-      <POST_Request/> */}
-      <Play_Audio/>
+      
       <Text style={styles.title}>Companion, the digital accompanist</Text>
       <Score_Select scores={scores} setScore={setScore} onFileUpload={handleFileUpload}/>
       
@@ -157,6 +155,10 @@ export default function App() {
       </div>
 
       <StatusBar style="auto" />{/* Automatically adjusts the status bar style */}
+
+      {/* <GET_Request/>
+      <POST_Request/> */}
+      <Play_Audio/>
     </SafeAreaView>
   );
 }
