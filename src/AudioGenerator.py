@@ -114,6 +114,7 @@ class AudioGenerator:
         change_midi_tempo(self.score_path, tempo)
 
         midi_data = pretty_midi.PrettyMIDI(self.score_path)  # load the midi file
+        # 10/28/2024 Nick Ko: the following loop might just work on somebody's machine...
         for i, instrument in enumerate(midi_data.instruments):  # iterate over each instrument in the midi file
             # Create a new PrettyMIDI object for the instrument
             instrument_midi = pretty_midi.PrettyMIDI()
@@ -130,7 +131,7 @@ class AudioGenerator:
             fluidsynth_command = [
                 "fluidsynth",
                 "-ni",
-                "C:\ProgramData\soundfonts\FluidR3_GM\FluidR3_GM.sf2",
+                "C:\ProgramData\soundfonts\FluidR3_GM\FluidR3_GM.sf2", 
                 temp_midi_file,
                 "-F",
                 output_audio_file,
