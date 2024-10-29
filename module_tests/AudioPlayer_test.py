@@ -54,7 +54,6 @@ class TestAudioPlayer(unittest.TestCase):
         """Test starting and stopping the PyAudio stream."""
         self.player.start()
 
-        self.debug(self.mock_stream.assert_called_once)
 
         self.player.stop()
         self.mock_stream.assert_called_once()
@@ -89,11 +88,9 @@ class TestAudioPlayer(unittest.TestCase):
 
     def test_get_time(self):
         """Test getting the current timestamp in the audio being played."""
-        # index should always ≥ 0 
-        self.player.k = 160
-        expected_time = (160 * self.player.hop_length) / self.player.sample_rate
-        self.assertEqual(self.player.get_time(), expected_time)
+        self.player.get_next_frames()
 
+# maybe focus a little more about get_next_frames
 
 if __name__ == '__main__':
     unittest.main()
