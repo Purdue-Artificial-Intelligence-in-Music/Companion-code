@@ -2,10 +2,10 @@ import os
 import sys
 import re
 
-def display_tests(tests):
+def display_tests(tests_list):
     print("[")
-    for i, test in enumerate(tests):
-        if i == len(tests) - 1:
+    for i, test in enumerate(tests_list):
+        if i == len(tests_list) - 1:
             print("  " + test)
         else:
             print("  " + test + ",")
@@ -13,8 +13,8 @@ def display_tests(tests):
 
 def set_verbose_flag() -> str: 
     user_input = input("do you want the verbose flag running with your tests? [y]es or [n]o\n")
-    flag = "-v" if user_input == "y" else ""
-    return flag
+    f = "-v" if user_input == "y" else ""
+    return f
 
 if __name__ == '__main__':
     argc = len(sys.argv)
@@ -44,4 +44,4 @@ if __name__ == '__main__':
             os.system("python -m unittest module_tests/{} {}".format(test, flag))
     else:
         print("Invalid number of arguments: provide either a specific test or no test")
-        exit(1)
+        sys.exit(1)
