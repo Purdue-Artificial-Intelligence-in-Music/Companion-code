@@ -4,6 +4,8 @@ import { StyleSheet, Text, View, SafeAreaView} from 'react-native'; // Imports s
 import React, { useEffect, useRef, useState } from 'react'; // Imports React and hooks
 import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay'; // Imports the OpenSheetMusicDisplay library for rendering sheet music
 import { Play_Button, Score_Select, Stop_Button, TimeStampBox} from './Components';
+import { MeasureSetBox } from './components/MeasureSetter';
+import { Fraction } from 'opensheetmusicdisplay';
 
 // Define the main application component
 export default function App() {
@@ -27,7 +29,8 @@ export default function App() {
   const [playing, setPlaying] = useState(false);
   
   const [cursorPos, setCursorPos] = useState<number>(-1); // this and all features using it are to be deprecated
-  const [timestamp, setTimestamp] = useState<string>("0.0")
+  const [timestamp, setTimestamp] = useState<number>(0); // timestamp in seconds which the cursor attempts to approximate
+  const [cursorExactTimestamp, setCursorExactTimestamp] = useState<number>(0); // timestamp of the note the cursor is at
     
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
@@ -43,6 +46,9 @@ export default function App() {
     };
     reader.readAsText(file);
   };
+
+  const BPM = 100; // EDIT THESE AS APPROPRIATE
+  const TSD = 4;
 
   // useEffect hook to handle side effects (like loading music) after the component mounts
   // and when a piece is selected
@@ -72,6 +78,7 @@ export default function App() {
             osm.render();
             console.log('Music XML loaded successfully'); // Log success message to console
             cursorRef.current = osm.cursor; // Pass reference to cursor
+            cursorRef.current.show(); // and never hide it.  it should always be visible
             cursorRef.current.CursorOptions = { ...cursorRef.current.CursorOptions, ... { "follow": true} }
           })
           .catch((error) => {
@@ -88,28 +95,34 @@ export default function App() {
   // useEffect to update the time-stamp
   useEffect( () => {
     // move the cursor based on the timestamp!
-    if (cursorRef.current?.hidden) cursorRef.current?.show();
-        var ts = Number(timestamp); // the timestamp is a string rn bc it's in an input box
-        var ct = cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue; // cursor time
-        var nct; // new cursor time
-        var cpos = cursorPos; // pointless? update to cursor state
-        if (ct !== undefined) { // if the cursor does exist...
-            while (ct < ts && !(cursorRef.current?.Iterator.EndReached)) {
-                // cursorRef.current?.Iterator.moveToNext()
-                cursorRef.current?.next(); // Move it until we pass the timestamp (or reach the end)
-                cpos += 1;
-                nct = cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue
-                if (nct !== undefined) ct = nct;
-            }
-            if (!(cursorRef.current?.Iterator.EndReached)) {
-                // cursorRef.current?.Iterator.moveToPrevious()
-                cursorRef.current?.previous(); // Then if we haven't reached the end, move back
-                setCursorPos(cpos - 1);
-            }
-        }
-        if (osdRef.current !== undefined && osdRef.current?.Sheet !== undefined) {
-          osdRef.current.render();
-        }
+    let ct = cursorExactTimestamp; // current timestamp of cursor's note(s) in seconds
+    var dt;
+    if (cursorRef.current?.Iterator.CurrentSourceTimestamp !== undefined) {
+      var ts_meas = Fraction.createFromFraction(cursorRef.current?.Iterator.CurrentSourceTimestamp); // current timestamp of iterator as a fraction
+      var ts_start = Fraction.createFromFraction(ts_meas); // where iterator starts from, as a fraction
+
+      // while timestamp is less than desired, update it
+      while (ct < timestamp ) {
+        cursorRef.current?.Iterator.moveToNextVisibleVoiceEntry(false);
+        dt = Fraction.minus(cursorRef.current?.Iterator.CurrentSourceTimestamp, ts_meas);
+        // dt is a fraction indicating how much - in whole notes - the iterator moved
+                  
+        // // If we are using the active BPM and time signature in the given score, uncomment: 
+        // ct += 60 * dt.RealValue * cursorRef.current?.Iterator.CurrentMeasure.ActiveTimeSignature.Denominator / cursorRef.current?.Iterator.CurrentBpm
+        // // and remove the BPM and TSD arguments used in the below, and comment the below:
+        ct += 60 * dt.RealValue * TSD / BPM;
+        // // either way, the calculation is:
+        // 60 secs/min * dt wholes * time signature denominator (beats/whole) / BPM (beats/minute) yields seconds
+        ts_meas = Fraction.plus(ts_meas, dt);
+      }
+      cursorRef.current?.Iterator.moveToPreviousVisibleVoiceEntry(false);
+      setCursorExactTimestamp(cursorExactTimestamp + 60 * Fraction.minus(cursorRef.current?.Iterator.CurrentSourceTimestamp, ts_start).RealValue * TSD / BPM);
+      cursorRef.current?.update();
+    }  
+                
+    if (osdRef.current !== undefined && osdRef.current?.Sheet !== undefined) {
+      osdRef.current.render();
+    }
   }, [timestamp])
 
 
@@ -125,6 +138,11 @@ export default function App() {
         cursorPos={cursorPos} setCursorPos={setCursorPos} osdRef={osdRef}
         />
         <Stop_Button setPlaying={setPlaying} button_style={styles.button} text_style={styles.button_text}/>
+        <MeasureSetBox setTimestamp={setCursorExactTimestamp}
+          cursorRef={cursorRef}
+          text_input_style={styles.text_input} button_style={styles.button} button_text_style={styles.button_text} label_text_style={styles.label}
+          BPM={BPM} TSD={TSD}
+        />
         <TimeStampBox timestamp={timestamp} setTimestamp={setTimestamp} style={styles.text_input}/>
       </View>
 
@@ -151,6 +169,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20, // Set the font size for the title
     marginBottom: 20, // Add space below the title
+  },
+  label: {
+    fontSize: 12,
   },
   scrollContainer: {
     width: '100%', // Make the scroll container fill the width of the parent
@@ -183,7 +204,7 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: 'lightgray',
     width: '100%',
-    minHeight: 50
+    minHeight: 64
   },
   text_input: {
     backgroundColor: 'white',

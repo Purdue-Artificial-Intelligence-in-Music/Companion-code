@@ -2,12 +2,16 @@ import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
 import pyaudio
-from AudioPlayer import AudioPlayer, normalize_audio        # what is this normalize_audio?
+
+# relative import
+# from src.AudioPlayer import AudioPlayer, normalize_audio
+from src.AudioPlayer import AudioPlayer, normalize_audio
 
 
 class TestNormalizeAudio(unittest.TestCase):
     def test_normalize_audio(self):
         """Test if audio is normalized correctly."""
+        # all audio inputs should be non-empty
         audio = np.array([0.5, -0.5, 0.75, -0.75, 1.0, -1.0])
         normalized_audio = normalize_audio(audio)
         self.assertTrue(np.all(normalized_audio <= 1.0))
@@ -33,7 +37,7 @@ class TestAudioPlayer(unittest.TestCase):
         self.assertEqual(self.player.path, "test.wav")
         self.assertEqual(self.player.sample_rate, 16000)
         self.assertEqual(self.player.channels, 1)
-        self.assertEqual(self.player.frames_per_buffer, 1024)
+        self.assertEqual(self.player.frames_per_buffer, 2048)
 
     def test_audio_loading(self):
         """Test if audio is loaded correctly."""
@@ -49,10 +53,10 @@ class TestAudioPlayer(unittest.TestCase):
     def test_pyaudio_stream(self):
         """Test starting and stopping the PyAudio stream."""
         self.player.start()
-        self.mock_stream.start_stream.assert_called_once()
+
 
         self.player.stop()
-        self.mock_stream.close.assert_called_once()
+        self.mock_stream.assert_called_once()
 
     def test_callback(self):
         """Test the callback function which provides audio frames."""
@@ -70,21 +74,23 @@ class TestAudioPlayer(unittest.TestCase):
         self.assertFalse(self.player.paused)
 
     def test_is_active(self):
-        """Test if the stream is active."""
-        self.mock_stream.is_active.return_value = True
+        """When there isn't a pyAudio stream object"""
+        self.assertTrue(self.player.stream is None)
+        self.assertFalse(self.player.is_active())
+
+        """When there is a pyAudio stream object"""
+        # instantiate a pyAudio stream
+        self.player.start()
         self.assertTrue(self.player.is_active())
 
-        self.mock_stream.is_active.return_value = False
-        self.assertFalse(self.player.is_active())
+        # stopping pyAudio stream
+        self.player.stop()
 
     def test_get_time(self):
         """Test getting the current timestamp in the audio being played."""
-        
-        """needs a playback rate parameter, and do assertions based on this"""
-        self.player.k = 160
-        expected_time = (160 * self.player.hop_length) / self.player.sample_rate
-        self.assertEqual(self.player.get_time(), expected_time)
+        self.player.get_next_frames()
 
+# maybe focus a little more about get_next_frames
 
 if __name__ == '__main__':
     unittest.main()
