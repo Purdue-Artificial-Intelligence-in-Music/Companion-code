@@ -12,7 +12,7 @@ def display_tests(tests):
     print("]")
 
 def set_verbose_flag() -> str: 
-    user_input = input("do you want the verbose flag running with your tests?: [y]es or [n]o\n")
+    user_input = input("do you want the verbose flag running with your tests? [y]es or [n]o\n")
     flag = "-v" if user_input == "y" else ""
     return flag
 
