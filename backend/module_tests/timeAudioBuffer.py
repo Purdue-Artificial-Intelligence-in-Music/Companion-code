@@ -4,7 +4,7 @@ import os
 # importing AudioBuffer to this script
 
 try:
-    from AudioBuffer import AudioBuffer
+    from audio_buffer import AudioBuffer
 except:
     print("remember to use SET PYTHONPATH=\"C:\\Users\\Nick\\github\\Nick-Ko-Companion-code\\src\"")
     print("on Windows machines")

@@ -13,7 +13,8 @@ accompanist_times = []
 playback_rates = []
 
 reference = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
-accompaniment = os.path.join('data', 'audio', 'bach', 'synthesized', 'accompaniment.wav')
+accompaniment = os.path.join(
+    'data', 'audio', 'bach', 'synthesized', 'accompaniment.wav')
 source = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
 
 source_audio = librosa.load(source, sr=44100)
@@ -51,7 +52,7 @@ for i in range(0, source_audio.shape[-1], 8192):
 
     print(f'Soloist time: {soloist_time:.2f}, Estimated time: {estimated_time:.2f}, Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}')
     output_file.write(f'Soloist time: {soloist_time:.2f}, Predicted time: {estimated_time:.2f}, '
-                        f'Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}\n')
+                      f'Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}\n')
 
 
 # synchronizer.save_performance(path='performance.wav')
@@ -73,5 +74,6 @@ df_accompaniment = calculate_accompaniment_error(
     accompanist_times=np.asarray(accompanist_times)
 )
 
-df_accompaniment.to_csv('output\\error_analysis_per_measure_constant.csv', index=False)
+df_accompaniment.to_csv(
+    'output\\error_analysis_per_measure_constant.csv', index=False)
 print(df_accompaniment)

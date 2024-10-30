@@ -1,7 +1,7 @@
 import unittest
 import pandas as pd
 import numpy as np
-from accompaniment_error import load_data, find_nearest, calculate_accompaniment_error
+from src.accompaniment_error import load_data, find_nearest, calculate_accompaniment_error
 
 class TestAccompanimentError(unittest.TestCase):
     def setUp(self):

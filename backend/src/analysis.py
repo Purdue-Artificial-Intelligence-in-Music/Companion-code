@@ -1,10 +1,9 @@
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 
 df = pd.read_csv('error_analysis_per_measure_variable.csv')
 
-#Calculation for both alignment and accompaniment errors
+# Calculation for both alignment and accompaniment errors
 alignment_stats = df['alignment_error'].describe()
 accompaniment_stats = df['accompaniment_error'].describe()
 
@@ -24,21 +23,21 @@ stats_df.to_csv('error_statistics.csv', index=False)
 
 plt.figure(figsize=(15, 10))
 
-#Histogram of alignment errors
+# Histogram of alignment errors
 plt.subplot(2, 2, 1)
 plt.hist(df['alignment_error'], bins=20, edgecolor='black')
 plt.title('Histogram of Alignment Errors')
 plt.xlabel('Alignment Error (seconds)')
 plt.ylabel('Frequency')
 
-#Histogram of accompaniment errors
+# Histogram of accompaniment errors
 plt.subplot(2, 2, 2)
 plt.hist(df['accompaniment_error'], bins=20, edgecolor='black')
 plt.title('Histogram of Accompaniment Errors')
 plt.xlabel('Accompaniment Error (seconds)')
 plt.ylabel('Frequency')
 
-#Alignment error over measures (using positive and negative instances)
+# Alignment error over measures (using positive and negative instances)
 plt.subplot(2, 2, 3)
 plt.plot(df['measure'], df['alignment_error'])
 plt.title('Alignment Error Over Measures')
@@ -46,7 +45,7 @@ plt.xlabel('Measure')
 plt.ylabel('Alignment Error (seconds)')
 plt.axhline(y=0, color='r', linestyle='--')
 
-#Accompaniment error over measures (using positive and negative instances)
+# Accompaniment error over measures (using positive and negative instances)
 plt.subplot(2, 2, 4)
 plt.plot(df['measure'], df['accompaniment_error'])
 plt.title('Accompaniment Error Over Measures')
@@ -58,11 +57,12 @@ plt.tight_layout()
 plt.savefig('error_analysis.png')
 plt.show()
 
-#Correlation between both
+# Correlation between both
 correlation = df['alignment_error'].corr(df['accompaniment_error'])
-print(f"\nCorrelation between alignment error and accompaniment error: {correlation:.4f}")
+print(
+    f"\nCorrelation between alignment error and accompaniment error: {correlation:.4f}")
 
-#Identify measures with largest errors
+# Identify measures with largest errors
 worst_alignment = df.loc[df['abs_alignment_error'].idxmax()]
 worst_accompaniment = df.loc[df['abs_accompaniment_error'].idxmax()]
 
@@ -76,10 +76,12 @@ df['alignment_error_diff'] = df['alignment_error'].diff()
 df['accompaniment_error_diff'] = df['accompaniment_error'].diff()
 
 
-#plot these progressions over time
+# plot these progressions over time
 plt.figure(figsize=(12, 6))
-plt.plot(df['measure'][1:], df['alignment_error_diff'][1:], label='Alignment Error')
-plt.plot(df['measure'][1:], df['accompaniment_error_diff'][1:], label='Accompaniment Error')
+plt.plot(df['measure'][1:], df['alignment_error_diff']
+         [1:], label='Alignment Error')
+plt.plot(df['measure'][1:], df['accompaniment_error_diff']
+         [1:], label='Accompaniment Error')
 plt.title('Error Progression Over Measures')
 plt.xlabel('Measure')
 plt.ylabel('Error Difference (seconds)')
