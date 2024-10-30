@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar'; // Manages the status bar on mobile
 import { StyleSheet, Text, View, SafeAreaView} from 'react-native'; // Imports styling and layout components
 import React, { useEffect, useRef, useState } from 'react'; // Imports React and hooks
 import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay'; // Imports the OpenSheetMusicDisplay library for rendering sheet music
+import {GET_Request, POST_Request, Play_Audio} from "./components/Api_Caller";
 import { Play_Button, Score_Select, Stop_Button, TimeStampBox} from './Components';
 import { MeasureSetBox } from './components/MeasureSetter';
 import { Fraction } from 'opensheetmusicdisplay';
@@ -155,6 +156,10 @@ export default function App() {
       </div>
 
       <StatusBar style="auto" />{/* Automatically adjusts the status bar style */}
+
+      {/* <GET_Request/>
+      <POST_Request/> */}
+      <Play_Audio/>
     </SafeAreaView>
   );
 }
