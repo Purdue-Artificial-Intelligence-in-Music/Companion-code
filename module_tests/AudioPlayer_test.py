@@ -25,12 +25,11 @@ class TestAudioPlayer(unittest.TestCase):
     def setUp(self, mock_pyaudio, mock_librosa):
         """Set up the AudioPlayer with mock dependencies."""
         mock_librosa.return_value = (np.random.randn(16000), 16000)
-        mock_pyaudio_instance = mock_pyaudio.return_value
-        mock_pyaudio_instance.open.return_value = MagicMock()
-        self.mock_stream = mock_pyaudio_instance.open.return_value
-
         # Create an AudioPlayer object
         self.player = AudioPlayer(path="test.wav")
+        # with patch, self.player.p is already a MagicMock, just need to ensure the open method is also a mock
+        assert isinstance(self.player.p.open, MagicMock), f"is of type {type(self.player.p.open)}"
+        # assertion seems not failing
 
     def test_initialization(self):
         """Test initialization of AudioPlayer attributes."""
@@ -52,11 +51,17 @@ class TestAudioPlayer(unittest.TestCase):
 
     def test_pyaudio_stream(self):
         """Test starting and stopping the PyAudio stream."""
+        # first ensure self.player.p.open is a MagicMock
+        self.assertTrue(isinstance(self.player.p.open, MagicMock))
+
+        """Test if PyAudio.open() is called once in AudioPlayer.start() method"""
         self.player.start()
+        self.player.p.open.assert_called_once()
 
-
+        """Test if PyAudio.close() is called once in AudioPlayer.start() method"""
         self.player.stop()
-        self.mock_stream.assert_called_once()
+        self.player.stream.close.assert_called_once()   # .close() closes PortAudio's stream (a small resource offered by PortAudio)
+        self.player.p.terminate.assert_called_once()    # .terminate() releases entire PortAudio's resource
 
     def test_callback(self):
         """Test the callback function which provides audio frames."""
@@ -82,9 +87,6 @@ class TestAudioPlayer(unittest.TestCase):
         # instantiate a pyAudio stream
         self.player.start()
         self.assertTrue(self.player.is_active())
-
-        # stopping pyAudio stream
-        self.player.stop()
 
     def test_get_time(self):
         """Test getting the current timestamp in the audio being played."""
