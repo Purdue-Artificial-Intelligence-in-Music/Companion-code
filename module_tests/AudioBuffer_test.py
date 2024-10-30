@@ -1,6 +1,3 @@
-import sys
-import os
-
 # importing AudioBuffer to this script
 try:
     from src.AudioBuffer import AudioBuffer
@@ -9,7 +6,6 @@ except:
     exit(1)
 
 import numpy as np
-import pyaudio
 import unittest
 import unittest.mock as mock
 from unittest.mock import patch
