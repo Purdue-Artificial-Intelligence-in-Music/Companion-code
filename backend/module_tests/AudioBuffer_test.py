@@ -51,7 +51,7 @@ class AudioBufferTests(unittest.TestCase):
         self.assertEqual(self.audio_buffer.length, self.max_duration * self.sample_rate)
         self.assertEqual(self.audio_buffer.write_index, 0)
         self.assertEqual(self.audio_buffer.read_index, 0)
-        self.assertEqual(self.audio_buffer.count, 0)
+        self.assertEqual(self.audio_buffer.unread_frames, 0)
         self.assertIsInstance(self.audio_buffer.buffer, np.ndarray)
 
     def test_write_to_buffer(self):
@@ -59,7 +59,7 @@ class AudioBufferTests(unittest.TestCase):
         frames = np.random.rand(self.channels, 100).astype(np.float32)
         self.audio_buffer.write(frames)
         self.assertEqual(self.audio_buffer.write_index, 100)
-        self.assertEqual(self.audio_buffer.count, 100)
+        self.assertEqual(self.audio_buffer.unread_frames, 100)
         np.testing.assert_array_equal(self.audio_buffer.buffer[:, :100], frames)
 
     def test_write_to_buffer_overflow(self):
@@ -75,7 +75,7 @@ class AudioBufferTests(unittest.TestCase):
         self.audio_buffer.write(frames)
         read_frames = self.audio_buffer.read(50)
         self.assertEqual(self.audio_buffer.read_index, 50)
-        self.assertEqual(self.audio_buffer.count, 50)
+        self.assertEqual(self.audio_buffer.unread_frames, 50)
         np.testing.assert_array_equal(read_frames, frames[:, :50])
     
     def test_read_from_buffer_overflow(self):

@@ -260,7 +260,7 @@ if __name__ == '__main__':
     try:
         while sync.update():
             analyzer.print_last()
-            print(sync.score_follower.mic.count)
+            print(sync.score_follower.mic.unread_frames)
 
     except KeyboardInterrupt:
         sync.stop()

@@ -51,7 +51,7 @@ try:
         accompanist_times.append(accompanist_time)
         playback_rates.append(playback_rate)
 
-        print(f'Soloist time: {soloist_time:.2f}, Estimated time: {estimated_time:.2f}, Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}, Unread frames: {synchronizer.score_follower.mic.count:4}', end='\r')
+        print(f'Soloist time: {soloist_time:.2f}, Estimated time: {estimated_time:.2f}, Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}, Unread frames: {synchronizer.score_follower.mic.unread_frames:4}', end='\r')
         output_file.write(f'Soloist time: {soloist_time:.2f}, Predicted time: {estimated_time:.2f}, '
                           f'Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}\n')
 

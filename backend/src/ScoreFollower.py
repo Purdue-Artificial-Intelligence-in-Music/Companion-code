@@ -107,7 +107,7 @@ class ScoreFollower:
         """Calculate next step in the alignment path between the microphone and reference audio """
         
         # While the number of unread frames is less than the window length
-        while self.mic.count < self.win_length:
+        while self.mic.unread_frames < self.win_length:
             # If the mic is not active, return the last position in the reference audio
             if not self.mic.is_active():
                 print("Microphone is no longer active and all audio has been processed.")
