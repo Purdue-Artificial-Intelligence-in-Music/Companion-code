@@ -7,6 +7,7 @@ import {GET_Request, POST_Request, Play_Audio} from "./components/Api_Caller";
 import { Play_Button, Score_Select, Stop_Button, TimeStampBox} from './Components';
 import { MeasureSetBox } from './components/MeasureSetter';
 import { Fraction } from 'opensheetmusicdisplay';
+import AudioRecorder from './components/AudioRecorder';
 
 // Define the main application component
 export default function App() {
@@ -130,7 +131,7 @@ export default function App() {
   // Render the component's UI
   return (
     <SafeAreaView style={styles.container}>{/* Provides safe area insets for mobile devices */}
-      
+      <AudioRecorder />
       <Text style={styles.title}>Companion, the digital accompanist</Text>
       <Score_Select scores={scores} setScore={setScore} onFileUpload={handleFileUpload}/>
       
