@@ -1,5 +1,6 @@
-from AudioPlayer import AudioPlayer
+from PhaseVocoder import PhaseVocoder
 from ScoreFollower import ScoreFollower
+from AudioBuffer import AudioBuffer
 # from VoiceCommandThread import VoiceAnalyzerThread
 from simple_pid import PID
 import soundfile
@@ -13,8 +14,6 @@ class Synchronizer:
     ----------
     score : str
         Path to score
-    source : str, optional
-        Path to soloist recording. If None, use mic audio.
     output : str, optional
         Path to output file for performance recording. If None, use score title.
     sample_rate : int, optional
@@ -47,31 +46,34 @@ class Synchronizer:
     listener : VoiceCommandThread
         VoiceAnalyzerThread object to update settings on the fly
     """
-    def __init__(self, reference: str, accompaniment: str, source: str = None, Kp: int = 0.2, Ki: int = 0.00, Kd=0.05, 
-                 sample_rate: int = 44100, win_length: int = 8192, hop_length: int = 4096, c: int = 10, max_run_count: int = 3, diag_weight: int=0.4, channels: int = 1, frames_per_buffer: int = 1024):
+    def __init__(self, reference: str, accompaniment: str, Kp: int = 0.2, Ki: int = 0.00, Kd=0.05, 
+                 sample_rate: int = 44100, win_length: int = 8192, hop_length: int = 8192, c: int = 10, max_run_count: int = 3, diag_weight: int=0.4, channels: int = 1):
 
         self.sample_rate = sample_rate
         self.c = c
 
         # ScoreFollower needs soloist audio
         self.score_follower = ScoreFollower(reference=reference,
-                                            source=source,
                                             c=c,
                                             max_run_count=max_run_count,
                                             diag_weight=diag_weight,
                                             sample_rate=sample_rate,
                                             win_length=win_length,
-                                            channels=channels,
-                                            frames_per_buffer=frames_per_buffer)
+                                            channels=channels)
         
-        # AudioPlayer needs accompanist audio
-        self.player = AudioPlayer(path=accompaniment, 
-                                  playback_rate=1.0, 
-                                  sample_rate=sample_rate,
-                                  channels=channels,
-                                  n_fft=win_length,
-                                  hop_length=hop_length, )
+        self.soloist_buffer = AudioBuffer(max_duration=600,
+                                        sample_rate=sample_rate,
+                                        channels=channels)
         
+        self.phase_vocoder = PhaseVocoder(path=accompaniment, 
+                                        playback_rate=1.0, 
+                                        sample_rate=sample_rate,
+                                        channels=channels,
+                                        n_fft=win_length,
+                                        hop_length=hop_length)
+        
+        self.accompaniment_buffer = AudioBuffer(sample_rate=sample_rate, channels=channels)
+
         # PID Controller
         self.PID = PID(Kp=Kp, Ki=Ki, Kd=Kd, setpoint=0, starting_output=1.0, 
                        output_limits=(1 / max_run_count, max_run_count), 
@@ -79,62 +81,37 @@ class Synchronizer:
         
         # Voice Command thread
         # self.listener = VoiceAnalyzerThread(name="Listener", buffer=self.score_follower.mic, player=self.player)
-
-        self.accompanist_time_log = []
-
-    def start(self):
-        """Start the score follower and audio player. """
-        self.score_follower.start()
-        self.player.start()
     
 
-    def pause(self):
-        self.score_follower.pause()
-        self.player.pause()
-
-    def unpause(self):
-        self.score_follower.unpause()
-        self.player.unpause()
-
-    def stop(self):
-        """Stop the score follower and audio player """
-        self.score_follower.stop()
-        self.player.stop()
-
-    def update(self):
+    def step(self, frames):
         """Update the audio player playback rate  """
-        ref_index = self.score_follower.step()
-
+        ref_index = self.score_follower.step(frames)
+        self.soloist_buffer.write(frames)
         if ref_index is None:
             return False
 
         accompanist_time = self.accompanist_time()
-        self.accompanist_time_log.append(accompanist_time)
         error = accompanist_time - self.estimated_time()
         playback_rate = self.PID(error)
 
         if ref_index > self.c:
-            self.player.playback_rate = playback_rate
+            self.phase_vocoder.set_playback_rate(playback_rate)
 
-        return self.is_active()
-
-    def is_active(self):
-        """Return True if score follower and audio player are both active. False otherwise. """
-        return self.score_follower.is_active() and self.player.is_active()
+        return self.phase_vocoder.get_next_frames(), self.score_follower.get_estimated_time()
     
     def soloist_time(self):
-        return self.score_follower.mic.get_time()
+        return self.soloist_buffer.get_time()
 
     def estimated_time(self):
         return self.score_follower.get_estimated_time()
     
     def accompanist_time(self):
-        return self.player.get_time()
+        return self.phase_vocoder.get_time()
     
     def save_performance(self, path):
         # Get the audio logs
-        mic_log = self.score_follower.mic.get_audio()
-        player_log = self.player.output_log
+        mic_log = self.score_follower.input_buffer.get_audio()
+        player_log = self.phase_vocoder.output_log
 
         # Trim the audio logs to be the same length
         length = min(mic_log.shape[-1], player_log.shape[-1])
@@ -151,5 +128,5 @@ class Synchronizer:
         # Save performance to wave file
         soundfile.write(path, audio, self.sample_rate)
         
-    def get_warping_path(self):
-        return self.score_follower.path
+    # def get_warping_path(self):
+    #     return self.score_follower.path

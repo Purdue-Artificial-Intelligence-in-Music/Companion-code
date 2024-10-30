@@ -50,17 +50,10 @@ class ScoreFollower:
         Alignment path between live and reference sequences
 
     """
-    def __init__(self, reference: str, source: str = None, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4, sample_rate: int = 44100, win_length: int = 8192, channels: int = 1, frames_per_buffer: int = 1024):
+    def __init__(self, reference: str, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4, sample_rate: int = 44100, win_length: int = 8192, channels: int = 1):
 
         self.sample_rate = sample_rate
         self.win_length = win_length
-
-        # Create buffer for microphone audio
-        self.mic = AudioBuffer(source=source,
-                               max_duration=600,
-                               sample_rate=sample_rate,
-                               channels=channels,
-                               frames_per_buffer=frames_per_buffer)
 
         # Instantiate ChromaMaker object
         self.chroma_maker = ChromaMaker(sr=sample_rate, n_fft=win_length)
@@ -83,7 +76,7 @@ class ScoreFollower:
         # Online DTW alignment path
         self.path = []
 
-    def get_chroma(self, audio):
+    def get_chroma(self, audio: np.ndarray) -> np.ndarray:
         """
 
         Parameters
@@ -103,23 +96,11 @@ class ScoreFollower:
         # Return a chroma feature for the audio
         return self.chroma_maker.insert(audio)
 
-    def step(self):
+    def step(self, frames: np.ndarray) -> int:
         """Calculate next step in the alignment path between the microphone and reference audio """
-        
-        # While the number of unread frames is less than the window length
-        while self.mic.unread_frames < self.win_length:
-            # If the mic is not active, return the last position in the reference audio
-            if not self.mic.is_active():
-                print("Microphone is no longer active and all audio has been processed.")
-                return None
-            # If the mic is active, wait for more audio frames
-            time.sleep(0.01)
-
-        # Read audio frames from the buffer
-        audio = self.mic.read(self.win_length)
 
         # Generate chroma feature
-        chroma = self.get_chroma(audio)
+        chroma = self.get_chroma(frames)
 
         # Calculate position in reference audio
         ref_index = self.otw.insert(chroma)
@@ -129,24 +110,6 @@ class ScoreFollower:
 
         # Return position in reference audio
         return ref_index
-
-    def start(self):
-        """Start the microphone input stream. """
-        self.mic.start()
-
-    def pause(self):
-        self.mic.pause()
-
-    def unpause(self):
-        self.mic.unpause()
-
-    def stop(self):
-        """Stop the microphone input stream. """
-        self.mic.stop()
-
-    def is_active(self):
-        """Return True if the microphone input stream is active and we have not reached the end of the otw buffer"""
-        return self.mic.is_active() and self.otw.live_index < self.otw.live.shape[-1] - 1
     
     def get_estimated_time(self):
         # TODO: Check that this formula is correct
@@ -183,30 +146,28 @@ class ScoreFollower:
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import os
+    import librosa
     reference = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
-    source = os.path.join('data', 'audio', 'bach', 'live', 'variable_tempo.wav')
+    source = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
+
+    source_audio = librosa.load(source, sr=44100)
+    source_audio = source_audio[0].reshape((1, -1))
+
     score_follower = ScoreFollower(reference=reference,
-                                   source=None,
                                    c=10,
                                    max_run_count=3,
                                    diag_weight=0.5,
                                    sample_rate=44100,
                                    win_length=8192,
-                                   channels=1,
-                                   frames_per_buffer=2048)
-
-    score_follower.start()
-
-    while not score_follower.is_active():
-        time.sleep(0.01)
-
-    try:
-        while score_follower.is_active():
-            ref_index = score_follower.step()
-            print(f'Live index: {score_follower.otw.live_index}, Ref index: {ref_index}')
-    except KeyboardInterrupt:
-        score_follower.stop()
-
+                                   channels=1)
+    
+    for i in range(0, source_audio.shape[-1], 8192):
+        frames = source_audio[:, i:i+8192]
+        ref_index = score_follower.step(frames)
+        print(f'Live index: {score_follower.otw.live_index}, Ref index: {ref_index}')
+        print(score_follower.get_estimated_time())
+    
+    print(score_follower.path)
     # cost_matrix = score_follower.otw.accumulated_cost
     # indices = np.asarray(score_follower.path).T
     # cost_matrix[(indices[0], indices[1])] = np.inf
@@ -241,12 +202,12 @@ if __name__ == '__main__':
             win_length=score_follower.win_length, ax=ax[1])
     plt.show()
 
-    from alignment_error import load_data, calculate_alignment_error
+    # from alignment_error import load_data, calculate_alignment_error
     
-    df = load_data('data\\alignments\\variable_tempo.csv')
-    warping_path = np.asarray(score_follower.path, dtype=np.float32)
-    warping_path = warping_path * score_follower.win_length / score_follower.sample_rate
-    df = calculate_alignment_error(df, warping_path)
-    df.to_csv('output\\variable_tempo_live.csv', index=False)
+    # df = load_data('data\\alignments\\variable_tempo.csv')
+    # warping_path = np.asarray(score_follower.path, dtype=np.float32)
+    # warping_path = warping_path * score_follower.win_length / score_follower.sample_rate
+    # df = calculate_alignment_error(df, warping_path)
+    # df.to_csv('output\\variable_tempo_live.csv', index=False)
 
     

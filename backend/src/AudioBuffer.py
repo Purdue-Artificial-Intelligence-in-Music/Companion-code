@@ -29,8 +29,6 @@ class AudioBuffer:
         Index of the next element from which audio frames will be read
     count : int
         Number of unread frames in the buffer
-    paused : bool
-        If True, read and write operations are paused
     """
     def __init__(self, sample_rate: int = 44100, channels: int = 1, max_duration: int = 600):
 
@@ -47,7 +45,6 @@ class AudioBuffer:
         self.read_index = 0
         self.unread_frames = 0  # Number of unread frames in the buffer
 
-        self.paused = False
 
     def write(self, frames: np.ndarray):
         """Write audio frames to buffer.
@@ -62,9 +59,6 @@ class AudioBuffer:
         None
         
         """
-
-        if self.paused:
-            return
 
         # Get the number of frames to write
         num_frames = frames.shape[-1]
@@ -98,9 +92,6 @@ class AudioBuffer:
             Array of audio frames with shape (channels, num_frames)
         
         """
-
-        if self.paused:
-            return
         
         # If the number of frames to read exceeds the number of unread frames, raise exception
         if num_frames > self.unread_frames:
