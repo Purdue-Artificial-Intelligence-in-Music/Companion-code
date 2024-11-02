@@ -3,9 +3,11 @@ import { StatusBar } from 'expo-status-bar'; // Manages the status bar on mobile
 import { StyleSheet, Text, View, SafeAreaView} from 'react-native'; // Imports styling and layout components
 import React, { useEffect, useRef, useState } from 'react'; // Imports React and hooks
 import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay'; // Imports the OpenSheetMusicDisplay library for rendering sheet music
+import {GET_Request, POST_Request, Play_Audio} from "./components/Api_Caller";
 import { Play_Button, Score_Select, Stop_Button, TimeStampBox} from './Components';
 import { MeasureSetBox } from './components/MeasureSetter';
 import { Fraction } from 'opensheetmusicdisplay';
+import AudioRecorder from './components/AudioRecorder';
 
 // Define the main application component
 export default function App() {
@@ -129,6 +131,7 @@ export default function App() {
   // Render the component's UI
   return (
     <SafeAreaView style={styles.container}>{/* Provides safe area insets for mobile devices */}
+      <AudioRecorder />
       <Text style={styles.title}>Companion, the digital accompanist</Text>
       <Score_Select scores={scores} setScore={setScore} onFileUpload={handleFileUpload}/>
       
@@ -153,6 +156,10 @@ export default function App() {
       </div>
 
       <StatusBar style="auto" />{/* Automatically adjusts the status bar style */}
+
+      {/* <GET_Request/>
+      <POST_Request/> */}
+      <Play_Audio/>
     </SafeAreaView>
   );
 }
