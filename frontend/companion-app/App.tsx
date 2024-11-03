@@ -155,7 +155,7 @@ export default function App() {
       }
 
       // while timestamp is less than desired, update it
-      while (ct < state.timestamp ) {
+      while (ct <= state.timestamp ) {
         cursorRef.current?.Iterator.moveToNextVisibleVoiceEntry(false);
         dt = Fraction.minus(cursorRef.current?.Iterator.CurrentSourceTimestamp, ts_meas);
         // dt is a fraction indicating how much - in whole notes - the iterator moved
@@ -212,15 +212,15 @@ export default function App() {
     <SafeAreaView style={styles.container}>{/* Provides safe area insets for mobile devices */}
       <AudioRecorder />
       <Text style={styles.title}>Companion, the digital accompanist</Text>
-      <Score_Select scores={scores} setScore={setScore} onFileUpload={handleFileUpload}/>
       
       <View style={styles.button_wrapper}>
+        <Score_Select scores={scores} setScore={setScore} onFileUpload={handleFileUpload}/>
         <Start_Stop_Button state={state} dispatch={dispatch}
-        button_style={styles.button} text_style={styles.button_text}
+        button_style={styles.play_button} text_style={styles.button_text}
         />
         <MeasureSetBox
           state={state} dispatch={dispatch} wrapper_style={styles.measure_box}
-          text_input_style={styles.text_input} button_style={styles.button} button_text_style={styles.button_text} label_text_style={styles.label}
+          text_input_style={styles.text_input} button_style={styles.reset_button} button_text_style={styles.button_text} label_text_style={styles.label}
           BPM={BPM} TSD={TSD}
         />
         {/* <TimeStampBox timestamp={timestamp} setTimestamp={setTimestamp} style={styles.text_input}/> */}
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     marginBottom: 20, // Add space below the title
   },
   label: {
-    fontSize: 12,
+    fontSize: 16,
   },
   scrollContainer: {
     width: '100%', // Make the scroll container fill the width of the parent
@@ -270,8 +270,15 @@ const styles = StyleSheet.create({
     borderColor: 'black', // Set border color to black
     overflow: 'hidden', // Ensure content doesn't overflow outside this container
   },
-  button: {
+  play_button: {
     flex: 0.2,
+    borderColor: 'black',
+    borderRadius: 15,
+    backgroundColor: 'lightblue',
+    justifyContent: 'center',
+  },
+  reset_button: {
+    flex: 0.8,
     borderColor: 'black',
     borderRadius: 15,
     backgroundColor: 'lightblue',
@@ -287,16 +294,19 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: 'lightgray',
     width: '100%',
-    minHeight: 64
+    minHeight: 72
   },
   measure_box: {
     flexDirection: 'row',
-    backgroundColor: 'gray',
+    padding: 10,
+    justifyContent: 'space-between',
     width: '40%',
-    flex: 0.4
+    flex: 0.4,
+    height: '80%',
   },
   text_input: {
     backgroundColor: 'white',
-    flex: 0.3
+    flex: 0.3,
+    height: '100%'
   }
 });
