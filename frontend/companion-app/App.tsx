@@ -186,7 +186,7 @@ export default function App() {
     // if (osdRef.current !== undefined && osdRef.current?.Sheet !== undefined) {
     //   console.log("Should be re-rendering.");
     //   osdRef.current.render();
-    // }
+    // } // COMMENTING THIS OUT FIXED IT AND I DON"T KNOW WHY!!!!! ❤️ Robert
   }, [state.timestamp])
 
   ///////////////////////////////////////////////////////////////////////////////////////
