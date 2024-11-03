@@ -156,8 +156,10 @@ export default function App() {
 
       console.log("ts_meas:",ts_meas.RealValue);
       if (ct > state.timestamp) { // If timestamp is older, go back to beginning, b/c probably reset
+        console.log("Moving ct back to beginning.");
         ct = 0;
-        cursorRef.current?.resetIterator();
+        cursorRef.current?.reset();
+        ts_meas = new Fraction();
       }
 
       // while timestamp is less than desired, update it
@@ -181,10 +183,10 @@ export default function App() {
       dispatch( {type:'cursor_update', time:(60 * cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue * TSD / BPM)})
     }  
                 
-    if (osdRef.current !== undefined && osdRef.current?.Sheet !== undefined) {
-      console.log("Should be re-rendering.");
-      osdRef.current.render();
-    }
+    // if (osdRef.current !== undefined && osdRef.current?.Sheet !== undefined) {
+    //   console.log("Should be re-rendering.");
+    //   osdRef.current.render();
+    // }
   }, [state.timestamp])
 
   ///////////////////////////////////////////////////////////////////////////////////////
