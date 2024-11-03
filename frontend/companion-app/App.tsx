@@ -4,20 +4,12 @@ import { StyleSheet, Text, View, SafeAreaView} from 'react-native'; // Imports s
 import React, { useEffect, useReducer, useRef, useState } from 'react'; // Imports React and hooks
 import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay'; // Imports the OpenSheetMusicDisplay library for rendering sheet music
 import {GET_Request, POST_Request, Play_Audio} from "./components/Api_Caller";
-import { Play_Button, Score_Select, Stop_Button, TimeStampBox} from './Components';
+import { Score_Select } from './Components';
 import { Start_Stop_Button } from './components/StartButton';
 import { MeasureSetBox } from './components/MeasureSetter';
 import { Fraction } from 'opensheetmusicdisplay';
 import AudioRecorder from './components/AudioRecorder';
 import { Audio } from 'expo-av';
-
-interface AudioState {
-  playing: boolean,
-  resetMeasure: number,
-  playRate: number,
-  timestamp: number,
-  cursorTimestamp: number
-}
   
 // Define the main application component
 export default function App() {
@@ -40,7 +32,7 @@ export default function App() {
   const cursorRef = useRef<Cursor | null>(null);
   const osdRef = useRef<OpenSheetMusicDisplay | null>(null);
 
-  const BPM = 100; // EDIT THESE AS APPROPRIATE
+  const BPM = 100; // EDIT THESE AS APPROPRIATE - get from user??
   const TSD = 4;
 
   const UPDATE_INTERVAL = 500; // milliseconds between updates to timestamp and rate
@@ -152,7 +144,7 @@ export default function App() {
     console.log("ct:",ct);
     if (cursorRef.current?.Iterator.CurrentSourceTimestamp !== undefined) {
       var ts_meas = Fraction.createFromFraction(cursorRef.current?.Iterator.CurrentSourceTimestamp); // current timestamp of iterator as a fraction
-      var ts_start = Fraction.createFromFraction(ts_meas); // where iterator starts from, as a fraction
+      // var ts_start = Fraction.createFromFraction(ts_meas); // where iterator starts from, as a fraction
 
       console.log("ts_meas:",ts_meas.RealValue);
       if (ct > state.timestamp) { // If timestamp is older, go back to beginning, b/c probably reset
@@ -226,9 +218,8 @@ export default function App() {
         <Start_Stop_Button state={state} dispatch={dispatch}
         button_style={styles.button} text_style={styles.button_text}
         />
-        <Text>{"State: " + JSON.stringify(state)}</Text>
         <MeasureSetBox
-          cursorRef={cursorRef} state={state} dispatch={dispatch}
+          state={state} dispatch={dispatch} wrapper_style={styles.measure_box}
           text_input_style={styles.text_input} button_style={styles.button} button_text_style={styles.button_text} label_text_style={styles.label}
           BPM={BPM} TSD={TSD}
         />
@@ -244,7 +235,7 @@ export default function App() {
 
       {/* <GET_Request/> */}
       {/* <POST_Request/> */}
-      {/* <Play_Audio/> */}
+      <Play_Audio/>
     </SafeAreaView>
   );
 }
@@ -297,6 +288,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'lightgray',
     width: '100%',
     minHeight: 64
+  },
+  measure_box: {
+    flexDirection: 'row',
+    backgroundColor: 'gray',
+    width: '40%',
+    flex: 0.4
   },
   text_input: {
     backgroundColor: 'white',

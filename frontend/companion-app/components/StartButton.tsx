@@ -1,6 +1,4 @@
-import { View, Text, TextStyle, ViewStyle, Pressable  } from 'react-native';
-import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay';
-import { MutableRefObject, useEffect,  useRef } from 'react';
+import { Text, TextStyle, ViewStyle, Pressable  } from 'react-native';
 
 export function Start_Stop_Button( { state, dispatch, 
     button_style, text_style

@@ -4,8 +4,8 @@ import { MutableRefObject, useEffect,  useRef, useState } from 'react';
 import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay';
 import { Fraction } from 'opensheetmusicdisplay';
 
-export function MeasureSetBox( { cursorRef, state, dispatch, button_style, text_input_style, button_text_style, label_text_style, BPM, TSD } : 
-    { cursorRef: MutableRefObject<Cursor | null>, state: {resetMeasure: number}, dispatch: Function,
+export function MeasureSetBox( { state, dispatch, wrapper_style, button_style, text_input_style, button_text_style, label_text_style, BPM, TSD } : 
+    { state: {resetMeasure: number}, dispatch: Function, wrapper_style: ViewStyle,
         button_style: ViewStyle, text_input_style: ViewStyle, button_text_style: TextStyle, label_text_style: TextStyle,
         BPM: number, TSD: number // Beats per minute and time signature denominator, respectively
     }) {
@@ -43,7 +43,7 @@ export function MeasureSetBox( { cursorRef, state, dispatch, button_style, text_
     // }, [needsReset])
 
     return(
-        <View>
+        <View style={wrapper_style}>
             <Text style={label_text_style}>Start measure:</Text>
         <TextInput
             onChangeText={(text) => dispatch( { type:'change_reset', measure:Number(text) })}
