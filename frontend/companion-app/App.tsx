@@ -1,14 +1,24 @@
 // Import necessary modules and components from the Expo and React Native libraries
 import { StatusBar } from 'expo-status-bar'; // Manages the status bar on mobile devices
 import { StyleSheet, Text, View, SafeAreaView} from 'react-native'; // Imports styling and layout components
-import React, { useEffect, useRef, useState } from 'react'; // Imports React and hooks
+import React, { useEffect, useReducer, useRef, useState } from 'react'; // Imports React and hooks
 import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay'; // Imports the OpenSheetMusicDisplay library for rendering sheet music
 import {GET_Request, POST_Request, Play_Audio} from "./components/Api_Caller";
 import { Play_Button, Score_Select, Stop_Button, TimeStampBox} from './Components';
+import { Start_Stop_Button } from './components/StartButton';
 import { MeasureSetBox } from './components/MeasureSetter';
 import { Fraction } from 'opensheetmusicdisplay';
 import AudioRecorder from './components/AudioRecorder';
+import { Audio } from 'expo-av';
 
+interface AudioState {
+  playing: boolean,
+  resetMeasure: number,
+  playRate: number,
+  timestamp: number,
+  cursorTimestamp: number
+}
+  
 // Define the main application component
 export default function App() {
   // Create a reference to the SVG container where sheet music will be rendered
@@ -23,17 +33,47 @@ export default function App() {
   // Create a state representing the file name of the current piece
   const [score, setScore] = useState("air_on_the_g_string.musicxml");
 
-  // Create a state holding the cursor (a ref didn't work)
+  // This state *is* the audio player - access it at top-level
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+
+  // Create refs to the cursor and to the OSDiv
   const cursorRef = useRef<Cursor | null>(null);
   const osdRef = useRef<OpenSheetMusicDisplay | null>(null);
 
-  // And one determining whether the piece is currently playing
-  const [playing, setPlaying] = useState(false);
+  const BPM = 100; // EDIT THESE AS APPROPRIATE
+  const TSD = 4;
+
+  const UPDATE_INTERVAL = 500; // milliseconds between updates to timestamp and rate
+
+  ////////////////////////////////////////////////////////////////////////////////////
+  // Main state - holds position in the piece, playback rate, etc.
+  ////////////////////////////////////////////////////////////////////////////////////
+  const [state, dispatch] = useReducer( (state: any, action: any) => {
+    switch (action.type) {
+      case 'reset':
+        // When resetting, move the cursor, then adjust the timestamp accordingly and reset the playback rate
+        console.log("It should be resetting now.")
+        var reset_time = 0.0;
+        var ts = osdRef.current?.Sheet.SourceMeasures[0].ActiveTimeSignature;
+        if (ts !== undefined) {
+          reset_time = 60 * ts.Numerator * (state.resetMeasure - 1) / BPM;
+        }
+        return {...state, ...{playRate:1.0, timestamp:reset_time } }
+      case 'start/stop':
+        return {...state, ...{playing: !(state.playing)}}
+      case 'increment':
+        return {...state, ...{playRate: Number(action.rate), timestamp: Number(action.time)} }
+      case 'cursor_update':
+        return {...state, ...{cursorTimestamp: Number(action.time)}}
+      case 'change_reset':
+        return {...state, ...{resetMeasure: Number(action.measure)}}
+      default:
+        break;
+    }
+  }, {playing:false, resetMeasure:1, playRate:1.0, timestamp:0.0, cursorTimestamp:0.0 })
   
-  const [cursorPos, setCursorPos] = useState<number>(-1); // this and all features using it are to be deprecated
-  const [timestamp, setTimestamp] = useState<number>(0); // timestamp in seconds which the cursor attempts to approximate
-  const [cursorExactTimestamp, setCursorExactTimestamp] = useState<number>(0); // timestamp of the note the cursor is at
-    
+  //////////////////////////////////////////////////////////////
+  // Action function for file uploader
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -49,8 +89,17 @@ export default function App() {
     reader.readAsText(file);
   };
 
-  const BPM = 100; // EDIT THESE AS APPROPRIATE
-  const TSD = 4;
+  // !!! TODO !!!
+  const getAPIData = async () => { 
+    const newPlayRate = 0.5 + Math.random(); // Update this to actual get data from API!!!
+    const newTimeStamp = state.timestamp + UPDATE_INTERVAL * state.playRate / 1000;
+    
+    dispatch( {type:'increment', time:newTimeStamp, rate:newPlayRate} )
+  }
+
+  useEffect(() => {
+    if (state.playing) setTimeout(getAPIData, UPDATE_INTERVAL);
+  }, [state.playing, state.timestamp])
 
   // useEffect hook to handle side effects (like loading music) after the component mounts
   // and when a piece is selected
@@ -94,17 +143,25 @@ export default function App() {
     return () => {};
   }, [score]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
 
-  // useEffect to update the time-stamp
+  /////////////////////////////////////////////////////////////////////////////////
+  // useEffect to tie the cursor position to the state
+  /////////////////////////////////////////////////////////////////////////////////
   useEffect( () => {
-    // move the cursor based on the timestamp!
-    let ct = cursorExactTimestamp; // current timestamp of cursor's note(s) in seconds
-    var dt;
+    let ct = state.cursorTimestamp; // current timestamp of cursor's note(s) in seconds
+    var dt = new Fraction();
+    console.log("ct:",ct);
     if (cursorRef.current?.Iterator.CurrentSourceTimestamp !== undefined) {
       var ts_meas = Fraction.createFromFraction(cursorRef.current?.Iterator.CurrentSourceTimestamp); // current timestamp of iterator as a fraction
       var ts_start = Fraction.createFromFraction(ts_meas); // where iterator starts from, as a fraction
 
+      console.log("ts_meas:",ts_meas.RealValue);
+      if (ct > state.timestamp) { // If timestamp is older, go back to beginning, b/c probably reset
+        ct = 0;
+        cursorRef.current?.resetIterator();
+      }
+
       // while timestamp is less than desired, update it
-      while (ct < timestamp ) {
+      while (ct < state.timestamp ) {
         cursorRef.current?.Iterator.moveToNextVisibleVoiceEntry(false);
         dt = Fraction.minus(cursorRef.current?.Iterator.CurrentSourceTimestamp, ts_meas);
         // dt is a fraction indicating how much - in whole notes - the iterator moved
@@ -113,22 +170,50 @@ export default function App() {
         // ct += 60 * dt.RealValue * cursorRef.current?.Iterator.CurrentMeasure.ActiveTimeSignature.Denominator / cursorRef.current?.Iterator.CurrentBpm
         // // and remove the BPM and TSD arguments used in the below, and comment the below:
         ct += 60 * dt.RealValue * TSD / BPM;
+        console.log("ct:",ct);
         // // either way, the calculation is:
         // 60 secs/min * dt wholes * time signature denominator (beats/whole) / BPM (beats/minute) yields seconds
         ts_meas = Fraction.plus(ts_meas, dt);
       }
       cursorRef.current?.Iterator.moveToPreviousVisibleVoiceEntry(false);
-      setCursorExactTimestamp(cursorExactTimestamp + 60 * Fraction.minus(cursorRef.current?.Iterator.CurrentSourceTimestamp, ts_start).RealValue * TSD / BPM);
+      console.log("Cursor should be updating");
       cursorRef.current?.update();
+      dispatch( {type:'cursor_update', time:(60 * cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue * TSD / BPM)})
     }  
                 
     if (osdRef.current !== undefined && osdRef.current?.Sheet !== undefined) {
+      console.log("Should be re-rendering.");
       osdRef.current.render();
     }
-  }, [timestamp])
+  }, [state.timestamp])
 
+  ///////////////////////////////////////////////////////////////////////////////////////
+  // Two useEffects that tie the sound playback to the state
+  ///////////////////////////////////////////////////////////////////////////////////////
+  useEffect( () => {
+    const updateThePlayRate = async () => {
+      if (sound) {
+        await sound.setRateAsync(state.playRate, true);
+      }
+    }
+    updateThePlayRate();
+  }, [state.playRate])
 
+  useEffect( () => {
+    const updateWhetherPlaying = async () => {
+      if (sound) {
+        if (state.playing) await sound.playAsync()
+        else await sound.pauseAsync()
+      }
+    }
+    updateWhetherPlaying();
+  }, [state.playing])
+
+  // TODO:  Skip the point in sound when resetting?
+
+  ////////////////////////////////////////////////////////////////////////////////
   // Render the component's UI
+  ////////////////////////////////////////////////////////////////////////////////
   return (
     <SafeAreaView style={styles.container}>{/* Provides safe area insets for mobile devices */}
       <AudioRecorder />
@@ -136,30 +221,28 @@ export default function App() {
       <Score_Select scores={scores} setScore={setScore} onFileUpload={handleFileUpload}/>
       
       <View style={styles.button_wrapper}>
-        <Play_Button my_cursor={cursorRef} playing={playing} setPlaying={setPlaying}
+        <Start_Stop_Button state={state} dispatch={dispatch}
         button_style={styles.button} text_style={styles.button_text}
-        cursorPos={cursorPos} setCursorPos={setCursorPos} osdRef={osdRef}
         />
-        <Stop_Button setPlaying={setPlaying} button_style={styles.button} text_style={styles.button_text}/>
-        <MeasureSetBox setTimestamp={setCursorExactTimestamp}
-          cursorRef={cursorRef}
+        <Text>{"State: " + JSON.stringify(state)}</Text>
+        <MeasureSetBox
+          cursorRef={cursorRef} state={state} dispatch={dispatch}
           text_input_style={styles.text_input} button_style={styles.button} button_text_style={styles.button_text} label_text_style={styles.label}
           BPM={BPM} TSD={TSD}
         />
-        <TimeStampBox timestamp={timestamp} setTimestamp={setTimestamp} style={styles.text_input}/>
+        {/* <TimeStampBox timestamp={timestamp} setTimestamp={setTimestamp} style={styles.text_input}/> */}
       </View>
 
       <div style={styles.scrollContainer}> {/* Container for scrolling the sheet music */}
-        <Text>Cursor position (used by deprecated play button): {cursorPos}</Text>
         <div ref={osmContainerRef} style={styles.osmContainer}>
           </div> Reference to the SVG container for sheet music
       </div>
 
       <StatusBar style="auto" />{/* Automatically adjusts the status bar style */}
 
-      {/* <GET_Request/>
-      <POST_Request/> */}
-      <Play_Audio/>
+      {/* <GET_Request/> */}
+      {/* <POST_Request/> */}
+      {/* <Play_Audio/> */}
     </SafeAreaView>
   );
 }
