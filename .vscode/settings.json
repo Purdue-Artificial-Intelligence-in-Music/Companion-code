@@ -1,3 +1,6 @@
 {
-    "python.REPL.enableREPLSmartSend": false
+    "python.REPL.enableREPLSmartSend": false,
+    "python.analysis.extraPaths": [
+        "./backend/src"
+    ]
 }

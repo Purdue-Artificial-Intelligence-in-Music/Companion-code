@@ -1,4 +1,4 @@
-from Synchronizer import Synchronizer
+from synchronizer import Synchronizer
 import numpy as np
 from alignment_error import load_data, calculate_alignment_error
 from accompaniment_error import calculate_accompaniment_error
@@ -28,7 +28,7 @@ synchronizer = Synchronizer(reference=reference,
                             Kd=0.005,
                             sample_rate=44100,
                             win_length=8192,
-                            hop_length=8192,
+                            hop_length=2048,
                             c=50,
                             max_run_count=3,
                             diag_weight=0.4,
@@ -55,25 +55,23 @@ for i in range(0, source_audio.shape[-1], 8192):
                       f'Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}\n')
 
 
-# synchronizer.save_performance(path='performance.wav')
+synchronizer.save_performance(path='performance.wav')
 output_file.close()
 
-score_follower = synchronizer.score_follower
+# score_follower = synchronizer.score_follower
 
-df_alignment = load_data('data\\alignments\\constant_tempo.csv')
-# warping_path = np.array(synchronizer.get_warping_path(), dtype=np.float32)
-# warping_path = warping_path * score_follower.win_length / score_follower.sample_rate
-warping_path = np.asarray([estimated_times, soloist_times], dtype=np.float32).T
-print(warping_path)
-df_alignment = calculate_alignment_error(df_alignment, warping_path)
+# df_alignment = load_data('data\\alignments\\constant_tempo.csv')
+# warping_path = np.asarray([estimated_times, soloist_times], dtype=np.float32).T
+# print(warping_path)
+# df_alignment = calculate_alignment_error(df_alignment, warping_path)
 
-estimated_times = warping_path[:, 0]
-df_accompaniment = calculate_accompaniment_error(
-    df_alignment,
-    estimated_times=estimated_times,
-    accompanist_times=np.asarray(accompanist_times)
-)
+# estimated_times = warping_path[:, 0]
+# df_accompaniment = calculate_accompaniment_error(
+#     df_alignment,
+#     estimated_times=estimated_times,
+#     accompanist_times=np.asarray(accompanist_times)
+# )
 
-df_accompaniment.to_csv(
-    'output\\error_analysis_per_measure_constant.csv', index=False)
-print(df_accompaniment)
+# df_accompaniment.to_csv(
+#     'output\\error_analysis_per_measure_constant.csv', index=False)
+# print(df_accompaniment)

@@ -1,7 +1,6 @@
 from phase_vocoder import PhaseVocoder
 from score_follower import ScoreFollower
 from audio_buffer import AudioBuffer
-# from VoiceCommandThread import VoiceAnalyzerThread
 from simple_pid import PID
 import soundfile
 import numpy as np
@@ -12,18 +11,24 @@ class Synchronizer:
 
     Parameters
     ----------
-    score : str
-        Path to score
-    output : str, optional
-        Path to output file for performance recording. If None, use score title.
+    reference : str
+        Path to reference audio file
+    accompaniment : str
+        Path to accompaniment audio file
+    Kp : int, optional
+        Proportional gain for PID controller
+    Ki : int, optional
+        Integral gain for PID controller
+    Kd : int, optional
+        Derivative gain for PID controller
     sample_rate : int, optional
         Sample rate for audio file
     channels : int, optional
         Number of channels for audio file
-    frames_per_buffer : int, optional
-        Number of frames per buffer for PyAudio stream
-    window_length : int, optional
+    win_length : int, optional
         Window length for CENS feature generation
+    hop_length : int, optional
+        Hop length for phase vocoder
     c : int, optional
         Search width for OTW
     max_run_count : int, optional
@@ -46,7 +51,7 @@ class Synchronizer:
     """
 
     def __init__(self, reference: str, accompaniment: str, Kp: int = 0.2, Ki: int = 0.00, Kd=0.05,
-                 sample_rate: int = 44100, win_length: int = 8192, hop_length: int = 8192, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4, channels: int = 1):
+                 sample_rate: int = 44100, channels: int = 1, win_length: int = 8192, hop_length: int = 2048, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4):
 
         self.sample_rate = sample_rate
         self.c = c
@@ -81,20 +86,20 @@ class Synchronizer:
 
     def step(self, frames):
         """Update the audio player playback rate  """
-        ref_index = self.score_follower.step(frames)
         self.soloist_buffer.write(frames)
+        ref_index = self.score_follower.step(frames)
         if ref_index is None:
             return False
-
-        accompanist_time = self.accompanist_time()
-        error = accompanist_time - self.estimated_time()
+        
+        error = self.accompanist_time() - self.estimated_time()
         playback_rate = self.PID(error)
 
         if ref_index > self.c:
             self.phase_vocoder.set_playback_rate(playback_rate)
 
         accompaniment_frames = self.phase_vocoder.get_next_frames()
-        self.accompaniment_buffer.write(accompaniment_frames)
+        if accompaniment_frames is not None:
+            self.accompaniment_buffer.write(accompaniment_frames)
         return accompaniment_frames, self.score_follower.get_estimated_time()
 
     def soloist_time(self):
@@ -113,18 +118,17 @@ class Synchronizer:
 
         # Trim the audio logs to be the same length
         length = min(soloist_audio.shape[-1], accompanist_audio.shape[-1])
+        print(soloist_audio.shape, accompanist_audio.shape)
         soloist_audio = soloist_audio[:, :length]
         accompanist_audio = accompanist_audio[:, :length]
 
         # Normalize and combine logs
-        soloist_audio /= np.max(soloist_audio)
-        accompanist_audio /= np.max(accompanist_audio)
+        soloist_audio /= np.max(np.abs(soloist_audio))
+        accompanist_audio /= np.max(np.abs(accompanist_audio))
+
         audio = soloist_audio + accompanist_audio
-        audio /= np.max(audio)
+        audio /= np.max(np.abs(audio))
         audio = audio.reshape((-1, ))
 
         # Save performance to wave file
         soundfile.write(path, audio, self.sample_rate)
-
-    # def get_warping_path(self):
-    #     return self.score_follower.path

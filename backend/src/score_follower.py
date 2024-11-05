@@ -11,8 +11,6 @@ class ScoreFollower:
     ----------
     reference : str
         Path to reference audio file
-    source : str, optional
-        Path to source audio file. If None, use microphone audio.
     c : int, optional
         Width of online DTW search
     max_run_count : int, optional
@@ -21,8 +19,6 @@ class ScoreFollower:
         Diagonal weight for OTW. Values less than 2 bias toward diagonal steps.
     sample_rate : int, optional
         Sample rate of the audio buffer
-    win_length : int, optional
-        Number of frames per chroma feature
 
     Attributes
     ----------
@@ -49,7 +45,7 @@ class ScoreFollower:
 
     """
 
-    def __init__(self, reference: str, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4, sample_rate: int = 44100, win_length: int = 8192, channels: int = 1):
+    def __init__(self, reference: str, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4, sample_rate: int = 44100, win_length: int = 8192):
 
         self.sample_rate = sample_rate
         self.win_length = win_length
