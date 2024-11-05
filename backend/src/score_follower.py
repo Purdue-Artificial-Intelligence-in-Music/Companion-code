@@ -71,7 +71,7 @@ class ScoreFollower:
         # Online DTW alignment path
         self.path = []
 
-    def get_chroma(self, audio: np.ndarray) -> np.ndarray:
+    def _get_chroma(self, audio: np.ndarray) -> np.ndarray:
         """
 
         Parameters
@@ -96,7 +96,7 @@ class ScoreFollower:
         """Calculate next step in the alignment path between the microphone and reference audio """
 
         # Generate chroma feature
-        chroma = self.get_chroma(frames)
+        chroma = self._get_chroma(frames)
 
         # Calculate position in reference audio
         ref_index = self.otw.insert(chroma)
@@ -104,12 +104,8 @@ class ScoreFollower:
         # Record position in alignment path
         self.path.append((ref_index, self.otw.live_index))
 
-        # Return position in reference audio
-        return ref_index
-
-    def get_estimated_time(self):
-        # Assumes no overlap between frames
-        return self.otw.ref_index * self.win_length / self.sample_rate
+        # Return timestamp in the reference audio in seconds
+        return ref_index * self.win_length / self.sample_rate
 
     def get_backwards_path(self, b):
         cost_matrix = self.otw.accumulated_cost
