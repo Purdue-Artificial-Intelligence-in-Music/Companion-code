@@ -2,17 +2,16 @@ from Synchronizer import Synchronizer
 import time
 import os
 
-reference = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
-accompaniment = os.path.join('data', 'audio', 'bach', 'synthesized', 'accompaniment.wav')
-source = os.path.join('data', 'audio', 'bach', 'live', 'constant_tempo.wav')
+# Paths to reference, accompaniment, and source audio files
+reference = "data/audio/air_on_the_g_string/synthesized/solo.wav"
+accompaniment = "data/audio/air_on_the_g_string/synthesized/accompaniment.wav"
+source = "data/audio/air_on_the_g_string/live/variable_tempo.wav"
 
-# create a synchronizer object
+
+# Create a synchronizer object
 synchronizer = Synchronizer(reference=reference,
                             accompaniment=accompaniment,
                             source=source,
-                            Kp=0.5,
-                            Ki=0.001,
-                            Kd=0.05,
                             sample_rate=16000,
                             win_length=4096,
                             hop_length=1024,
@@ -22,25 +21,32 @@ synchronizer = Synchronizer(reference=reference,
                             channels=1,
                             frames_per_buffer=1024)
 
-# start the synchronizer
+# Start the synchronizer
 synchronizer.start()
 
-# wait until the synchronizer is active
+# Wait until the synchronizer is active
 while not synchronizer.is_active():
     time.sleep(0.01)
 
 try:
-    while synchronizer.update():  # update the playback rate of the accompaniment
+    while synchronizer.update():  # Update the playback rate of the accompaniment based on fuzzy logic
         soloist_time = synchronizer.soloist_time()
         predicted_time = synchronizer.estimated_time()
         accompanist_time = synchronizer.accompanist_time()
         playback_rate = synchronizer.player.playback_rate
-        print(f'Soloist time: {soloist_time:.2f}, Predicted time: {predicted_time:.2f}, Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}')
-        print(synchronizer.score_follower.mic.count)
+        
+        # Alignment and accompaniment error information (optional debugging)
         alignment_error = predicted_time - soloist_time
         accompaniment_error = accompanist_time - predicted_time
 
+        # Print the type of error (membership degree) without returning values
+        name = synchronizer.fuzzy_controller.print_error_membership(accompaniment_error)
+
+        # Print the timing information
+        print(f'Soloist time: {soloist_time:.2f}, Predicted time: {predicted_time:.2f}, Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}, error: {name}')
+        
 except KeyboardInterrupt:
     synchronizer.stop()
 
+# Save the performance to a file
 synchronizer.save_performance(path='performance.wav')
