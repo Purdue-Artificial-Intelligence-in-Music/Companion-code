@@ -137,6 +137,7 @@ class AudioPlayer:
         self.index = 0
         self.paused = False
 
+        # "that 0 looks weird to me...🤔" --Nick Ko, 10/28/2024
         self.output_log = np.empty((channels, 0))
 
     def get_next_frames(self) -> np.ndarray:
