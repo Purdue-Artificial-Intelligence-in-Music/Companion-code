@@ -2,8 +2,6 @@ import unittest
 from unittest.mock import patch, MagicMock
 import numpy as np
 from synchronizer import Synchronizer
-from score_follower import ScoreFollower
-from simple_pid import PID
 
 class TestSynchronizer(unittest.TestCase):
     @patch('synchronizer.ScoreFollower')
