@@ -45,8 +45,7 @@ def squareInt():
 
 @app.route('/audioBuffer', methods=["POST", "GET"])
 def audioBuffer():
-    
-    filename = './data/bach/live/constant_tempo.wav'#librosa.ex('trumpet')
+    filename = "data\\audio\\air_on_the_g_string\\synthesized\\solo.wav"
     y, sr = librosa.load(filename)
     
     buffer_io = io.BytesIO()
