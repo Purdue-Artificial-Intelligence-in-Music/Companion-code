@@ -14,23 +14,23 @@ class TestAlignmentFunctions(unittest.TestCase):
     def setUp(self):
         self.sample_data = {
             'measure': range(1, 37),
-            'ref': [
-                0, 4, 8, 12, 16, 20, 24, 28, 32, 36,
-                40, 44, 48, 52, 56, 60, 64, 68, 72, 76,
-                80, 84, 88, 92, 96, 100, 104, 108, 112, 116,
-                120, 124, 128, 132, 136, 140
-            ],
             'live': [
                 0, 3.9, 8.15, 12.01, 16, 20.11, 24.05, 28.2, 32.12, 36.08,
                 39.75, 43.93, 48.1, 51.95, 56.01, 60.15, 64.04, 67.55, 71.85, 76.1,
                 80.21, 84.1, 87.8, 91.68, 95.96, 100.01, 104.05, 108.04, 112.05, 115.7,
                 120.01, 124.09, 127.83, 131.94, 135.9, 140.12
+            ],
+            'ref': [
+                0, 4, 8, 12, 16, 20, 24, 28, 32, 36,
+                40, 44, 48, 52, 56, 60, 64, 68, 72, 76,
+                80, 84, 88, 92, 96, 100, 104, 108, 112, 116,
+                120, 124, 128, 132, 136, 140
             ]
         }
-        # we construct this df manually first (to compare with the df load_data sets up from 'alignment.xlsx')
+        # we construct this df manually first (to compare with the df load_data sets up from 'alignment.csv')
         self.df = pd.DataFrame(self.sample_data)
 
-        # this is taken as mock data from 'alignment.xlsx'; it is actually generated from a time warping algo
+        # this is taken as mock data from 'alignment.csv'; it is actually generated from a time warping algo
         self.warping_path = np.array([
             [0, 0], [4, 3.9], [8, 8.15], [12, 12.01], [16, 16],
             [20, 20.11], [24, 24.05], [28, 28.2], [32, 32.12], [36, 36.08],
@@ -42,18 +42,18 @@ class TestAlignmentFunctions(unittest.TestCase):
             [140, 140.12]
         ])
 
-    @patch('pandas.read_excel')
-    def test_load_data(self, mock_read_excel):
-        mock_read_excel.return_value = self.df
-        result_df = load_data('alignment.xlsx')
+    @patch('pandas.read_csv')
+    def test_load_data(self, mock_read_csv):
+        mock_read_csv.return_value = self.df
+        result_df = load_data('alignment.csv')
         pd.testing.assert_frame_equal(result_df, self.df)
 
-    @patch('pandas.read_excel')
+    @patch('pandas.read_csv')
     def test_load_data_missing_columns(self, mock_read_excel):
         missing_column_df = pd.DataFrame({'measure': [1, 2, 3], 'ref': [0, 4, 8]})
         mock_read_excel.return_value = missing_column_df
         with self.assertRaises(ValueError):
-            load_data('alignment.xlsx')
+            load_data('alignment.csv')
 
     def test_calculate_alignment_error(self):
         result_df = calculate_alignment_error(self.df, self.warping_path)

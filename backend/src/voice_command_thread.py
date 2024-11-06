@@ -1,9 +1,8 @@
 import threading
 import time
-from AudioBuffer import AudioBuffer
-from AudioPlayer import AudioPlayer
-import numpy as np
+from audio_buffer import AudioBuffer
 from transformers import pipeline
+import numpy as np
 
 import argparse
 import queue
@@ -15,11 +14,9 @@ from vosk import Model, KaldiRecognizer
 
 
 class VoiceAnalyzerThread(threading.Thread):
-    def __init__(self, name: str, buffer: AudioBuffer, player: AudioPlayer, voice_length=3):
+    def __init__(self, sample_rate, channels, max_duration):
         super(VoiceAnalyzerThread, self).__init__()
-        self.name = name
-        self.buffer = buffer
-        self.player = player
+        self.buffer = AudioBuffer(sample_rate, channels, max_duration)
         self.stop_request = False
         self.output = ""
         # Initialize whatever stuff you need here
@@ -44,26 +41,18 @@ class VoiceAnalyzerThread(threading.Thread):
         # Initialize the zero-shot classification pipeline with the Roberta model
         self.classifier = pipeline('zero-shot-classification', model='roberta-large-mnli')
 
-    def int_or_str(text):
+    def int_or_str(self, text):
     #Helper function for argument parsing, it allows for numbers to be converted into ints
         try:
             return int(text)
         except ValueError:
             return text
-    
-    def callback(self, indata, frames, time, status):
-        """
-        This function is called whenever PyAudio recieves new audio. It adds the audio to the queue
-        and stores the result in the field "data".
-        This function should never be called directly.
-        Parameters: none user-exposed
-        Returns: Nothing, but it adds onto the queue
-        """
-        if status:
-            print(status, file=sys.stderr)
-        self.q.put(bytes(indata))
 
-    def classify_command(self, user_input):
+    def insert_audio(self, frames: np.ndarray):
+        """Insert audio into the buffer"""
+        self.q.put(frames.tobytes())
+
+    def classify_command(self, user_input: str):
         """
         This function is called whenever the partial reult gains a new element, where in it will
         determine using Roberta the most likely command to be called upon
@@ -133,34 +122,26 @@ class VoiceAnalyzerThread(threading.Thread):
 
             #If audio is not playing from the AudioBuffer, then start playing audio
             print("start")
-            self.buffer.unpause()
-            self.player.unpause()
 
         elif command == "stop":
 
             print("stop")
             #Still run Buffer in the background, but don't play audio
-            self.buffer.pause()
-            self.player.pause()
 
         elif command == "exit":
 
             print("Detected interrupt")
             #Stop both voice and buffer
             self.stop_request = True
-            self.buffer.stop()
-            self.player.stop()
 
         #TODO: Capture the % wanted for speed up and slow down
         elif command == "speed up":
 
             print("now 10 percent faster")
-            self.player.playback_rate = self.player.playback_rate * 1.1
 
         elif command == "slow down":
 
             print("now 10 percent slower")
-            self.player.playback_rate = self.player.playback_rate * 0.9
 
         else:
             #TODO: Look into ways to use LLM to create commands and have the code be able to run them
@@ -277,8 +258,6 @@ class VoiceAnalyzerThread(threading.Thread):
         except KeyboardInterrupt:
             print("\nDone")
             self.stop_request = True
-            self.buffer.stop()
-            self.player.stop()
             parser.exit(0)
             
         except Exception as e:
@@ -287,30 +266,6 @@ class VoiceAnalyzerThread(threading.Thread):
 #Mini Main for demo reasons
 if __name__ == '__main__':
     #Change this to any wav file you want
-    player = AudioPlayer(path="C:\\Users\\Eddie\\miniconda3\\envs\\new_test\\Lib\\site-packages\\music21\\audioSearch\\test_audio.wav")
-    player.start()
-    buffer = AudioBuffer(sample_rate=22050,
-                         channels=1,
-                         frames_per_buffer=1024,
-                         num_chunks=100)
-    buffer.start()
 
-    commander = VoiceAnalyzerThread(name="test",buffer=buffer,player=player)
-    commander.start()
-
-    while not buffer.is_active():
-        time.sleep(0.01)
-        
-    while buffer.is_active():
-            time.sleep(0.1)
-    
-    while not player.is_active():
-        time.sleep(0.01)
-
-    try:
-        while player.is_active():
-            time.sleep(0.1)
-    except KeyboardInterrupt:
-        player.stop()
-        buffer.stop()
-        commander.join()
+    voice_commands = VoiceAnalyzerThread(sample_rate=44100, channels=1, max_duration=600)
+    voice_commands.start()
