@@ -23,28 +23,12 @@ jobs:
         with:
           python-version: '3.8'  # Specify the Python version you are using
 
-      # Install dependencies
-      - name: Install dependencies
-        run: |
-          sudo apt install portaudio19-dev python3-pyaudio          
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
       # Install pylint
       - name: Install pylint
         run: pip install pylint
       
-      # C0114: Missing module docstring
-      # C0115: Missing class docstring
-      # C0116: Missing function or method docstring
-      # C0411: wrong-import-order
-      # Run pylint on the code with above rules disabled
+      # Run pylint on the backend directory
       - name: Run pylint
         working-directory: backend
         run: |
           pylint **/*.py --rcfile=.pylintrc
-
-      # Show results in the logs
-      - name: Print greeting
-        run: |
-          echo "Linting completed on ubuntu-latest" 
