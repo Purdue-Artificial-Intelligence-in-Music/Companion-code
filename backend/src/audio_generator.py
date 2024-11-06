@@ -123,10 +123,9 @@ class AudioGenerator:
 
         change_midi_tempo(self.score_path, tempo)
 
-        midi_data = pretty_midi.PrettyMIDI(
-            self.score_path)  # load the midi file
-        # iterate over each instrument in the midi file
-        for i, instrument in enumerate(midi_data.instruments):
+        midi_data = pretty_midi.PrettyMIDI(self.score_path)  # load the midi file
+
+        for i, instrument in enumerate(midi_data.instruments):  # iterate over each instrument in the midi file
             # Create a new PrettyMIDI object for the instrument
             instrument_midi = pretty_midi.PrettyMIDI()
 

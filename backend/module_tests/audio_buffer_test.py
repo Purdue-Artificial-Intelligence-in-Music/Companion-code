@@ -1,4 +1,3 @@
-
 # importing AudioBuffer to this script
 try:
     from src.audio_buffer import AudioBuffer

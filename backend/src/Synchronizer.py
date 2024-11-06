@@ -1,8 +1,6 @@
-from phase_vocoder import PhaseVocoder
 from score_follower import ScoreFollower
 from audio_buffer import AudioBuffer
 from simple_pid import PID
-import numpy as np
 
 
 class Synchronizer:
