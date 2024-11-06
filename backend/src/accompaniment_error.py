@@ -4,12 +4,12 @@ import numpy as np
 
 def load_data(filepath: str) -> pd.DataFrame:
     """
-    Load data from an Excel spreadsheet and return a pandas DataFrame.
+    Load data from a CSV file and return a pandas DataFrame.
 
     Parameters
     ----------
     filepath : str
-        The path to the Excel spreadsheet.
+        The path to the CSV file.
 
     Returns
     -------
@@ -19,10 +19,10 @@ def load_data(filepath: str) -> pd.DataFrame:
     Raises
     ------
     ValueError
-        If the required columns are not present in the spreadsheet.
+        If the required columns are not present in the CSV file.
     """
     # Load the Excel file into a pandas DataFrame
-    df = pd.read_excel(filepath)
+    df = pd.read_csv(filepath)
 
     # Ensure the required columns are present
     required_columns = ['measure', 'live', 'ref']
