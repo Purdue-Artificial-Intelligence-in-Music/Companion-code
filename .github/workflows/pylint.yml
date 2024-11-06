@@ -1,9 +1,6 @@
 name: Lint Python Code with Pylint
 
 on:
-  push:
-    branches:
-      - backend
   pull_request:
     branches:
       - main  # Runs the workflow on pull requests to the main branch
