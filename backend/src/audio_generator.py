@@ -1,6 +1,6 @@
 import os
 import pretty_midi
-from music21 import *
+from music21 import converter, midi
 import subprocess
 import mido
 
@@ -10,12 +10,16 @@ def check_fluidsynth_installed():
     try:
         subprocess.check_output(['fluidsynth', '--version'])
     except (FileNotFoundError, subprocess.CalledProcessError):
-        raise RuntimeError("FluidSynth is not installed. Please install it before using this package.")
+        raise RuntimeError(
+            "FluidSynth is not installed. Please install it before using this package.")
+
 
 def check_soundfont_installed():
     '''Check if the FluidR3_GM soundfont is installed'''
-    if not os.path.exists('soundfonts', 'FluidR3_GM.sf2'):
-        raise RuntimeError("FluidR3_GM soundfont is not installed. Please install it before using this package.")
+    if not os.path.exists(os.path.join('soundfonts', 'FluidR3_GM.sf2')):
+        raise RuntimeError(
+            "FluidR3_GM soundfont is not installed. Please install it before using this package.")
+
 
 def musicxml_to_midi(input_path, output_path):
     score = converter.parse(input_path)
@@ -25,46 +29,49 @@ def musicxml_to_midi(input_path, output_path):
     midi_file.close()
     return output_path
 
+
 def change_midi_tempo(midi_file_path, new_tempo_bpm):
     """
     Change the tempo of a MIDI file and save it to the same file.
-    
+
     Parameters:
     midi_file_path (str): Path to the original MIDI file.
     new_tempo_bpm (int or float): The new tempo in beats per minute (BPM).
-    
+
     Returns:
     None
     """
     # Convert BPM to microseconds per beat (MIDI uses microseconds per quarter note)
     microseconds_per_beat = mido.bpm2tempo(new_tempo_bpm)
-    
+
     # Load the MIDI file
     mid = mido.MidiFile(midi_file_path)
-    
+
     # Create a new track list
     new_tracks = []
-    
-    for i, track in enumerate(mid.tracks):
+
+    for track in mid.tracks:
         new_track = mido.MidiTrack()
-        
+
         # Have the tempo message at the beginning of the track
-        new_track.append(mido.MetaMessage('set_tempo', tempo=microseconds_per_beat, time=0))
-        
+        new_track.append(mido.MetaMessage(
+            'set_tempo', tempo=microseconds_per_beat, time=0))
+
         for msg in track:
             # Skip other 'set_tempo' messages in the track to avoid conflicts
             if msg.type != 'set_tempo':
                 new_track.append(msg)
         new_tracks.append(new_track)
-    
+
     # Create a new MIDI file with the updated tempo
     new_mid = mido.MidiFile()
     for new_track in new_tracks:
         new_mid.tracks.append(new_track)
-    
+
     # Save the modified MIDI file
     new_mid.save(midi_file_path)
-    print(f"Tempo changed to {new_tempo_bpm} BPM and saved to {midi_file_path}")
+    print(
+        f"Tempo changed to {new_tempo_bpm} BPM and saved to {midi_file_path}")
 
 
 class AudioGenerator:
@@ -79,18 +86,20 @@ class AudioGenerator:
     ----------
     score_path : str
         Path to MusicXML file
-        
+
     """
+
     def __init__(self, score_path: str):
 
         if not os.path.exists(score_path):
             raise FileNotFoundError(f"File not found: {score_path}")
         if not (score_path.endswith('.musicxml') or score_path.endswith('.mid')):
             raise ValueError("Input file must be a MusicXML or MIDI file")
-        
+
         title = os.path.basename(score_path)
         if score_path.endswith('.musicxml'):
-            self.score_path = musicxml_to_midi(score_path, os.path.join('data', 'midi', title.replace('.musicxml', '.mid')))
+            self.score_path = musicxml_to_midi(score_path, os.path.join(
+                'data', 'midi', title.replace('.musicxml', '.mid')))
         else:
             self.score_path = score_path
 
@@ -105,15 +114,17 @@ class AudioGenerator:
         Returns
         -------
         None
-        
+
         """
 
-        if not os.path.exists(output_dir):  # If the output directory does not exist, create it
+        # If the output directory does not exist, create it
+        if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
         change_midi_tempo(self.score_path, tempo)
 
         midi_data = pretty_midi.PrettyMIDI(self.score_path)  # load the midi file
+
         for i, instrument in enumerate(midi_data.instruments):  # iterate over each instrument in the midi file
             # Create a new PrettyMIDI object for the instrument
             instrument_midi = pretty_midi.PrettyMIDI()
@@ -130,7 +141,7 @@ class AudioGenerator:
             fluidsynth_command = [
                 "fluidsynth",
                 "-ni",
-                "C:\ProgramData\soundfonts\FluidR3_GM\FluidR3_GM.sf2",
+                os.path.join("soundfonts", "FluidR3_GM", "FluidR3_GM.sf2"),
                 temp_midi_file,
                 "-F",
                 output_audio_file,
@@ -149,7 +160,7 @@ class AudioGenerator:
 
 if __name__ == '__main__':
 
-    SCORE = os.path.join('data', 'musicxml','twelve_duets.musicxml')
+    SCORE = os.path.join('data', 'musicxml', 'twelve_duets.musicxml')
     OUTPUT_DIR = os.path.join('data', 'audio', 'twelve_duets')
     SAMPLE_RATE = 44100
     TEMPO = 120

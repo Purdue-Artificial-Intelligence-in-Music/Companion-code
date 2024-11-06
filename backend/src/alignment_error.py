@@ -15,7 +15,7 @@ def load_data(filepath: str) -> pd.DataFrame:
     -------
     pandas.DataFrame
         A dataframe with columns 'measure', 'live', and 'ref'.
-    
+
     Raises
     ------
     ValueError
@@ -27,7 +27,8 @@ def load_data(filepath: str) -> pd.DataFrame:
     # Ensure the required columns are present
     required_columns = ['measure', 'live', 'ref']
     if not all(col in df.columns for col in required_columns):
-        raise ValueError(f"Missing one or more required columns: {required_columns}")
+        raise ValueError(
+            f"Missing one or more required columns: {required_columns}")
 
     # Return the dataframe with the required columns
     return df[required_columns]

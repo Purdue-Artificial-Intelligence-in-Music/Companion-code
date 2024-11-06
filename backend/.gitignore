@@ -163,4 +163,26 @@ cython_debug/
 
 # VS Code
 .vscode/
-.vscode/*
+
+# audio files
+data/audio/*
+*.mp3
+*.wav
+
+# BeatNet
+beat_cache/
+
+# FluidSynth
+soundfonts/
+data/audio
+
+# FluidSynth
+soundfonts/
+<<<<<<< HEAD
+=======
+
+# test coverage report xml/html
+.coverage
+
+# output folder
+output/

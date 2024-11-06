@@ -1,0 +1,79 @@
+openapi: 3.0.0
+info:
+  title: Companion API
+  description: This API serves as the backend for the Companion app, which provides automatic musical accompaniment for soloists in real-time.
+  version: 1.0.0
+
+paths:
+  /synchronization:
+    post:
+      summary: Estimate soloist position and calculate playback rate
+      description: Takes in frames of live audio data from the soloist and the current position of the audioplayer on the frontend, and returns the playback rate and the estimated soloist's position.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                frames:
+                  type: array
+                  items:
+                    type: number
+                  description: An array of floats representing frames of live audio data from the soloist.
+                timestamp:
+                  type: number
+                  format: float
+                  description: The timestamp representing where the audioplayer on the frontend is in seconds.
+              required:
+                - frames
+                - timestamp
+      responses:
+        '200':
+          description: Successful response with playback rate and estimated soloist position.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  playback_rate:
+                    type: number
+                    format: float
+                    description: The playback rate for synchronization.
+                  estimated_position:
+                    type: number
+                    format: float
+                    description: The estimated position of the soloist in seconds.
+
+  /generate-audio:
+    post:
+      summary: Generate audio from MusicXML and tempo
+      description: Takes in a MusicXML file and a tempo in BPM, and returns an array of floats representing an audio file.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tempo:
+                  type: integer
+                  description: The tempo in beats per minute (BPM).
+                musicxml:
+                  type: string
+                  format: binary
+                  description: The MusicXML file to be processed.
+              required:
+                - tempo
+                - musicxml
+      responses:
+        '200':
+          description: Successful response with the generated audio.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: number
+                  format: float
+                  description: An array of floats representing the generated audio file.

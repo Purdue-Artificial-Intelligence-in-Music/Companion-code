@@ -13,6 +13,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 import numpy as np
 from typing import Dict, Tuple
 
+
 def find_key(d: Dict, k: str):
     """Returns the value of key `k` in dictionary `d`, or None if key is not found."""
     return d.get(k)
@@ -33,7 +34,7 @@ class OnlineTimeWarping:
             - "c": int - Search width for the time warping.
             - "max_run_count": int - Maximum run count for controlling step switching.
             - "diag_weight": float - Weight for the diagonal step in the cost calculation.
-        
+
         Attributes
         ----------
         ref : np.ndarray
@@ -67,8 +68,10 @@ class OnlineTimeWarping:
         """
         self.ref = ref  # Reference sequence (assumed chroma)
         self.feature_len, self.ref_len = self.ref.shape
-        self.live = np.zeros((self.feature_len, self.ref_len * 4), dtype=np.float32)  # Live input
-        self.accumulated_cost = np.full((self.ref_len, self.ref_len * 4), np.inf, dtype=np.float32)
+        self.live = np.zeros(
+            (self.feature_len, self.ref_len * 4), dtype=np.float32)  # Live input
+        self.accumulated_cost = np.full(
+            (self.ref_len, self.ref_len * 4), np.inf, dtype=np.float32)
 
         self.live_index = -1  # Index in live sequence
         self.ref_index = 0  # Index in ref sequence
@@ -112,8 +115,9 @@ class OnlineTimeWarping:
             if step == "live":
                 break  # Stop if the best step is to move in the live sequence
 
-            self.ref_index = min(self.ref_index + 1, self.ref_len - 1)  # Increment referene index, but keep it in bounds
-            
+            # Increment referene index, but keep it in bounds
+            self.ref_index = min(self.ref_index + 1, self.ref_len - 1)
+
             # calculate a new reference column
             for k in range(max(self.live_index - self.window_size + 1, 0), self.live_index + 1):
                 self._update_accumulated_cost(self.ref_index, k)
@@ -135,7 +139,6 @@ class OnlineTimeWarping:
         return current_ref_position
 
     def _get_best_step(self) -> Tuple[str, Tuple[int, int]]:
-
         """
         Determines the best step (ref, live, or both) based on the accumulated cost matrix.
 
@@ -147,8 +150,10 @@ class OnlineTimeWarping:
             The corresponding indices for the best step in the accumulated cost matrix.
         """
 
-        row_costs = self.accumulated_cost[self.ref_index, : self.live_index + 1]
-        col_costs = self.accumulated_cost[: self.ref_index + 1, self.live_index]
+        row_costs = self.accumulated_cost[self.ref_index,
+                                          : self.live_index + 1]
+        col_costs = self.accumulated_cost[: self.ref_index +
+                                          1, self.live_index]
 
         best_t = np.argmin(row_costs)
         best_j = np.argmin(col_costs)
@@ -168,11 +173,11 @@ class OnlineTimeWarping:
         # At the start, move in both sequences
         if self.live_index < self.window_size:
             step = "both"
-        
+
         # If the run count exceeds the maximum run count, switch steps
         if self.run_count >= self.max_run_count:
             step = "live" if self.previous_step == "ref" else "ref"
-        
+
         # Reset the run count if the step changes
         if step == "both" or self.previous_step != step:
             self.run_count = 1
@@ -219,10 +224,13 @@ class OnlineTimeWarping:
 
         # Calculate the cost of moving diagonally, vertically, and horizontally
         if ref_index > 0 and live_index > 0:
-            steps.append(self.accumulated_cost[ref_index - 1, live_index - 1] + self.diag_weight * cost)
+            steps.append(
+                self.accumulated_cost[ref_index - 1, live_index - 1] + self.diag_weight * cost)
         if ref_index > 0:
-            steps.append(self.accumulated_cost[ref_index - 1, live_index] + cost)
+            steps.append(
+                self.accumulated_cost[ref_index - 1, live_index] + cost)
         if live_index > 0:
-            steps.append(self.accumulated_cost[ref_index, live_index - 1] + cost)
+            steps.append(
+                self.accumulated_cost[ref_index, live_index - 1] + cost)
 
         self.accumulated_cost[ref_index, live_index] = min(steps)
