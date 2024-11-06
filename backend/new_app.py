@@ -43,8 +43,6 @@ def synthesize_audio(filename, tempo):
     output_dir = os.path.join('data', 'audio', filename.replace('.musicxml', '.wav'))
     generator.generate_audio(output_dir, tempo)
     accompaniment, _ = librosa.load(os.path.join(output_dir, 'insturment_1.wav'))
-    accompaniment = accompaniment.flatten()
-    accompaniment /= np.max(np.abs(accompaniment))
     return jsonify({'audio_data': accompaniment}), 200
 
 @app.route('/synchronization', methods=['POST'])
