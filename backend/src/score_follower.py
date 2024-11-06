@@ -153,55 +153,12 @@ if __name__ == '__main__':
                                    max_run_count=3,
                                    diag_weight=0.5,
                                    sample_rate=44100,
-                                   win_length=8192,
-                                   channels=1)
+                                   win_length=8192)
 
     for i in range(0, source_audio.shape[-1], 8192):
         frames = source_audio[:, i:i+8192]
         ref_index = score_follower.step(frames)
         print(
             f'Live index: {score_follower.otw.live_index}, Ref index: {ref_index}')
-        print(score_follower.get_estimated_time())
 
     print(score_follower.path)
-    # cost_matrix = score_follower.otw.accumulated_cost
-    # indices = np.asarray(score_follower.path).T
-    # cost_matrix[(indices[0], indices[1])] = np.inf
-
-    # t = score_follower.otw.live_index
-    # j = (score_follower.otw.ref_index)/(score_follower.ref.shape[-1] - 1)
-
-    # if t > j:
-    #     back_path = score_follower.get_backwards_path(t)
-    # else:
-    #     back_path = score_follower.get_backwards_path(j)
-
-    # print(f'Backwards path: {back_path}')
-    # print(f'Forward path: {score_follower.path}')
-    # print(f'Difference: {score_follower.get_path_difference(back_path)}')
-
-    # plt.figure()
-    # plt.imshow(cost_matrix)
-    # plt.title('OTW Cost Matrix')
-    # plt.xlabel('Live Sequence')
-    # plt.ylabel('Reference Sequence')
-    # plt.show()
-    # plt.close()
-
-    from librosa.display import specshow, waveshow
-    fig, ax = plt.subplots(nrows=2, sharex=False, sharey=True)
-    specshow(score_follower.otw.live[:, :score_follower.otw.live_index], y_axis='chroma', x_axis='time',
-             sr=score_follower.sample_rate, hop_length=score_follower.win_length,
-             win_length=score_follower.win_length, ax=ax[0])
-    specshow(score_follower.otw.ref[:, :score_follower.otw.ref_index], y_axis='chroma', x_axis='time',
-             sr=score_follower.sample_rate, hop_length=score_follower.win_length,
-             win_length=score_follower.win_length, ax=ax[1])
-    plt.show()
-
-    # from alignment_error import load_data, calculate_alignment_error
-
-    # df = load_data('data\\alignments\\variable_tempo.csv')
-    # warping_path = np.asarray(score_follower.path, dtype=np.float32)
-    # warping_path = warping_path * score_follower.win_length / score_follower.sample_rate
-    # df = calculate_alignment_error(df, warping_path)
-    # df.to_csv('output\\variable_tempo_live.csv', index=False)

@@ -3,7 +3,7 @@ name: Lint Python Code with Pylint
 on:
   push:
     branches:
-      - main  # Runs the workflow on push to the main branch
+      - backend
   pull_request:
     branches:
       - main  # Runs the workflow on pull requests to the main branch
@@ -40,6 +40,7 @@ jobs:
       # C0411: wrong-import-order
       # Run pylint on the code with above rules disabled
       - name: Run pylint
+        working-directory: backend
         run: |
           pylint **/*.py --rcfile=.pylintrc
 

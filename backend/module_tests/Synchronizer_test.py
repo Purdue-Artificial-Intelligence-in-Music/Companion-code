@@ -1,61 +1,60 @@
+import unittest
+from unittest.mock import patch, MagicMock
 import numpy as np
 from synchronizer import Synchronizer
 from score_follower import ScoreFollower
 from simple_pid import PID
 
-#
-# TODO: Pretty sure I need actual file paths for reference & accompaniment, those are just dummy paths right now
-#
+class TestSynchronizer(unittest.TestCase):
+    @patch('synchronizer.ScoreFollower')
+    @patch('audio_buffer.AudioBuffer')
+    @patch('simple_pid.PID')
+    @patch('librosa.load')
+    def setUp(self, MockLibrosaLoad, MockPID, MockAudioBuffer, MockScoreFollower):
+        # Mock librosa.load to avoid loading an actual file
+        MockLibrosaLoad.return_value = (np.random.random(44100), 44100)
 
-# Test case 1: Initialization of the Synchronizer Object
-def test_synchronizer_initialization():
-    reference = "path/to/score"
-    synchronizer = Synchronizer(reference)
-    
-    assert synchronizer.sample_rate == 44100
-    assert synchronizer.c == 10
-    assert isinstance(synchronizer.score_follower, ScoreFollower)
-    assert isinstance(synchronizer.PID, PID)
+        # Mock ScoreFollower, AudioBuffer, and PID
+        self.mock_score_follower = MockScoreFollower.return_value
+        self.mock_audio_buffer = MockAudioBuffer.return_value
+        self.mock_pid = MockPID.return_value
 
-# Test case 2: Step Functionality
-def test_synchronizer_step(mocker):
-    reference = "path/to/score"
-    synchronizer = Synchronizer(reference)
-    frames = np.random.random((1, 8192))
-    soloist_time = 8192/44100
-    accompanist_time = 8192/44100
+        # Instantiate Synchronizer
+        self.synchronizer = Synchronizer(reference='path/to/score')
 
-    # Ensure that score_follower.step returns the correct soloist_time
-    mocker.patch.object(synchronizer.score_follower, 'step', return_value=soloist_time)
-    
-    # Spy on the live_buffer.write method
-    spy_live_buffer_write = mocker.spy(synchronizer.live_buffer, 'write')
+    def test_synchronizer_initialization(self):
+        self.assertEqual(self.synchronizer.sample_rate, 44100)
+        self.assertEqual(self.synchronizer.c, 10)
 
-    playback_rate, estimated_time = synchronizer.step(frames, accompanist_time)
+    def test_synchronizer_step(self):
+        frames = np.random.random((1, 8192))
+        soloist_time = 8192 / 44100
+        accompanist_time = 8192 / 44100
 
-    # Assert that live_buffer.write was called with correct arguments
-    spy_live_buffer_write.assert_called_once_with(frames)
+        # Ensure that score_follower.step returns the correct soloist_time
+        self.synchronizer.score_follower.step = MagicMock(return_value=soloist_time)
+        
+        # Spy on the live_buffer.write method
+        self.synchronizer.live_buffer.write = MagicMock()
 
-    assert playback_rate == 1.0
-    assert estimated_time == soloist_time
+        playback_rate, estimated_time = self.synchronizer.step(frames, accompanist_time)
 
-# Test case 3: Save Performance
-def test_save_performance(mocker):
-    # Mock the reference path to avoid file dependency
-    reference = "path/to/score"
-    synchronizer = Synchronizer(reference)
+        # Assert that live_buffer.write was called with correct arguments
+        self.synchronizer.live_buffer.write.assert_called_once_with(frames)
 
-    # Mock any internal dependencies that rely on the reference being correct
-    mocker.patch.object(synchronizer, 'score_follower')  # Assuming score_follower depends on the reference path
-    # mocker.patch.object(synchronizer, 'live_buffer')  # Mock live_buffer in case it interacts with the reference
+        self.assertEqual(playback_rate, 1.0)
+        self.assertEqual(estimated_time, soloist_time)
 
-    # Spy on the live_buffer.save method
-    spy_live_buffer_save = mocker.spy(synchronizer.live_buffer, 'save')
+    def test_save_performance(self):
+        # Spy on the live_buffer.save method
+        self.synchronizer.live_buffer.save = MagicMock()
 
-    # Call the method under test
-    path = "path/to/save"
-    synchronizer.save_performance(path)
+        # Call the method under test
+        path = "path/to/save"
+        self.synchronizer.save_performance(path)
 
-    # Assert that live_buffer.save was called with the correct arguments
-    spy_live_buffer_save.assert_called_once_with(path)
+        # Assert that live_buffer.save was called with the correct arguments
+        self.synchronizer.live_buffer.save.assert_called_once_with(path)
 
+if __name__ == '__main__':
+    unittest.main()
