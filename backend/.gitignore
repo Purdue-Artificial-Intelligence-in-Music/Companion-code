@@ -185,4 +185,4 @@ soundfonts/
 # output folder
 output/
 
-synchronization_test.py
+api_test.py

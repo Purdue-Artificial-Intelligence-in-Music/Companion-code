@@ -1,17 +1,35 @@
 from flask import Flask, request, jsonify, send_file
+from flask_session import Session
 import os
 import librosa
 import numpy as np
+import redis
+import secrets
+import pickle
 from src.audio_generator import AudioGenerator
 from src.synchronizer import Synchronizer
 
 app = Flask(__name__)
 
+# Configure session to use Redis
+
+# Initialize Redis connection for other operations
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
+
 # Assuming the MusicXML files are stored in a folder called 'musicxml_files'
 MUSICXML_FOLDER = os.path.join('data', 'musicxml')
 SESSIONS = {}
 
-synchronizer = Synchronizer(reference='data/audio/air_on_the_g_string/synthesized/solo.wav')
+def generate_session_token():
+    return secrets.token_hex(32)  # Generates a 64-character hexadecimal string
+
+@app.route('/start-session', methods=['POST'])
+def start_session():
+    # Generate a new session token
+    session_token = generate_session_token()
+
+    # Return the session token to the client
+    return jsonify({'session_token': session_token}), 200
 
 @app.route('/scores', methods=['GET'])
 def get_scores():
@@ -39,23 +57,40 @@ def synthesize_audio(filename, tempo):
     if not os.path.exists(file_path):
         return 'MusicXML file not found', 404
 
-    # Remember the piece selected by the client
-    SESSIONS[session_token] = filename
-
     generator = AudioGenerator(file_path)
     output_dir = os.path.join('data', 'audio', filename.replace('.musicxml', ''))
     print(output_dir)
     generator.generate_audio(output_dir, tempo)
-    accompaniment, _ = librosa.load(os.path.join(output_dir, 'instrument_1.wav'))
+
+    # Create a synchronizer object for this session
+    synchronizer = Synchronizer(reference=os.path.join(output_dir, 'instrument_0.wav'))
+
+    # Store the synchronizer
+    SESSIONS[session_token] = {'synchronizer': synchronizer}
+
+    accompaniment, _ = librosa.load(os.path.join(output_dir, 'instrument_1.wav'), sr=44100, mono=True, dtype=np.float32)
     accompaniment = accompaniment.tolist()
     return jsonify({'audio_data': accompaniment}), 200
 
 @app.route('/synchronization', methods=['POST'])
 def synchronization():
+    # Get the session token from the request headers
     session_token = request.headers.get('session-token')
     if not session_token:
         return 'Missing or invalid session token', 401
+    
+    # Retrieve the session data from the SESSIONS dictionary
+    session_data = SESSIONS.get(session_token)
+    if not session_data:
+        return 'Session not found or expired', 404
+    
+    # Get the synchronizer object
 
+    synchronizer = session_data['synchronizer']
+    if not synchronizer:
+        return 'Synchronizer not found', 404
+    
+    # Parse the incoming data
     if not request.is_json:
         return 'Invalid request data', 400
 
@@ -66,11 +101,6 @@ def synchronization():
     if frames is None or timestamp is None:
         return 'Invalid request data', 400
 
-    # Placeholder for synchronization logic
-    # Here we would estimate the soloist's position and calculate the playback rate
-    # For now, we'll just return a mock response
-    playback_rate = 1.0  # Mock playback rate
-    estimated_position = timestamp + 1.0  # Mock estimated position
     frames = np.asarray(frames, np.float32)
     frames = frames.reshape((1, -1))
     print(frames.shape)
