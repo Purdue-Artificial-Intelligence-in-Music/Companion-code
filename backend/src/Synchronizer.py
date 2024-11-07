@@ -43,7 +43,7 @@ class Synchronizer:
         PID controller to adjust playback rate
     """
 
-    def __init__(self, reference: str, Kp: int = 0.2, Ki: int = 0.00, Kd=0.05,
+    def __init__(self, reference: str, Kp: int = 0.2, Ki: int = 0.00, Kd=0.0,
                  sample_rate: int = 44100, channels: int = 1, win_length: int = 8192, hop_length: int = 2048, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4):
 
         self.sample_rate = sample_rate
