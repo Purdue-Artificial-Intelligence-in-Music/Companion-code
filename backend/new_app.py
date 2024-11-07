@@ -43,9 +43,11 @@ def synthesize_audio(filename, tempo):
     SESSIONS[session_token] = filename
 
     generator = AudioGenerator(file_path)
-    output_dir = os.path.join('data', 'audio', filename.replace('.musicxml', '.wav'))
+    output_dir = os.path.join('data', 'audio', filename.replace('.musicxml', ''))
+    print(output_dir)
     generator.generate_audio(output_dir, tempo)
-    accompaniment, _ = librosa.load(os.path.join(output_dir, 'insturment_1.wav'))
+    accompaniment, _ = librosa.load(os.path.join(output_dir, 'instrument_1.wav'))
+    accompaniment = accompaniment.tolist()
     return jsonify({'audio_data': accompaniment}), 200
 
 @app.route('/synchronization', methods=['POST'])
