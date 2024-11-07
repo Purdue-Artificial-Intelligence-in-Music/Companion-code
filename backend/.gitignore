@@ -178,11 +178,11 @@ data/audio
 
 # FluidSynth
 soundfonts/
-<<<<<<< HEAD
-=======
 
 # test coverage report xml/html
 .coverage
 
 # output folder
 output/
+
+synchronization_test.py

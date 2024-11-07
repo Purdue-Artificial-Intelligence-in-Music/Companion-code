@@ -1,14 +1,17 @@
 from flask import Flask, request, jsonify, send_file
 import os
-from src.audio_generator import AudioGenerator
 import librosa
 import numpy as np
+from src.audio_generator import AudioGenerator
+from src.synchronizer import Synchronizer
 
 app = Flask(__name__)
 
 # Assuming the MusicXML files are stored in a folder called 'musicxml_files'
 MUSICXML_FOLDER = os.path.join('data', 'musicxml')
 SESSIONS = {}
+
+synchronizer = Synchronizer(reference='data/audio/air_on_the_g_string/synthesized/solo.wav')
 
 @app.route('/scores', methods=['GET'])
 def get_scores():
@@ -66,6 +69,11 @@ def synchronization():
     # For now, we'll just return a mock response
     playback_rate = 1.0  # Mock playback rate
     estimated_position = timestamp + 1.0  # Mock estimated position
+    frames = np.asarray(frames, np.float32)
+    frames = frames.reshape((1, -1))
+    print(frames.shape)
+    print(timestamp)
+    playback_rate, estimated_position = synchronizer.step(frames, timestamp)
     return jsonify({'playback_rate': playback_rate, 'estimated_position': estimated_position}), 200
 
 if __name__ == '__main__':

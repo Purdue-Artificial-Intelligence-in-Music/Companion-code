@@ -1,5 +1,5 @@
-from score_follower import ScoreFollower
-from audio_buffer import AudioBuffer
+from .score_follower import ScoreFollower
+from .audio_buffer import AudioBuffer
 from simple_pid import PID
 
 
