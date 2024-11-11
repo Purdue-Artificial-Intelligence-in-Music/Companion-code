@@ -38,7 +38,8 @@ jobs:
         working-directory: backend
         # Run the tests in module_tests/ using the unittest module
         run: |
-            python ./run_tests.py
+            # edit by nick: trying to use earlier syntax
+            python -m unittest discover -s module_tests -p "*_test.py"
       
        # getting coverage score: figure it out later maybe ?
       # - name: Coverage
