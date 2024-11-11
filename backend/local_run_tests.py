@@ -1,8 +1,6 @@
 """
 This script is meant to be used as a tool for people who wants to run their tests locally,
 and is not meant to be used in the CI/CD pipeline.
-
-if you are interested in using a runner script for the CI/CD pipeline, please refer to CI_test_runner.py
 """
 import os
 import sys
