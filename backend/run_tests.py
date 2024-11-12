@@ -47,7 +47,6 @@ if __name__ == '__main__':
         # flag = set_verbose_flag()
         print("running a total of {} tests".format(len(tests)))
         return_code = os.system("python -m unittest discover -s module_tests -p \"*_test.py\"" )
-        assert return_code != 0, "tests failed"
         sys.exit(return_code)
     else:
         print("Invalid number of arguments: provide either a specific test or no test")
