@@ -82,8 +82,7 @@ export default function App() {
   };
 
   // !!! TODO !!!
-  const getAPIData = async () => { 
-    const data = await fetchData('http://localhost:5000/getData')
+  const getAPIData = async () => {
     const newPlayRate = 0.5 + Math.random(); // Update this to actual get data from API!!!
     const newTimeStamp = state.timestamp + UPDATE_INTERVAL * state.playRate / 1000;
     
