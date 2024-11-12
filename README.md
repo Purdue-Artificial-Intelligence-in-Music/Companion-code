@@ -1,23 +1,44 @@
 # Companion
-Companion is an app that not only plays along with a human player during a chamber music piece, but actively responds to their playing habits and voice commands like a real human would. 
 
-## System requirements
-- Windows 10/11 or Linux (macOS may work but is untested and unsupported)
-- An Nvidia GPU with >=4GB VRAM (RTX 3050 mobile and above tested + working)
-- 16GB of system RAM (probably)
-- 10GB of space for installation of libraries
-- A microphone
-- Headphones (to avoid feedback with the microphone)
-- Apple M-series chips as well as Intel/AMD GPUs may work if you manually tell PyTorch to use MPS shaders, Intel Performance Extensions or AMD ROCm, respectively. This configuration is not supported, however.
+Companion is your on-demand accompanist, allowing you to practice with professional-quality accompaniment anytime, anywhere.
+
+## System Requirements
+- **OS**: Windows 10/11 or Linux (macOS may work but is untested)
+- **Memory**: 16 GB RAM (recommended)
+- **Disk Space**: 10 GB for library installations
+- **Audio**: Microphone and headphones (to prevent feedback)
 
 ## Getting Started
-1. Clone the repository.
-2. In a python 3.8 environment, run the command ```python setup.py```
-4. Run ``src/main.py`` to start Companion.
 
-## Getting started with the frontend
-1. Install Node.js found here: https://nodejs.org./en
-2. Install Expo CLI: `npm install -g expo-cli`
-3. Navigate to the frontend directory: `cd frontend/companion-app`
-4. Install project dependencies: `npm install`
-5. Start the development server: `npm run web`
+### Running the Backend Server Locally
+1. Open a terminal and navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Install dependencies:
+   ```bash
+   python setup.py install
+   ```
+3. Start the Flask server:
+   ```bash
+   python app.py
+   ```
+
+### Running the Frontend Locally
+1. Install Node.js from [nodejs.org](https://nodejs.org/en).
+2. Install the Expo CLI:
+   ```bash
+   npm install -g expo-cli
+   ```
+3. Navigate to the frontend directory:
+   ```bash
+   cd frontend/companion-app
+   ```
+4. Install project dependencies:
+   ```bash
+   npm install
+   ```
+5. Start the frontend:
+   ```bash
+   npm run web
+   ```

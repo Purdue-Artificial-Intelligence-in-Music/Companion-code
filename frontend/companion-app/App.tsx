@@ -83,6 +83,7 @@ export default function App() {
 
   // !!! TODO !!!
   const getAPIData = async () => { 
+    const data = await fetchData('http://localhost:5000/getData')
     const newPlayRate = 0.5 + Math.random(); // Update this to actual get data from API!!!
     const newTimeStamp = state.timestamp + UPDATE_INTERVAL * state.playRate / 1000;
     
@@ -233,9 +234,9 @@ export default function App() {
 
       <StatusBar style="auto" />{/* Automatically adjusts the status bar style */}
 
-      {/* <GET_Request/> */}
-      {/* <POST_Request/> */}
-      <Play_Audio/>
+      <GET_Request/>
+      <POST_Request/>
+      {/* <AudioPlayer/> */}
     </SafeAreaView>
   );
 }
