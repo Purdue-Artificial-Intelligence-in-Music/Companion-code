@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 import numpy as np
-from phase_vocoder import PhaseVocoder, normalize_audio
+from src.phase_vocoder import PhaseVocoder, normalize_audio
 
 
 class TestNormalizeAudio(unittest.TestCase):

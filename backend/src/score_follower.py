@@ -1,7 +1,6 @@
-from otw import OnlineTimeWarping as OTW
+from .otw import OnlineTimeWarping as OTW
 import numpy as np
-import matplotlib.pyplot as plt
-from features import ChromaMaker, file_to_np_cens
+from .features import ChromaMaker, file_to_np_cens
 
 
 class ScoreFollower:

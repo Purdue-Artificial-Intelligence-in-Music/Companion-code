@@ -18,8 +18,11 @@ export default function App() {
 
   // Directory of scores with filenames and piece names (names for the selection display)
   const [scores, setScores] = useState([
-    { filename: "air_on_the_g_string.musicxml", piece: "Bach - Air on the G String" },
-    { filename: "twelve_duets.musicxml", piece: "Mozart - Twelve Duets" }
+    {
+      filename: "air_on_the_g_string.musicxml",
+      piece: "Bach - Air on the G String",
+    },
+    { filename: "twelve_duets.musicxml", piece: "Mozart - Twelve Duets" },
   ]);
 
   // Create a state representing the file name of the current piece
@@ -73,7 +76,7 @@ export default function App() {
       const newScore = {
         filename: file.name,
         piece: file.name.replace(".musicxml", ""),
-        content: xmlContent
+        content: xmlContent,
       };
       setScores([...scores, newScore]); //append the new score to scores list
       setScore(file.name);
@@ -96,37 +99,46 @@ export default function App() {
   // useEffect hook to handle side effects (like loading music) after the component mounts
   // and when a piece is selected
   useEffect(() => {
-
     // Remove any previously-loaded music
     if (osmContainerRef.current) {
       while (osmContainerRef.current.children[0]) {
-        osmContainerRef.current.removeChild(osmContainerRef.current.children[0]);
+        osmContainerRef.current.removeChild(
+          osmContainerRef.current.children[0],
+        );
       }
     }
+
     if (score) {
-      const selectedScore = scores.find(s => s.filename === score);
+      const selectedScore = scores.find((s) => s.filename === score);
       if (selectedScore) {
         // Create an instance of OpenSheetMusicDisplay, passing the reference to the container
-        const osm = new OpenSheetMusicDisplay(osmContainerRef.current as HTMLElement, {
-          autoResize: true, // Enable automatic resizing of the sheet music display
-          followCursor: true, // And follow the cursor
-        });
+        const osm = new OpenSheetMusicDisplay(
+          osmContainerRef.current as HTMLElement,
+          {
+            autoResize: true, // Enable automatic resizing of the sheet music display
+            followCursor: true, // And follow the cursor
+          },
+        );
 
         osdRef.current = osm;
 
         // Load the music XML file from the assets folder
-        osm.load('assets/' + score)
+        osm
+          .load("assets/" + score)
           .then(() => {
             // Render the sheet music once it's loaded
             osm.render();
-            console.log('Music XML loaded successfully'); // Log success message to console
+            console.log("Music XML loaded successfully"); // Log success message to console
             cursorRef.current = osm.cursor; // Pass reference to cursor
             cursorRef.current.show(); // and never hide it.  it should always be visible
-            cursorRef.current.CursorOptions = { ...cursorRef.current.CursorOptions, ... { "follow": true} }
+            cursorRef.current.CursorOptions = {
+              ...cursorRef.current.CursorOptions,
+              ...{ follow: true },
+            };
           })
           .catch((error) => {
             // Handle errors in loading the music XML file
-            console.error('Error loading music XML:', error); // Log the error message
+            console.error("Error loading music XML:", error); // Log the error message
           });
       }
     }
@@ -157,10 +169,13 @@ export default function App() {
       // while timestamp is less than desired, update it
       while (ct <= state.timestamp ) {
         cursorRef.current?.Iterator.moveToNextVisibleVoiceEntry(false);
-        dt = Fraction.minus(cursorRef.current?.Iterator.CurrentSourceTimestamp, ts_meas);
+        dt = Fraction.minus(
+          cursorRef.current?.Iterator.CurrentSourceTimestamp,
+          ts_meas,
+        );
         // dt is a fraction indicating how much - in whole notes - the iterator moved
-                  
-        // // If we are using the active BPM and time signature in the given score, uncomment: 
+
+        // // If we are using the active BPM and time signature in the given score, uncomment:
         // ct += 60 * dt.RealValue * cursorRef.current?.Iterator.CurrentMeasure.ActiveTimeSignature.Denominator / cursorRef.current?.Iterator.CurrentBpm
         // // and remove the BPM and TSD arguments used in the below, and comment the below:
         ct += 60 * dt.RealValue * TSD / BPM;
@@ -209,7 +224,8 @@ export default function App() {
   // Render the component's UI
   ////////////////////////////////////////////////////////////////////////////////
   return (
-    <SafeAreaView style={styles.container}>{/* Provides safe area insets for mobile devices */}
+    <SafeAreaView style={styles.container}>
+      {/* Provides safe area insets for mobile devices */}
       <AudioRecorder />
       <Text style={styles.title}>Companion, the digital accompanist</Text>
       
@@ -231,7 +247,8 @@ export default function App() {
           </div> Reference to the SVG container for sheet music
       </div>
 
-      <StatusBar style="auto" />{/* Automatically adjusts the status bar style */}
+      <StatusBar style="auto" />
+      {/* Automatically adjusts the status bar style */}
 
       <GET_Request/>
       <POST_Request/>
@@ -244,9 +261,9 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1, // Make the container fill the available space
-    backgroundColor: '#fff', // Set background color to white
-    alignItems: 'center', // Center children horizontally
-    justifyContent: 'center', // Center children vertically
+    backgroundColor: "#fff", // Set background color to white
+    alignItems: "center", // Center children horizontally
+    justifyContent: "center", // Center children vertically
     padding: 16, // Add padding around the container
   },
   title: {
@@ -257,22 +274,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   scrollContainer: {
-    width: '100%', // Make the scroll container fill the width of the parent
-    height: '80%', // Set a specific height for scrolling (adjust as needed)
-    overflow: 'scroll', // Enable vertical scrolling
+    width: "100%", // Make the scroll container fill the width of the parent
+    height: "80%", // Set a specific height for scrolling (adjust as needed)
+    overflow: "scroll", // Enable vertical scrolling
     borderWidth: 1, // Add border to the container
-    borderColor: 'black', // Set border color to black
+    borderColor: "black", // Set border color to black
   },
   osmContainer: {
-    width: '100%', // Make the sheet music container fill the width of the parent
-    minHeight: '150%', // Set a minimum height to ensure scrolling is possible
+    width: "100%", // Make the sheet music container fill the width of the parent
+    minHeight: "150%", // Set a minimum height to ensure scrolling is possible
     borderWidth: 1, // Add border to the sheet music container
-    borderColor: 'black', // Set border color to black
-    overflow: 'hidden', // Ensure content doesn't overflow outside this container
+    borderColor: "black", // Set border color to black
+    overflow: "hidden", // Ensure content doesn't overflow outside this container
   },
   play_button: {
     flex: 0.2,
-    borderColor: 'black',
+    borderColor: "black",
     borderRadius: 15,
     backgroundColor: 'lightblue',
     justifyContent: 'center',
@@ -285,12 +302,12 @@ const styles = StyleSheet.create({
   },
   button_text: {
     fontSize: 20,
-    textAlign: 'center'
+    textAlign: "center",
   },
   button_wrapper: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     padding: 10,
     backgroundColor: 'lightgray',
     width: '100%',
