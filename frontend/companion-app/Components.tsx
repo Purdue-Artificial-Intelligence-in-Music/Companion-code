@@ -65,7 +65,7 @@ export function Play_Button({
   setCursorPos: Function;
   osdRef: MutableRefObject<OpenSheetMusicDisplay | null>;
 }) {
-  const timeoutRef = useRef<Number>();
+  const timeoutRef = useRef<number>();
 
   function find_the_time() {
     if (my_cursor.current && my_cursor.current.NotesUnderCursor().length > 0) {
