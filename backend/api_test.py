@@ -3,8 +3,6 @@ import numpy as np
 import soundfile as sf
 import librosa 
 import os
-from src.alignment_error import load_data, calculate_alignment_error
-from src.accompaniment_error import calculate_accompaniment_error
 
 # Define the base URL for the Flask application
 BASE_URL = "http://127.0.0.1:5000"
