@@ -1,11 +1,11 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import numpy as np
-from src.Synchronizer import Synchronizer
+from src.synchronizer import Synchronizer
 
 class TestSynchronizer(unittest.TestCase):
-    @patch('src.Synchronizer.ScoreFollower')
-    @patch('audio_buffer.AudioBuffer')
+    @patch('src.synchronizer.ScoreFollower')
+    @patch('src.audio_buffer.AudioBuffer')
     @patch('simple_pid.PID')
     @patch('librosa.load')
     def setUp(self, MockLibrosaLoad, MockPID, MockAudioBuffer, MockScoreFollower):
