@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 from unittest.mock import patch, MagicMock
-from audio_buffer import AudioBuffer
+from src.audio_buffer import AudioBuffer
 
 class TestAudioBuffer(unittest.TestCase):
     def setUp(self):

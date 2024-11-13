@@ -38,8 +38,8 @@ jobs:
         working-directory: backend
         # Run the tests in module_tests/ using the unittest module
         run: |
-            python ./run_tests.py
-      
+            # edit by nick: using CI_test_runner.py
+            python ./CI_test_runner.py
        # getting coverage score: figure it out later maybe ?
       # - name: Coverage
       #   run: |

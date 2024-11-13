@@ -5,9 +5,9 @@ from unittest.mock import patch
 import sys
 import os
 
-sys.path = [os.path.join(os.path.dirname(os.path.abspath(__file__)), '../src')]
+# sys.path = [os.path.join(os.path.dirname(os.path.abspath(__file__)), '../src')]
 
-from alignment_error import load_data, calculate_alignment_error
+from src.alignment_error import load_data, calculate_alignment_error
 
 class TestAlignmentFunctions(unittest.TestCase):
 
