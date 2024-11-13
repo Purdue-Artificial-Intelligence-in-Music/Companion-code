@@ -1,7 +1,7 @@
-from Synchronizer import Synchronizer
+from src.synchronizer import Synchronizer
 import numpy as np
-from alignment_error import load_data, calculate_alignment_error
-from accompaniment_error import calculate_accompaniment_error
+from src.alignment_error import load_data, calculate_alignment_error
+from src.accompaniment_error import calculate_accompaniment_error
 import os
 import librosa
 
@@ -14,14 +14,17 @@ estimated_times = []
 accompanist_times = []
 playback_rates = []
 
-reference = os.path.join('backend', 'data', 'audio', 'air_on_the_g_string', 'synthesized', 'solo.wav')
-source = os.path.join('backend', 'data', 'audio', 'air_on_the_g_string', 'live', 'constant_tempo.wav')
+reference = os.path.join('data', 'audio', 'air_on_the_g_string', 'synthesized', 'solo.wav')
+source = os.path.join('data', 'audio', 'air_on_the_g_string', 'live', 'constant_tempo.wav')
 
-source_audio = librosa.load(source, sr=44100)
-source_audio = source_audio[0].reshape((1, -1))
+source_audio, _ = librosa.load(source, sr=44100)
+source_audio = source_audio.reshape((1, -1))
 
 # create a synchronizer object
 synchronizer = Synchronizer(reference=reference,
+                            Kp=0.05,
+                            Ki=0.0,
+                            Kd=0.0,
                             sample_rate=44100,
                             channels=1,
                             win_length=8192,
@@ -44,11 +47,11 @@ for i in range(0, source_audio.shape[-1], 8192):
     soloist_times.append(soloist_time)
     estimated_times.append(estimated_time)
     accompanist_times.append(accompanist_time)
-    playback_rates.append(playback_rate)
 
     print(f'Soloist time: {soloist_time:.2f}, Estimated time: {estimated_time:.2f}, Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}')
     output_file.write(f'Soloist time: {soloist_time:.2f}, Predicted time: {estimated_time:.2f}, '
                       f'Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}\n')
+
 
 synchronizer.save_performance(path='performance.wav')
 output_file.close()

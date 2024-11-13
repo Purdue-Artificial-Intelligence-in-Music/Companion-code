@@ -1,0 +1,188 @@
+openapi: 3.0.0
+info:
+  title: Companion API
+  description: This API serves as the backend for the Companion app, which provides automatic musical accompaniment for soloists in real-time.
+  version: 1.0.0
+
+paths:
+  /start-session:
+    post:
+      summary: Start a new session
+      description: Starts a new session and returns a unique session token to identify the client and maintain state.
+      responses:
+        '200':
+          description: Successful response with a unique session token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_token:
+                    type: string
+                    description: A unique session token to identify the client and maintain state.
+        '500':
+          description: Internal server error.
+  /stop-session:
+    post:
+      summary: Stop the current session
+      description: Stops the current session and clears the session token from the server.
+      parameters:
+        - name: session-token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: A unique session token to identify the client and maintain state.
+      responses:
+        '200':
+          description: Successful response.
+        '401':
+          description: Missing or invalid session token.
+        '500':
+          description: Internal server error.
+  /scores:
+    get:
+      summary: Get list of available MusicXML files
+      description: Returns a list of all MusicXML files available on the server.
+      responses:
+        '200':
+          description: Successful response with a list of MusicXML files.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      type: string
+                    description: A list of MusicXML file names available on the server.
+        '500':
+          description: Internal server error.
+
+  /score/{filename}:
+    get:
+      summary: Get a specific MusicXML file by name
+      description: Returns the content of a specific MusicXML file by its name.
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The name of the MusicXML file to retrieve.
+      responses:
+        '200':
+          description: Successful response with the requested MusicXML file content.
+          content:
+            application/xml:
+              schema:
+                type: string
+                format: binary
+                description: The content of the requested MusicXML file.
+        '404':
+          description: File not found.
+        '500':
+          description: Internal server error.
+
+  /synthesize-audio/{filename}/{tempo}:
+    get:
+      summary: Synthesize solo and accompaniment for a MusicXML file
+      description: Takes in a MusicXML file name and a tempo in BPM as path parameters, and returns the accompaniment audio as an array of floats. The server will remember the piece selected by the client.
+      parameters:
+        - name: session-token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: A unique session token to identify the client and maintain state.
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The name of the MusicXML file to be synthesized.
+        - name: tempo
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The tempo in beats per minute (BPM).
+      responses:
+        '200':
+          description: Successful response with the synthesized accompaniment audio.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  audio_data:
+                    type: array
+                    items:
+                      type: number
+                      format: float
+                      description: An array of floats representing the synthesized accompaniment audio.
+                  sample_rate:
+                    type: integer
+                    description: The sample rate of the synthesized audio.
+        '400':
+          description: Invalid request data.
+        '401':
+          description: Missing or invalid session token.
+        '404':
+          description: MusicXML file not found.
+        '500':
+          description: Internal server error.
+
+  /synchronization:
+    post:
+      summary: Estimate soloist position and calculate playback rate
+      description: Takes in frames of live audio data from the soloist and the current position of the audio player on the frontend, and returns the playback rate and the estimated soloist's position. Requires a session token to maintain state between requests.
+      parameters:
+        - name: session-token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: A unique session token to identify the client and maintain state.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                frames:
+                  type: array
+                  items:
+                    type: number
+                  description: An array of floats representing frames of live audio data from the soloist.
+                timestamp:
+                  type: number
+                  format: float
+                  description: The timestamp representing where the audio player on the frontend is in seconds.
+              required:
+                - frames
+                - timestamp
+      responses:
+        '200':
+          description: Successful response with playback rate and estimated soloist position.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  playback_rate:
+                    type: number
+                    format: float
+                    description: The playback rate for synchronization.
+                  estimated_position:
+                    type: number
+                    format: float
+                    description: The estimated position of the soloist in seconds.
+        '400':
+          description: Invalid request data.
+        '401':
+          description: Missing or invalid session token.
+        '500':
+          description: Internal server error.

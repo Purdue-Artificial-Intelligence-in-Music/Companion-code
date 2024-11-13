@@ -2,7 +2,7 @@ import unittest
 import pandas as pd
 import numpy as np
 from unittest.mock import patch
-from accompaniment_error import load_data, find_nearest, calculate_accompaniment_error
+from src.accompaniment_error import load_data, find_nearest, calculate_accompaniment_error
 
 class TestAccompanimentFunctions(unittest.TestCase):
     @patch('pandas.read_csv')
