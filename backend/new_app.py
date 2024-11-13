@@ -20,6 +20,8 @@ def get_scores():
 
 @app.route('/score/<filename>', methods=['GET'])
 def get_score(filename):
+    session_token = request.headers.get('session-token')
+    SESSIONS[session_token] = filename
     file_path = os.path.join(MUSICXML_FOLDER, filename)
     if os.path.exists(file_path):
         return send_file(file_path, mimetype='application/xml'), 200
@@ -29,20 +31,20 @@ def get_score(filename):
 @app.route('/synthesize-audio/<filename>/<int:tempo>', methods=['GET'])
 def synthesize_audio(filename, tempo):
     session_token = request.headers.get('session-token')
-    if not session_token:
+    if not session_token or session_token not in SESSIONS:
         return 'Missing or invalid session token', 401
 
     file_path = os.path.join(MUSICXML_FOLDER, filename)
     if not os.path.exists(file_path):
         return 'MusicXML file not found', 404
-
-    # Remember the piece selected by the client
+    
     SESSIONS[session_token] = filename
 
     generator = AudioGenerator(file_path)
     output_dir = os.path.join('data', 'audio', filename.replace('.musicxml', '.wav'))
     generator.generate_audio(output_dir, tempo)
     accompaniment, _ = librosa.load(os.path.join(output_dir, 'insturment_1.wav'))
+    accompaniment = accompaniment.tolist()  # Makes it possible to send through JSON
     return jsonify({'audio_data': accompaniment}), 200
 
 @app.route('/synchronization', methods=['POST'])
