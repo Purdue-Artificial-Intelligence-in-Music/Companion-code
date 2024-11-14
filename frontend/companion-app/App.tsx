@@ -86,10 +86,23 @@ export default function App() {
 
   // !!! TODO !!!
   const getAPIData = async () => {
-    const newPlayRate = 0.5 + Math.random(); // Update this to actual get data from API!!!
-    const newTimeStamp = state.timestamp + UPDATE_INTERVAL * state.playRate / 1000;
-    
-    dispatch( {type:'increment', time:newTimeStamp, rate:newPlayRate} )
+    try {
+      const syncdata = await fetch("http://localhost:5000/synchronization",
+        {
+        method:"POST",
+        headers: {
+          'session-token':state.sessionToken // fix this
+        }
+        },
+      );
+      const data_json = await syncdata.json();
+      dispatch( {type:'increment', time:data_json['estimated_position'], rate:data_json['playback_rate']} )
+    }
+    catch {
+      console.log("Synchronization must not have occurred.")
+    }
+    // const newPlayRate = 0.5 + Math.random(); // Update this to actual get data from API!!!
+    // const newTimeStamp = state.timestamp + UPDATE_INTERVAL * state.playRate / 1000;
   }
 
   useEffect(() => {
