@@ -1,13 +1,9 @@
 import { View, Text } from 'react-native';
 import { Pressable, TextInput, TextStyle, ViewStyle } from "react-native";
-import { MutableRefObject, useEffect,  useRef, useState } from 'react';
-import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay';
-import { Fraction } from 'opensheetmusicdisplay';
 
-export function MeasureSetBox( { state, dispatch, wrapper_style, button_style, text_input_style, button_text_style, label_text_style, BPM, TSD } : 
+export function MeasureSetBox( { state, dispatch, wrapper_style, button_style, text_input_style, button_text_style, label_text_style } : 
     { state: {resetMeasure: number}, dispatch: Function, wrapper_style: ViewStyle,
-        button_style: ViewStyle, text_input_style: ViewStyle, button_text_style: TextStyle, label_text_style: TextStyle,
-        BPM: number, TSD: number // Beats per minute and time signature denominator, respectively
+        button_style: ViewStyle, text_input_style: ViewStyle, button_text_style: TextStyle, label_text_style: TextStyle
     }) {
     
     // const [needsReset, setNeedsReset] = useState<boolean>(false); // indicates whether a reset to start measure is occurring
@@ -46,7 +42,7 @@ export function MeasureSetBox( { state, dispatch, wrapper_style, button_style, t
         <View style={wrapper_style}>
             <Text style={label_text_style}>Start measure:</Text>
         <TextInput
-            onChangeText={(text) => dispatch( { type:'change_reset', measure:Number(text) })}
+            onChangeText={(text) => dispatch( { type:'change_reset', measure: text as unknown as number })}
             value={String(state.resetMeasure)}
             placeholder="Enter measure number"
             inputMode="numeric"

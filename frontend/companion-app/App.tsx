@@ -36,9 +36,6 @@ export default function App() {
   const cursorRef = useRef<Cursor | null>(null);
   const osdRef = useRef<OpenSheetMusicDisplay | null>(null);
 
-  const BPM = 100; // EDIT THESE AS APPROPRIATE - get from user??
-  const TSD = 4;
-
   const UPDATE_INTERVAL = 500; // milliseconds between updates to timestamp and rate
 
   ////////////////////////////////////////////////////////////////////////////////////
@@ -195,7 +192,7 @@ export default function App() {
         // // If we are using the active BPM and time signature in the given score, uncomment:
         // ct += 60 * dt.RealValue * cursorRef.current?.Iterator.CurrentMeasure.ActiveTimeSignature.Denominator / cursorRef.current?.Iterator.CurrentBpm
         // // and remove the BPM and TSD arguments used in the below, and comment the below:
-        ct += 60 * dt.RealValue * TSD / BPM;
+        ct += 60 * dt.RealValue * state.time_signature.Denominator / state.tempo;
         console.log("ct:",ct);
         // // either way, the calculation is:
         // 60 secs/min * dt wholes * time signature denominator (beats/whole) / BPM (beats/minute) yields seconds
@@ -204,7 +201,7 @@ export default function App() {
       cursorRef.current?.Iterator.moveToPreviousVisibleVoiceEntry(false);
       console.log("Cursor should be updating");
       cursorRef.current?.update();
-      dispatch( {type:'cursor_update', time:(60 * cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue * TSD / BPM)})
+      dispatch( {type:'cursor_update', time:(60 * cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue * state.time_signature.Denominator / state.tempo)})
     }  
                 
     // if (osdRef.current !== undefined && osdRef.current?.Sheet !== undefined) {
@@ -254,7 +251,6 @@ export default function App() {
         <MeasureSetBox
           state={state} dispatch={dispatch} wrapper_style={styles.measure_box}
           text_input_style={styles.text_input} button_style={styles.reset_button} button_text_style={styles.button_text} label_text_style={styles.label}
-          BPM={BPM} TSD={TSD}
         />
         {/* <TimeStampBox timestamp={timestamp} setTimestamp={setTimestamp} style={styles.text_input}/> */}
       </View>
