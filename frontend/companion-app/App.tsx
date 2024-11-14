@@ -18,6 +18,12 @@ export default function App() {
   ////////////////////////////////////////////////////////////////////////////////////
   // Main state - holds position in the piece, playback rate, etc.
   ////////////////////////////////////////////////////////////////////////////////////
+  // useReducer returns a state - which is an object initialized to be useReducer's second argument
+  // - and a function (here called "dispatch") which is the only way to update the state.
+  // The reducer_function takes in two arguments ("state" and "action") and returns an object - 
+  // when the dispatch function is called, it takes one argument, calls the reducer_function
+  // with the current state as the state and the dispatch function's argument as the action,
+  // and updates the state to be the output of the reducer_function.
   const [state, dispatch] = useReducer( reducer_function, // The reducer function is found in Dispatch.ts
     {
       playing:false,
@@ -53,21 +59,6 @@ export default function App() {
   const UPDATE_INTERVAL = 500; // milliseconds between updates to timestamp and rate
 
   const getAPIData = async () => {
-    // try {
-    //   const syncdata = await fetch("http://localhost:5000/synchronization",
-    //     {
-    //     method:"POST",
-    //     headers: {
-    //       'session-token':state.sessionToken // fix this
-    //     }
-    //     },
-    //   );
-    //   const data_json = await syncdata.json();
-    //   dispatch( {type:'increment', time:data_json['estimated_position'], rate:data_json['playback_rate']} )
-    // }
-    // catch {
-    //   console.log("Synchronization must not have occurred.")
-    // }
     const newPlayRate = 0.5 + Math.random(); // Update this to actual get data from API!!!
     const newTimeStamp = state.timestamp + UPDATE_INTERVAL * state.playRate / 1000;
     dispatch( {type:'increment', time:newTimeStamp, rate:newPlayRate} )
@@ -102,9 +93,6 @@ export default function App() {
       <ScoreDisplay state={state} dispatch={dispatch}/>
       <StatusBar style="auto" />
       {/* Automatically adjusts the status bar style */}
-
-      { /* <GET_Request/>
-      <POST_Request/> */ }
       <AudioPlayerRefactored state={state} dispatch={dispatch}/>
     </SafeAreaView>
   );

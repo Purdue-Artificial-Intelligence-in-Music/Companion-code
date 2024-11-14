@@ -73,8 +73,6 @@ export default function ScoreDisplay( { state, dispatch }:
     console.log("ct:",ct);
     if (cursorRef.current?.Iterator.CurrentSourceTimestamp !== undefined) {
       var ts_meas = Fraction.createFromFraction(cursorRef.current?.Iterator.CurrentSourceTimestamp); // current timestamp of iterator as a fraction
-      // var ts_start = Fraction.createFromFraction(ts_meas); // where iterator starts from, as a fraction
-
       console.log("ts_meas:",ts_meas.RealValue);
       if (ct > state.timestamp) { // If timestamp is older, go back to beginning, b/c probably reset
         console.log("Moving ct back to beginning.");
@@ -92,13 +90,8 @@ export default function ScoreDisplay( { state, dispatch }:
         );
         // dt is a fraction indicating how much - in whole notes - the iterator moved
 
-        // // If we are using the active BPM and time signature in the given score, uncomment:
-        // ct += 60 * dt.RealValue * cursorRef.current?.Iterator.CurrentMeasure.ActiveTimeSignature.Denominator / cursorRef.current?.Iterator.CurrentBpm
-        // // and remove the BPM and TSD arguments used in the below, and comment the below:
         ct += 60 * dt.RealValue * state.time_signature.Denominator / state.score_tempo;
         console.log("ct:",ct);
-        // // either way, the calculation is:
-        // 60 secs/min * dt wholes * time signature denominator (beats/whole) / BPM (beats/minute) yields seconds
         ts_meas = Fraction.plus(ts_meas, dt);
       }
       cursorRef.current?.Iterator.moveToPreviousVisibleVoiceEntry(false);
@@ -106,15 +99,10 @@ export default function ScoreDisplay( { state, dispatch }:
       cursorRef.current?.update();
       dispatch( {type:'cursor_update', time:(60 * cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue * state.time_signature.Denominator / state.score_tempo)})
     }  
-                
-    // if (osdRef.current !== undefined && osdRef.current?.Sheet !== undefined) {
-    //   console.log("Should be re-rendering.");
-    //   osdRef.current.render();
-    // } // COMMENTING THIS OUT FIXED IT AND I DON"T KNOW WHY!!!!! ❤️ Robert
   }, [state.timestamp])
 
     return (
-        <div style={styles.scrollContainer}> {/* Container for scrolling the sheet music */}
+        <div style={styles.scrollContainer}>
             <div ref={osmContainerRef} style={styles.osmContainer}>
             </div> Reference to the SVG container for sheet music
         </div>

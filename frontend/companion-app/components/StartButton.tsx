@@ -6,16 +6,6 @@ export function Start_Stop_Button( { state, dispatch,
     { state: { playing: boolean }, dispatch: Function,
         button_style: ViewStyle, text_style: TextStyle
      } ) {
-    
-    // const timeoutRef = useRef<Number>();
-
-    // function find_the_time() {
-    //     if (my_cursor.current && my_cursor.current.NotesUnderCursor().length > 0 ) {
-    //         const bpm = my_cursor.current?.Iterator.CurrentBpm ? my_cursor.current?.Iterator.CurrentBpm : 100
-    //         const note_dur = my_cursor.current?.NotesUnderCursor().map( note => note.Length ).reduce( (prev, cur) => (prev < cur ? prev : cur));
-    //         return 60000 / bpm * note_dur.RealValue
-    //     } else return 0;
-    // }
 
     return <Pressable style={ button_style } onPress={ () => {
         console.log("The play button's on_press runs.");

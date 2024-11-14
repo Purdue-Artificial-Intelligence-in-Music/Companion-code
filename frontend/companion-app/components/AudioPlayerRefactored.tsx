@@ -14,22 +14,6 @@ export function AudioPlayerRefactored( {state, dispatch}:
   const [playbackRate, setPlaybackRate] = useState(1.0); // Default rate of 1x
   const [currentPosition, setCurrentPosition] = useState(0); // Playback position in seconds
   const [duration, setDuration] = useState(0); // Total audio duration in seconds
-  // useEffect(() => {
-  //   let interval: NodeJS.Timeout;
-
-  //   if (sound) {
-  //     // Set up interval to track playback position
-  //     interval = setInterval(async () => {
-  //       const status = await sound.getStatusAsync();
-  //       if (status.isLoaded) {
-  //         setCurrentPosition(status.positionMillis / 1000); // Convert to seconds
-  //         setDuration((status.durationMillis ?? 0) / 1000); // Convert to seconds
-  //       }
-  //     }, 1000); // Update every second
-  //   }
-
-  //   return () => clearInterval(interval); // Clean up on component unmount
-  // }, [sound]);
 
   const fetchAndPlay = async () => {
     try {

@@ -1,19 +1,38 @@
 const reducer_function = (state: any, action: any) => {
     console.log("Dispatch received.");
+    // Conventions vary, but this one is rather common - the action argument
+    // should be an object with the type property; this determines what type
+    // of action to carry out on the state.  The action can have other properties;
+    // for example, some value to which some property of the state is to be changed
+
+    // Note that these functions only affect the state - things like the visible cursor
+    // position and playback rate of the audio must be made to depend on the state 
+    // (likely with useEffect) in order to work.
     switch (action.type) {
-        case 'reset':
+        // Example of dispatch call with no special parameters:
+        // this object-join notation causes state to only change in one property, playing,
+        // which becomes the opposite of what it was before.
+        case 'start/stop':
+            return {...state, ...{playing: !(state.playing)}}
+
+        // Example of dispatch call with special parameter:
+        // dispatch( {type:'change_reset', measure:'3'}) will leave
+        // state unchanged except for the resetMeasure property, which becomes 3
+        case 'change_reset':
+            return {...state, ...{resetMeasure: action.measure as number}}
+
+        // Multiple properties can be updated in tandem, as the playrate and position
+        // would be in every syncrhonization request
+        case 'increment':
+            return {...state, ...{playRate: action.rate as number, timestamp: action.time as number} }
+
         // When resetting, move the cursor, then adjust the timestamp accordingly and reset the playback rate
+        case 'reset':
             console.log("It should be resetting now.")
             var reset_time = 60 * state.time_signature.Numerator * (state.resetMeasure - 1) / state.score_tempo;
             return {...state, ...{playing: false, playRate:1.0, timestamp:reset_time } }
-        case 'start/stop':
-            return {...state, ...{playing: !(state.playing)}}
-        case 'increment':
-            return {...state, ...{playRate: action.rate as number, timestamp: action.time as number} }
         case 'cursor_update':
             return {...state, ...{cursorTimestamp: action.time as number}}
-        case 'change_reset':
-            return {...state, ...{resetMeasure: action.measure as number}}
         case 'change_tempo':
             return {...state, ...{tempo: action.tempo as number}}
         case 'update_piece_info':
@@ -22,18 +41,23 @@ const reducer_function = (state: any, action: any) => {
             return {...state, ...{sessionToken: action.token}}
         case 'new_audio':
             return {...state, ...{accompanimentSound: action.sound}}
+        
+        // Here, it's decided that the mechanism to change the score also resets the play
         case 'change_score':
-            console.log("Score is being changed")
             return {...state, ...{score: action.score, playing: false, timestamp: 0.0, playRate: 1.0 }}
+
+        // Gets list of scores - without overwriting uploaded score
         case 'new_scores_from_backend':
             var known_files = state.scores.map( (s: { filename: string }) => s.filename );
             var new_files = action.scores.filter( (filename: string) => !known_files.includes(filename) )
             return {...state, ...{scores: [...state.scores, new_files.map( (filename: string) => { return {
                 filename: filename, piece: filename.replace(".musicxml", "")
             }})]}}
+        
+        // Adds uploaded score's name to list
         case 'new_score_from_upload':
             return {...state, ...{scores: [...state.scores, action.score], score: action.score.filename}}
-        default:
+        default: // If no valid type, return state, otherwise the function returns null and the state is gone.
             return state;
     }
 }
