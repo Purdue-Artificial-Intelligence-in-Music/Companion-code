@@ -10,6 +10,7 @@ import { MeasureSetBox } from './components/MeasureSetter';
 import { Fraction } from 'opensheetmusicdisplay';
 import AudioRecorder from './components/AudioRecorder';
 import { Audio } from 'expo-av';
+import reducer_function from './Dispatch';
   
 // Define the main application component
 export default function App() {
@@ -43,29 +44,30 @@ export default function App() {
   ////////////////////////////////////////////////////////////////////////////////////
   // Main state - holds position in the piece, playback rate, etc.
   ////////////////////////////////////////////////////////////////////////////////////
-  const [state, dispatch] = useReducer( (state: any, action: any) => {
-    switch (action.type) {
-      case 'reset':
-        // When resetting, move the cursor, then adjust the timestamp accordingly and reset the playback rate
-        console.log("It should be resetting now.")
-        var reset_time = 0.0;
-        var ts = osdRef.current?.Sheet.SourceMeasures[0].ActiveTimeSignature;
-        if (ts !== undefined) {
-          reset_time = 60 * ts.Numerator * (state.resetMeasure - 1) / BPM;
+  const [state, dispatch] = useReducer( reducer_function,
+    {
+      playing:false,
+      resetMeasure:1,
+      playRate:1.0,
+      timestamp:0.0,
+      cursorTimestamp:0.0,
+      time_signature: new Fraction(4, 4, 0, false),
+      score:"air_on_the_g_string.musicxml",
+      sessionToken:"",
+      accompanimentSound:null,
+      tempo:100,
+      scores: [
+        {
+          filename: "air_on_the_g_string.musicxml",
+          piece: "Bach - Air on the G String",
+        },
+        {
+          filename: "twelve_duets.musicxml",
+          piece: "Mozart - Twelve Duets"
         }
-        return {...state, ...{playRate:1.0, timestamp:reset_time } }
-      case 'start/stop':
-        return {...state, ...{playing: !(state.playing)}}
-      case 'increment':
-        return {...state, ...{playRate: Number(action.rate), timestamp: Number(action.time)} }
-      case 'cursor_update':
-        return {...state, ...{cursorTimestamp: Number(action.time)}}
-      case 'change_reset':
-        return {...state, ...{resetMeasure: Number(action.measure)}}
-      default:
-        break;
+      ]
     }
-  }, {playing:false, resetMeasure:1, playRate:1.0, timestamp:0.0, cursorTimestamp:0.0 })
+  )
   
   //////////////////////////////////////////////////////////////
   // Action function for file uploader
