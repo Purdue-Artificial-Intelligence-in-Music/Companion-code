@@ -1,4 +1,5 @@
 const reducer_function = (state: any, action: any) => {
+    console.log("Dispatch received.");
     switch (action.type) {
         case 'reset':
         // When resetting, move the cursor, then adjust the timestamp accordingly and reset the playback rate
@@ -22,6 +23,7 @@ const reducer_function = (state: any, action: any) => {
         case 'new_audio':
             return {...state, ...{accompanimentSound: action.sound}}
         case 'change_score':
+            console.log("Score is being changed")
             return {...state, ...{score: action.score}}
         case 'new_scores_from_backend':
             var known_files = state.scores.map( (s: { filename: string }) => s.filename );
@@ -32,7 +34,7 @@ const reducer_function = (state: any, action: any) => {
         case 'new_score_from_upload':
             return {...state, ...{scores: [...state.scores, action.score], score: action.score.filename}}
         default:
-            break;
+            return state;
     }
 }
 

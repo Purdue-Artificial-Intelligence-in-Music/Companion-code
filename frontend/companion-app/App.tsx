@@ -4,7 +4,7 @@ import { StyleSheet, Text, View, SafeAreaView} from 'react-native'; // Imports s
 import React, { useEffect, useReducer, useRef, useState } from 'react'; // Imports React and hooks
 import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay'; // Imports the OpenSheetMusicDisplay library for rendering sheet music
 import {GET_Request, POST_Request, Play_Audio} from "./components/Api_Caller";
-import { Score_Select } from './Components';
+import { Score_Select } from './components/ScoreSelect';
 import { Start_Stop_Button } from './components/StartButton';
 import { MeasureSetBox } from './components/MeasureSetter';
 import { Fraction } from 'opensheetmusicdisplay';
@@ -123,7 +123,7 @@ export default function App() {
     }
 
     if (score) {
-      const selectedScore = scores.find((s) => s.filename === score);
+      const selectedScore = state.scores.find((s: {filename: string}) => s.filename === state.score);
       if (selectedScore) {
         // Create an instance of OpenSheetMusicDisplay, passing the reference to the container
         const osm = new OpenSheetMusicDisplay(
@@ -138,7 +138,7 @@ export default function App() {
 
         // Load the music XML file from the assets folder
         osm
-          .load("assets/" + score)
+          .load("assets/" + state.score)
           .then(() => {
             // Render the sheet music once it's loaded
             osm.render();
@@ -159,7 +159,7 @@ export default function App() {
 
     // Cleanup function to dispose of the OpenSheetMusicDisplay instance if needed
     return () => {};
-  }, [score]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
+  }, [state.score]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
 
   /////////////////////////////////////////////////////////////////////////////////
   // useEffect to tie the cursor position to the state
@@ -244,7 +244,7 @@ export default function App() {
       <Text style={styles.title}>Companion, the digital accompanist</Text>
       
       <View style={styles.button_wrapper}>
-        <Score_Select scores={scores} setScore={setScore} onFileUpload={handleFileUpload}/>
+        <Score_Select scores={scores} setScore={setScore} onFileUpload={handleFileUpload} state={state} dispatch={dispatch}/>
         <Start_Stop_Button state={state} dispatch={dispatch}
         button_style={styles.play_button} text_style={styles.button_text}
         />
