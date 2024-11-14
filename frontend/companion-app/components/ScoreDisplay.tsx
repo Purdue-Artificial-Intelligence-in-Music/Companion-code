@@ -50,6 +50,8 @@ export default function ScoreDisplay( { state, dispatch }:
               ...cursorRef.current.CursorOptions,
               ...{ follow: true },
             };
+            // TODO!  Find the piece's tempo and send that instead of constant 100
+            dispatch({type:'update_piece_info', time_signature:cursorRef.current.Iterator.CurrentMeasure.ActiveTimeSignature, tempo: 100});
           })
           .catch((error) => {
             // Handle errors in loading the music XML file
@@ -93,7 +95,7 @@ export default function ScoreDisplay( { state, dispatch }:
         // // If we are using the active BPM and time signature in the given score, uncomment:
         // ct += 60 * dt.RealValue * cursorRef.current?.Iterator.CurrentMeasure.ActiveTimeSignature.Denominator / cursorRef.current?.Iterator.CurrentBpm
         // // and remove the BPM and TSD arguments used in the below, and comment the below:
-        ct += 60 * dt.RealValue * state.time_signature.Denominator / state.tempo;
+        ct += 60 * dt.RealValue * state.time_signature.Denominator / state.score_tempo;
         console.log("ct:",ct);
         // // either way, the calculation is:
         // 60 secs/min * dt wholes * time signature denominator (beats/whole) / BPM (beats/minute) yields seconds
@@ -102,7 +104,7 @@ export default function ScoreDisplay( { state, dispatch }:
       cursorRef.current?.Iterator.moveToPreviousVisibleVoiceEntry(false);
       console.log("Cursor should be updating");
       cursorRef.current?.update();
-      dispatch( {type:'cursor_update', time:(60 * cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue * state.time_signature.Denominator / state.tempo)})
+      dispatch( {type:'cursor_update', time:(60 * cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue * state.time_signature.Denominator / state.score_tempo)})
     }  
                 
     // if (osdRef.current !== undefined && osdRef.current?.Sheet !== undefined) {

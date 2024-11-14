@@ -4,7 +4,7 @@ const reducer_function = (state: any, action: any) => {
         case 'reset':
         // When resetting, move the cursor, then adjust the timestamp accordingly and reset the playback rate
             console.log("It should be resetting now.")
-            var reset_time = 60 * state.time_signature.Numerator * (state.resetMeasure - 1) / state.tempo;
+            var reset_time = 60 * state.time_signature.Numerator * (state.resetMeasure - 1) / state.score_tempo;
             return {...state, ...{playing: false, playRate:1.0, timestamp:reset_time } }
         case 'start/stop':
             return {...state, ...{playing: !(state.playing)}}
@@ -16,8 +16,8 @@ const reducer_function = (state: any, action: any) => {
             return {...state, ...{resetMeasure: action.measure as number}}
         case 'change_tempo':
             return {...state, ...{tempo: action.tempo as number}}
-        case 'change_time_signature':
-            return {...state, ...{time_signature: action.time_signature}}
+        case 'update_piece_info':
+            return {...state, ...{time_signature: action.time_signature, score_tempo: action.tempo as number, tempo: action.tempo as number}}
         case 'new_session':
             return {...state, ...{sessionToken: action.token}}
         case 'new_audio':

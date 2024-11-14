@@ -2,32 +2,23 @@
 import { StatusBar } from 'expo-status-bar'; // Manages the status bar on mobile devices
 import { StyleSheet, Text, View, SafeAreaView} from 'react-native'; // Imports styling and layout components
 import React, { useEffect, useReducer, useRef, useState } from 'react'; // Imports React and hooks
-import { OpenSheetMusicDisplay, Cursor } from 'opensheetmusicdisplay'; // Imports the OpenSheetMusicDisplay library for rendering sheet music
 import {GET_Request, POST_Request, Play_Audio} from "./components/Api_Caller";
 import { Score_Select } from './components/ScoreSelect';
 import { Start_Stop_Button } from './components/StartButton';
 import { MeasureSetBox } from './components/MeasureSetter';
 import { Fraction } from 'opensheetmusicdisplay';
 import AudioRecorder from './components/AudioRecorder';
-import { Audio } from 'expo-av';
+import { AudioPlayerRefactored } from './components/AudioPlayerRefactored';
 import reducer_function from './Dispatch';
 import ScoreDisplay from './components/ScoreDisplay';
   
 // Define the main application component
 export default function App() {
-  
-
-  // This state *is* the audio player - access it at top-level
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-
-  
-
-  const UPDATE_INTERVAL = 500; // milliseconds between updates to timestamp and rate
 
   ////////////////////////////////////////////////////////////////////////////////////
   // Main state - holds position in the piece, playback rate, etc.
   ////////////////////////////////////////////////////////////////////////////////////
-  const [state, dispatch] = useReducer( reducer_function,
+  const [state, dispatch] = useReducer( reducer_function, // The reducer function is found in Dispatch.ts
     {
       playing:false,
       resetMeasure:1,
@@ -39,6 +30,7 @@ export default function App() {
       sessionToken:"",
       accompanimentSound:null,
       tempo:100,
+      score_tempo:100,
       scores: [
         {
           filename: "air_on_the_g_string.musicxml",
@@ -52,7 +44,14 @@ export default function App() {
     }
   )
 
-  // !!! TODO !!!
+  /////////////////////////////////////////////////////////
+  // The code below updates the timestamp but is not yet tied to the API
+  // This could be moved to any sub-component (e.g., ScoreDisplay, AudioPlayer)
+  // or made its own invisible component - OR,
+  // we will re-synchronize whenever the audiorecorder posts, in which case this should
+  // be handled there
+  const UPDATE_INTERVAL = 500; // milliseconds between updates to timestamp and rate
+
   const getAPIData = async () => {
     // try {
     //   const syncdata = await fetch("http://localhost:5000/synchronization",
@@ -78,30 +77,8 @@ export default function App() {
   useEffect(() => {
     if (state.playing) setTimeout(getAPIData, UPDATE_INTERVAL);
   }, [state.playing, state.timestamp])
-
-  ///////////////////////////////////////////////////////////////////////////////////////
-  // Two useEffects that tie the sound playback to the state
-  ///////////////////////////////////////////////////////////////////////////////////////
-  useEffect( () => {
-    const updateThePlayRate = async () => {
-      if (sound) {
-        await sound.setRateAsync(state.playRate, true);
-      }
-    }
-    updateThePlayRate();
-  }, [state.playRate])
-
-  useEffect( () => {
-    const updateWhetherPlaying = async () => {
-      if (sound) {
-        if (state.playing) await sound.playAsync()
-        else await sound.pauseAsync()
-      }
-    }
-    updateWhetherPlaying();
-  }, [state.playing])
-
-  // TODO:  Skip the point in sound when resetting?
+  // The "could be moved into any subcomponent" comment refers to the above
+  ///////////////////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////////////////////
   // Render the component's UI
@@ -109,7 +86,7 @@ export default function App() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Provides safe area insets for mobile devices */}
-      <AudioRecorder />
+      <AudioRecorder state={state} dispatch={dispatch}/>
       <Text style={styles.title}>Companion, the digital accompanist</Text>
       
       <View style={styles.button_wrapper}>
@@ -121,7 +98,6 @@ export default function App() {
           state={state} dispatch={dispatch} wrapper_style={styles.measure_box}
           text_input_style={styles.text_input} button_style={styles.reset_button} button_text_style={styles.button_text} label_text_style={styles.label}
         />
-        {/* <TimeStampBox timestamp={timestamp} setTimestamp={setTimestamp} style={styles.text_input}/> */}
       </View>
       <ScoreDisplay state={state} dispatch={dispatch}/>
       <StatusBar style="auto" />
@@ -129,7 +105,7 @@ export default function App() {
 
       { /* <GET_Request/>
       <POST_Request/> */ }
-      {/* <AudioPlayer/> */}
+      <AudioPlayerRefactored state={state} dispatch={dispatch}/>
     </SafeAreaView>
   );
 }
