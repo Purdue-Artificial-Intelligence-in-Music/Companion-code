@@ -17,18 +17,6 @@ export default function App() {
   // Create a reference to the SVG container where sheet music will be rendered
   const osmContainerRef = useRef<HTMLDivElement | null>(null); // Reference for the SVG container
 
-  // Directory of scores with filenames and piece names (names for the selection display)
-  const [scores, setScores] = useState([
-    {
-      filename: "air_on_the_g_string.musicxml",
-      piece: "Bach - Air on the G String",
-    },
-    { filename: "twelve_duets.musicxml", piece: "Mozart - Twelve Duets" },
-  ]);
-
-  // Create a state representing the file name of the current piece
-  const [score, setScore] = useState("air_on_the_g_string.musicxml");
-
   // This state *is* the audio player - access it at top-level
   const [sound, setSound] = useState<Audio.Sound | null>(null);
 
@@ -65,23 +53,6 @@ export default function App() {
       ]
     }
   )
-  
-  //////////////////////////////////////////////////////////////
-  // Action function for file uploader
-  const handleFileUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const xmlContent = e.target?.result as string;
-      const newScore = {
-        filename: file.name,
-        piece: file.name.replace(".musicxml", ""),
-        content: xmlContent,
-      };
-      setScores([...scores, newScore]); //append the new score to scores list
-      setScore(file.name);
-    };
-    reader.readAsText(file);
-  };
 
   // !!! TODO !!!
   const getAPIData = async () => {
@@ -122,7 +93,7 @@ export default function App() {
       }
     }
 
-    if (score) {
+    if (state.score) {
       const selectedScore = state.scores.find((s: {filename: string}) => s.filename === state.score);
       if (selectedScore) {
         // Create an instance of OpenSheetMusicDisplay, passing the reference to the container
@@ -244,7 +215,7 @@ export default function App() {
       <Text style={styles.title}>Companion, the digital accompanist</Text>
       
       <View style={styles.button_wrapper}>
-        <Score_Select scores={scores} setScore={setScore} onFileUpload={handleFileUpload} state={state} dispatch={dispatch}/>
+        <Score_Select state={state} dispatch={dispatch}/>
         <Start_Stop_Button state={state} dispatch={dispatch}
         button_style={styles.play_button} text_style={styles.button_text}
         />

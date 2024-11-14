@@ -24,7 +24,7 @@ const reducer_function = (state: any, action: any) => {
             return {...state, ...{accompanimentSound: action.sound}}
         case 'change_score':
             console.log("Score is being changed")
-            return {...state, ...{score: action.score}}
+            return {...state, ...{score: action.score, playing: false, timestamp: 0.0, playRate: 1.0 }}
         case 'new_scores_from_backend':
             var known_files = state.scores.map( (s: { filename: string }) => s.filename );
             var new_files = action.scores.filter( (filename: string) => !known_files.includes(filename) )
