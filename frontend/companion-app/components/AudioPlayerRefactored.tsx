@@ -1,32 +1,19 @@
 import { fetchData } from "./Api";
 import { View, Text, Button } from "react-native";
-import Slider from "@react-native-community/slider";
 import { useState, useEffect } from "react";
 import { Audio } from "expo-av";
 
-export function AudioPlayer() {
+export function AudioPlayerRefactored( {state, dispatch}:
+  {state: {playRate: number, timestamp: number, sound: Audio.Sound | null, playing: boolean },
+    dispatch: Function
+  }
+) {
   const [sample_rate, setSampleRate] = useState("");
   const [buffer, setBuffer] = useState();
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [playbackRate, setPlaybackRate] = useState(1.0); // Default rate of 1x
   const [currentPosition, setCurrentPosition] = useState(0); // Playback position in seconds
   const [duration, setDuration] = useState(0); // Total audio duration in seconds
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-
-    if (sound) {
-      // Set up interval to track playback position
-      interval = setInterval(async () => {
-        const status = await sound.getStatusAsync();
-        if (status.isLoaded) {
-          setCurrentPosition(status.positionMillis / 1000); // Convert to seconds
-          setDuration((status.durationMillis ?? 0) / 1000); // Convert to seconds
-        }
-      }, 1000); // Update every second
-    }
-
-    return () => clearInterval(interval); // Clean up on component unmount
-  }, [sound]);
 
   const fetchAndPlay = async () => {
     try {
@@ -43,7 +30,7 @@ export function AudioPlayer() {
       });
 
       // soundObject.setRateAsync(0.5, true);
-      setSound(soundObject);
+      dispatch( {type:'new_audio', sound:soundObject});
 
       const status = await soundObject.getStatusAsync();
       console.log(status);
@@ -59,28 +46,31 @@ export function AudioPlayer() {
     }
   };
 
-  const startAudio = async () => {
-    if (sound) {
-      await sound.playAsync();
+  ///////////////////////////////////////////////////////////////////////////////////////
+  // Two useEffects that tie the sound playback to the state
+  ///////////////////////////////////////////////////////////////////////////////////////
+  useEffect( () => {
+    const updateThePlayRate = async () => {
+      if (state.sound) {
+        await state.sound.setRateAsync(state.playRate, true);
+      }
     }
-  };
-  const stopAudio = async () => {
-    if (sound) {
-      await sound.pauseAsync();
-    }
-  };
+    updateThePlayRate();
+  }, [state.playRate])
 
-  const updatePlaybackRate = async (rate: number) => {
-    setPlaybackRate(rate);
-    if (sound) {
-      await sound.setRateAsync(rate, true); // Update playback speed
+  useEffect( () => {
+    const updateWhetherPlaying = async () => {
+      if (state.sound) {
+        if (state.playing) await state.sound.playAsync()
+        else await state.sound.pauseAsync()
+      }
     }
-  };
+    updateWhetherPlaying();
+  }, [state.playing])
+
   return (
     <View>
       <Button title="Get and play Audio" onPress={fetchAndPlay} />
-      <Button title="Resume Audio" onPress={startAudio} />
-      <Button title="Pause Audio" onPress={stopAudio} />
 
       <View
         style={{
@@ -90,24 +80,14 @@ export function AudioPlayer() {
         }}
       >
         <Text>0.1x</Text>
-        <Text>Current rate: {playbackRate.toFixed(2)}x</Text>
+        <Text>Current rate: {state.playRate.toFixed(2)}x</Text>
         <Text>5.0x</Text>
       </View>
-      <Slider
-        minimumValue={0.1}
-        maximumValue={5.0}
-        step={0.1}
-        value={playbackRate}
-        onValueChange={updatePlaybackRate}
-        minimumTrackTintColor="#1EB1FC"
-        maximumTrackTintColor="#1EB1FC"
-        thumbTintColor="#1EB1FC"
-      />
       <Text style={{ marginTop: 10 }}>
-        Position: {currentPosition.toFixed(1)}s / {duration.toFixed(1)}s
+        Position: {state.timestamp.toFixed(1)}s / {duration.toFixed(1)}s
       </Text>
       <Text style={{ marginTop: 10 }}>
-        Audio Status: {sound ? "Audio Loaded" : "Audio Unavailable"}
+        Audio Status: {state.sound ? "Audio Loaded" : "Audio Unavailable"}
       </Text>
     </View>
   );
