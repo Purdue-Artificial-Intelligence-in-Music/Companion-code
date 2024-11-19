@@ -11,6 +11,7 @@ import AudioRecorder from './components/AudioRecorder';
 import { AudioPlayerRefactored } from './components/AudioPlayerRefactored';
 import reducer_function from './Dispatch';
 import ScoreDisplay from './components/ScoreDisplay';
+import UtilsTest from './components/UtilsTest';
   
 // Define the main application component
 export default function App() {
@@ -94,6 +95,7 @@ export default function App() {
       <StatusBar style="auto" />
       {/* Automatically adjusts the status bar style */}
       <AudioPlayerRefactored state={state} dispatch={dispatch}/>
+      <UtilsTest/>
     </SafeAreaView>
   );
 }

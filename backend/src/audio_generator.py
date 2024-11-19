@@ -90,7 +90,6 @@ class AudioGenerator:
     """
 
     def __init__(self, score_path: str):
-
         if not os.path.exists(score_path):
             raise FileNotFoundError(f"File not found: {score_path}")
         if not (score_path.endswith('.musicxml') or score_path.endswith('.mid')):
@@ -98,8 +97,10 @@ class AudioGenerator:
 
         title = os.path.basename(score_path)
         if score_path.endswith('.musicxml'):
-            self.score_path = musicxml_to_midi(score_path, os.path.join(
-                'data', 'midi', title.replace('.musicxml', '.mid')))
+            mid_path = score_path.replace('.musicxml', '.mid')
+            mid_path = mid_path.replace('musicxml', 'midi')
+            print("mid_path: ", mid_path)
+            self.score_path = musicxml_to_midi(score_path, mid_path)
         else:
             self.score_path = score_path
 

@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, send_file
 import os
+from flask_cors import CORS
 import librosa
 import numpy as np
 import secrets
@@ -7,8 +8,10 @@ from src.audio_generator import AudioGenerator
 from src.synchronizer import Synchronizer
 
 app = Flask(__name__)
+CORS(app)
 
-MUSICXML_FOLDER = os.path.join('data', 'musicxml')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # setting a constant base directory
+MUSICXML_FOLDER = os.path.join(BASE_DIR, 'data', 'musicxml')
 SESSIONS = {}
 
 def generate_session_token():
@@ -46,18 +49,20 @@ def get_score(filename):
 @app.route('/synthesize-audio/<filename>/<int:tempo>', methods=['GET'])
 def synthesize_audio(filename, tempo):
     # Get the session token from the request headers
+    print("synthesize start")
     session_token = request.headers.get('session-token')
     if not session_token:
         return 'Missing or invalid session token', 401
     
     # Check if the MusicXML file exists
     file_path = os.path.join(MUSICXML_FOLDER, filename)
+    print("file_path", file_path)
     if not os.path.exists(file_path):
         return 'MusicXML file not found', 404
     
     # Generate the solo and accompaniment audio files
     generator = AudioGenerator(file_path)
-    output_dir = os.path.join('data', 'audio', filename.replace('.musicxml', ''))
+    output_dir = os.path.join(BASE_DIR, 'data', 'audio', filename.replace('.musicxml', ''))
     print(output_dir)
     generator.generate_audio(output_dir, tempo)
 
