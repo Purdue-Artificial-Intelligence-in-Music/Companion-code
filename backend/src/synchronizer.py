@@ -1,101 +1,112 @@
+import numpy as np
+import skfuzzy as fuzz
+import skfuzzy.control as ctrl
 from .score_follower import ScoreFollower
 from .audio_buffer import AudioBuffer
-from simple_pid import PID
+from filterpy.kalman import KalmanFilter
+
+
+class FuzzyLogicController:
+    """Fuzzy logic controller for adjusting playback rate."""
+
+    def __init__(self):
+        # Define fuzzy variables
+        self.error = ctrl.Antecedent(np.arange(-1.5, 1.5, 0.01), 'error')
+        self.playback_rate = ctrl.Consequent(np.arange(0.3, 1.8, 0.01), 'playback_rate')
+
+        # Define fuzzy membership functions for error
+        self.error['negative_large'] = fuzz.trapmf(self.error.universe, [-1.5, -1.5, -0.7, -0.3])
+        self.error['negative_small'] = fuzz.trimf(self.error.universe, [-0.5, -0.1, 0])
+        self.error['zero'] = fuzz.trimf(self.error.universe, [-0.1, 0, 0.1])
+        self.error['positive_small'] = fuzz.trimf(self.error.universe, [0, 0.1, 0.5])
+        self.error['positive_large'] = fuzz.trapmf(self.error.universe, [0.3, 0.7, 1.5, 1.5])
+
+        # Define fuzzy membership functions for playback rate
+        self.playback_rate['very_slow'] = fuzz.trapmf(self.playback_rate.universe, [0.3, 0.3, 0.5, 0.7])
+        self.playback_rate['slow'] = fuzz.trimf(self.playback_rate.universe, [0.5, 0.7, 1.0])
+        self.playback_rate['normal'] = fuzz.trimf(self.playback_rate.universe, [0.8, 1.0, 1.2])
+        self.playback_rate['fast'] = fuzz.trimf(self.playback_rate.universe, [1.0, 1.2, 1.5])
+        self.playback_rate['very_fast'] = fuzz.trapmf(self.playback_rate.universe, [1.3, 1.5, 1.8, 1.8])
+
+        # Define fuzzy rules
+        rule1 = ctrl.Rule(self.error['negative_large'], self.playback_rate['very_fast'])
+        rule2 = ctrl.Rule(self.error['negative_small'], self.playback_rate['fast'])
+        rule3 = ctrl.Rule(self.error['zero'], self.playback_rate['normal'])
+        rule4 = ctrl.Rule(self.error['positive_small'], self.playback_rate['slow'])
+        rule5 = ctrl.Rule(self.error['positive_large'], self.playback_rate['very_slow'])
+
+        # Create control system
+        self.playback_ctrl = ctrl.ControlSystem([rule1, rule2, rule3, rule4, rule5])
+        self.playback = ctrl.ControlSystemSimulation(self.playback_ctrl)
+
+    def get_playback_rate(self, error):
+        """Compute the playback rate based on fuzzy logic."""
+        self.playback.input['error'] = error
+        self.playback.compute()
+        return self.playback.output['playback_rate']
 
 
 class Synchronizer:
-    """Synchronize microphone and accompaniment audio
+    """Synchronize microphone and accompaniment audio with Kalman filter and fuzzy logic controller."""
 
-    Parameters
-    ----------
-    reference : str
-        Path to reference audio file
-    Kp : int, optional
-        Proportional gain for PID controller
-    Ki : int, optional
-        Integral gain for PID controller
-    Kd : int, optional
-        Derivative gain for PID controller
-    sample_rate : int, optional
-        Sample rate for audio file
-    channels : int, optional
-        Number of channels for audio file
-    win_length : int, optional
-        Window length for CENS feature generation
-    hop_length : int, optional
-        Hop length for phase vocoder
-    c : int, optional
-        Search width for OTW
-    max_run_count : int, optional
-        Slope constraint for OTW
-    diag_weight : int, optional
-        Diagonal weight for OTW. Values less than 2 bias toward diagonal steps.
-
-    Attributes
-    ----------
-    sample_rate : int
-        Sample rate for reference audio file and live audio
-    c : int
-        Search width for OTW
-    score_follower : ScoreFollower
-        ScoreFollower object to perform OTW
-    PID : simple_pid.PID
-        PID controller to adjust playback rate
-    """
-
-    def __init__(self, reference: str, Kp: int = 0.2, Ki: int = 0.00, Kd=0.0,
-                 sample_rate: int = 44100, channels: int = 1, win_length: int = 8192, hop_length: int = 2048, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4):
-
+    def __init__(self, reference: str, sample_rate: int = 44100, channels: int = 1,
+                 win_length: int = 8192, hop_length: int = 2048, c: int = 10,
+                 max_run_count: int = 3, diag_weight: int = 0.4):
         self.sample_rate = sample_rate
         self.c = c
 
-        # Create a score follower to track the soloist
-        self.score_follower = ScoreFollower(reference=reference,
-                                            c=c,
-                                            max_run_count=max_run_count,
-                                            diag_weight=diag_weight,
-                                            sample_rate=sample_rate,
-                                            win_length=win_length)
-        
-        # Create an audio buffer to store the live soloist audio
-        self.live_buffer = AudioBuffer(max_duration=600,
-                                          sample_rate=sample_rate,
-                                          channels=channels)
+        # Initialize score follower
+        self.score_follower = ScoreFollower(
+            reference=reference,
+            c=c,
+            max_run_count=max_run_count,
+            diag_weight=diag_weight,
+            sample_rate=sample_rate,
+            win_length=win_length
+        )
 
-        # PID Controller to adjust playback rate
-        self.PID = PID(Kp=Kp, Ki=Ki, Kd=Kd, setpoint=0, starting_output=1.0,
-                       output_limits=(1 / max_run_count, max_run_count),
-                       sample_time=win_length / sample_rate)
+        # Initialize audio buffer
+        self.live_buffer = AudioBuffer(
+            max_duration=600,
+            sample_rate=sample_rate,
+            channels=channels
+        )
+
+        # Initialize Kalman Filter
+        self.kf = KalmanFilter(dim_x=2, dim_z=1)
+        self.kf.x = np.array([0., 0.])  # Initial state
+        self.kf.F = np.array([[1., 1.], [0., 1.]])  # State transition matrix
+        self.kf.H = np.array([[1., 0.]])  # Measurement matrix
+        self.kf.P *= 1000.  # Covariance matrix
+        self.kf.R = 1  # Measurement noise
+        self.kf.Q = np.array([[0.1, 0.1], [0.1, 0.1]])  # Process noise covariance
+
+        # Initialize Fuzzy Logic Controller
+        self.fuzzy_controller = FuzzyLogicController()
 
     def step(self, frames, accompanist_time):
-        """
+        """Step function to update Kalman filter and fuzzy logic playback rate controller."""
+        self.live_buffer.write(frames)
+        estimated_time = self.score_follower.step(frames)
 
-        Parameters
-        ----------
-        frames : np.ndarray
-            Audio frames from the soloist
-        accompanist_time : float
-            Time in the accompanist audio
+        # Calculate raw error
+        raw_error = accompanist_time - estimated_time
 
-        Returns
-        -------
-        playback_rate : float
-            Playback rate for the accompanist audio
-        estimated_time : float
-            Estimated time in the soloist audio 
-        
-        """
-        self.live_buffer.write(frames)  # Save the live soloist audio
-        estimated_time = self.score_follower.step(frames)  # Perform OTW on the live soloist audio
-        
-        error = accompanist_time - estimated_time
-        playback_rate = self.PID(error)
+        # Smooth the error using Kalman filter
+        self.kf.predict()
+        self.kf.update([raw_error])
+        smoothed_error = self.kf.x[0]
+
+        # Adjust playback rate using fuzzy logic
+        playback_rate = self.fuzzy_controller.get_playback_rate(smoothed_error)
+        playback_rate = max(0.3, min(1.8, playback_rate))  # Clamp playback rate
 
         return playback_rate, estimated_time
 
     def get_live_time(self):
-        """Get the timestamp in the live soloist audio"""
+        """Get the timestamp in the live soloist audio."""
         return self.live_buffer.get_time()
 
     def save_performance(self, path):
+        """Save the performance audio."""
         self.live_buffer.save(path)
