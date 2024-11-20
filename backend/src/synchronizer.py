@@ -41,9 +41,26 @@ class FuzzyLogicController:
 
     def get_playback_rate(self, error):
         """Compute the playback rate based on fuzzy logic."""
+        
         self.playback.input['error'] = error
         self.playback.compute()
         return self.playback.output['playback_rate']
+    
+    def print_error_membership(self, error):
+        """Return the type of error based on its fuzzy membership."""
+
+        # Calculate the membership degrees for each fuzzy set
+        membership_degrees = {
+            'negative_large': fuzz.interp_membership(self.error.universe, self.error['negative_large'].mf, error),
+            'negative_small': fuzz.interp_membership(self.error.universe, self.error['negative_small'].mf, error),
+            'zero': fuzz.interp_membership(self.error.universe, self.error['zero'].mf, error),
+            'positive_small': fuzz.interp_membership(self.error.universe, self.error['positive_small'].mf, error),
+            'positive_large': fuzz.interp_membership(self.error.universe, self.error['positive_large'].mf, error),
+        }
+
+        # Determine which membership has the highest degree
+        error_type = max(membership_degrees, key=membership_degrees.get)
+        return error_type
 
 
 class Synchronizer:
@@ -74,12 +91,25 @@ class Synchronizer:
 
         # Initialize Kalman Filter
         self.kf = KalmanFilter(dim_x=2, dim_z=1)
-        self.kf.x = np.array([0., 0.])  # Initial state
-        self.kf.F = np.array([[1., 1.], [0., 1.]])  # State transition matrix
-        self.kf.H = np.array([[1., 0.]])  # Measurement matrix
-        self.kf.P *= 1000.  # Covariance matrix
-        self.kf.R = 1  # Measurement noise
-        self.kf.Q = np.array([[0.1, 0.1], [0.1, 0.1]])  # Process noise covariance
+
+        # Initial state (error and error rate)
+        self.kf.x = np.array([0., 0.])  # Replace with prior knowledge if available
+
+        # State transition matrix (F)
+        dt = 1  # Time step; replace with actual value if variable
+        self.kf.F = np.array([[1., dt], [0., 1.]])
+
+        # Measurement matrix (H)
+        self.kf.H = np.array([[1., 0.]])  # Only measuring the position (error)
+
+        # Covariance matrix (P)
+        self.kf.P = np.diag([10, 1])  # Higher uncertainty for position, less for velocity
+
+        # Measurement noise covariance (R)
+        self.kf.R = 0.5  # Adjust based on measurement noise variance
+
+        # Process noise covariance (Q)
+        self.kf.Q = np.array([[0.01, 0.], [0., 0.01]])  # Reduced process noise
 
         # Initialize Fuzzy Logic Controller
         self.fuzzy_controller = FuzzyLogicController()

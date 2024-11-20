@@ -4,6 +4,7 @@ from src.alignment_error import load_data, calculate_alignment_error
 from src.accompaniment_error import calculate_accompaniment_error
 import os
 import librosa
+import matplotlib.pyplot as plt
 
 if not os.path.exists('output'):
     os.makedirs('output')
@@ -33,6 +34,7 @@ synchronizer = Synchronizer(
 )
 
 accompanist_time = 0
+accompanist_errors = []
 
 # Start the synchronizer
 for i in range(0, source_audio.shape[-1], 8192):
@@ -45,13 +47,39 @@ for i in range(0, source_audio.shape[-1], 8192):
     estimated_times.append(estimated_time)
     accompanist_times.append(accompanist_time)
 
+    # Get fuzzy membership for the error
+    error = accompanist_time - estimated_time
+    fuzzy_membership = synchronizer.fuzzy_controller.print_error_membership(error)
+
+    # Calculate errors
+    accompanist_error = accompanist_time - estimated_time
+    accompanist_errors.append(accompanist_error)
+
+
     print(f'Soloist time: {soloist_time:.2f}, Estimated time: {estimated_time:.2f}, '
-          f'Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}')
+          f'Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}, '
+          f'Fuzzy membership: {fuzzy_membership}')
     output_file.write(f'Soloist time: {soloist_time:.2f}, Estimated time: {estimated_time:.2f}, '
-                      f'Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}\n')
+                      f'Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}, '
+                      f'Fuzzy membership: {fuzzy_membership}\n')
 
 synchronizer.save_performance(path='output/performance.wav')
 output_file.close()
+
+
+# Plot the error data
+plt.figure(figsize=(10, 6))
+plt.plot(accompanist_errors, label='Accompanist Error', color='red')
+plt.title('Error Plot')
+plt.xlabel('Frames')
+plt.ylabel('Error (seconds)')
+plt.legend()
+plt.grid()
+
+# Save the plot
+plt.savefig('output/error_plot.png')
+plt.show()
+
 
 df_alignment = load_data('backend/data/alignments/constant_tempo.csv')
 warping_path = np.asarray([estimated_times, soloist_times], dtype=np.float32).T
