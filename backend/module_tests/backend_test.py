@@ -9,7 +9,7 @@ class backend_tests(unittest.TestCase):
         app.testing = True
         self.client = app.test_client()
         os.makedirs(MUSICXML_FOLDER, exist_ok=True)
-        with open(os.path.join(MUSICXML_FOLDER, "test.musicxml"), w) as f:
+        with open(os.path.join(MUSICXML_FOLDER, "test.musicxml"), "w") as f:
             # This is 1 measure with 1 note at middle C in 4/4 time
             f.write("""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
                     <!DOCTYPE score-partwise PUBLIC
