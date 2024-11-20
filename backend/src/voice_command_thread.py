@@ -1,6 +1,6 @@
 import threading
 import time
-from audio_buffer import AudioBuffer
+from .audio_buffer import AudioBuffer
 from transformers import pipeline
 import numpy as np
 
