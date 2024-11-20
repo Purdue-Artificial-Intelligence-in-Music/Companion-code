@@ -5,6 +5,41 @@ info:
   version: 1.0.0
 
 paths:
+  /start-session:
+    post:
+      summary: Start a new session
+      description: Starts a new session and returns a unique session token to identify the client and maintain state.
+      responses:
+        '200':
+          description: Successful response with a unique session token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_token:
+                    type: string
+                    description: A unique session token to identify the client and maintain state.
+        '500':
+          description: Internal server error.
+  /stop-session:
+    post:
+      summary: Stop the current session
+      description: Stops the current session and clears the session token from the server.
+      parameters:
+        - name: session-token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: A unique session token to identify the client and maintain state.
+      responses:
+        '200':
+          description: Successful response.
+        '401':
+          description: Missing or invalid session token.
+        '500':
+          description: Internal server error.
   /scores:
     get:
       summary: Get list of available MusicXML files
@@ -87,6 +122,9 @@ paths:
                       type: number
                       format: float
                       description: An array of floats representing the synthesized accompaniment audio.
+                  sample_rate:
+                    type: integer
+                    description: The sample rate of the synthesized audio.
         '400':
           description: Invalid request data.
         '401':

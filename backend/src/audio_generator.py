@@ -141,7 +141,7 @@ class AudioGenerator:
             fluidsynth_command = [
                 "fluidsynth",
                 "-ni",
-                os.path.join("soundfonts", "FluidR3_GM", "FluidR3_GM.sf2"),
+                os.path.join("soundfonts", "FluidR3_GM.sf2"),
                 temp_midi_file,
                 "-F",
                 output_audio_file,
@@ -161,7 +161,7 @@ class AudioGenerator:
 if __name__ == '__main__':
 
     SCORE = os.path.join('data', 'musicxml', 'twelve_duets.musicxml')
-    OUTPUT_DIR = os.path.join('data', 'audio', 'twelve_duets')
+    OUTPUT_DIR = os.path.join('data', 'audio', 'test')
     SAMPLE_RATE = 44100
     TEMPO = 120
 
