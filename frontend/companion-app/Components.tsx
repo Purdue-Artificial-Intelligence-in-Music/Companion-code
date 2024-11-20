@@ -38,7 +38,7 @@ export function Score_Select({
           label: score.piece,
           value: score.filename,
         }))}
-        placeholder={{ label: "Select a score", value: null }}
+        placeholder={{ label: "Select a score", value: "air_on_the_g_string.musicxml" }}
       />
       <Text>Or upload a new score:</Text>
       <input type="file" accept=".musicxml" onChange={handleFileUpload} />
@@ -65,7 +65,7 @@ export function Play_Button({
   setCursorPos: Function;
   osdRef: MutableRefObject<OpenSheetMusicDisplay | null>;
 }) {
-  const timeoutRef = useRef<Number>();
+  const timeoutRef = useRef<number>();
 
   function find_the_time() {
     if (my_cursor.current && my_cursor.current.NotesUnderCursor().length > 0) {
