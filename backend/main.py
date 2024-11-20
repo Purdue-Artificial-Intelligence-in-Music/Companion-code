@@ -15,8 +15,11 @@ estimated_times = []
 accompanist_times = []
 playback_rates = []
 
-reference = os.path.join('backend', 'data', 'audio', 'air_on_the_g_string', 'synthesized', 'solo.wav')
-source = os.path.join('backend', 'data', 'audio', 'air_on_the_g_string', 'live', 'constant_tempo.wav')
+# reference = os.path.join('backend', 'data', 'audio', 'air_on_the_g_string', 'synthesized', 'solo.wav')
+reference = os.path.join('backend', 'data', 'audio', 'twelve_duets', 'synthesized', 'solo.wav')
+# source = os.path.join('backend', 'data', 'audio', 'air_on_the_g_string', 'live', 'constant_tempo.wav')
+source = os.path.join('backend', 'data', 'audio', 'twelve_duets', 'live', 'constant_tempo.wav')
+
 
 source_audio, _ = librosa.load(source, sr=44100)
 source_audio = source_audio.reshape((1, -1))

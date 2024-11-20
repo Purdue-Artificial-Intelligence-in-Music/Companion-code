@@ -93,10 +93,10 @@ class Synchronizer:
         self.kf = KalmanFilter(dim_x=2, dim_z=1)
 
         # Initial state (error and error rate)
-        self.kf.x = np.array([0., 0.])  # Replace with prior knowledge if available
+        self.kf.x = np.array([0., 0.]) 
 
         # State transition matrix (F)
-        dt = 1  # Time step; replace with actual value if variable
+        dt = 1  # Time step;
         self.kf.F = np.array([[1., dt], [0., 1.]])
 
         # Measurement matrix (H)
