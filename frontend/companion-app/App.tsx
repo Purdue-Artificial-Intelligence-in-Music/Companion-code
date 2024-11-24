@@ -84,7 +84,7 @@ export default function App() {
       
       <View style={styles.button_wrapper}>
         <Score_Select state={state} dispatch={dispatch}/>
-        <TempoBox state={state} dispatch={dispatch} wrapper_style={styles.measure_box} text_input_style={styles.text_input} label_text_style={styles.label}/>
+        <TempoBox state={state} dispatch={dispatch} wrapper_style={styles.tempo_box} text_input_style={styles.text_input} label_text_style={styles.label}/>
         <Start_Stop_Button state={state} dispatch={dispatch}
         button_style={styles.play_button} text_style={styles.button_text}
         />
@@ -149,6 +149,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '40%',
     flex: 0.4,
+    height: '80%',
+  },
+  tempo_box: {
+    flexDirection: 'row',
+    padding: 10,
+    justifyContent: 'space-between',
+    width: '20%',
+    flex: 0.2,
     height: '80%',
   },
   text_input: {
