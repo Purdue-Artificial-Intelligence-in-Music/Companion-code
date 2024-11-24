@@ -1,4 +1,4 @@
-import { View, Text } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { useEffect } from "react";
 import { Audio } from "expo-av";
 
@@ -34,19 +34,29 @@ export function AudioPlayerRefactored( {state}:
 
   return (
     <View
-      style={{
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginTop: 20,
-      }}
+      style={styles.container}
     >
-      <Text>Current rate: {state.playRate.toFixed(2)}x</Text>
-      <Text style={{ marginTop: 10 }}>
+      <Text style={styles.text}>
+        Current rate: {state.playRate.toFixed(2)}x
+      </Text>
+      <Text style={styles.text}>
         Position: {state.timestamp.toFixed(1)}s
       </Text>
-      <Text style={{ marginTop: 10 }}>
+      <Text style={styles.text}>
         Audio Status: {state.sound ? "Audio Loaded" : "Audio Unavailable"}
       </Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: "row",
+    justifyContent: "space-evenly",
+    marginTop: 10,
+    width: "60%"
+  },
+  text: {
+    textAlign: "center"
+  }
+})
