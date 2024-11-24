@@ -29,7 +29,8 @@ const reducer_function = (state: any, action: any) => {
         // When resetting, move the cursor, then adjust the timestamp accordingly and reset the playback rate
         case 'reset':
             console.log("It should be resetting now.")
-            var reset_time = 60 * state.time_signature.Numerator * (state.resetMeasure - 1) / state.score_tempo;
+            var reset_time = 60 * state.time_signature.Numerator * (state.resetMeasure - 1) / state.synth_tempo;
+            state.sound?.setPositionAsync(reset_time * 1000)
             return {...state, ...{playing: false, playRate:1.0, timestamp:reset_time } }
         case 'cursor_update':
             return {...state, ...{cursorTimestamp: action.time as number}}
