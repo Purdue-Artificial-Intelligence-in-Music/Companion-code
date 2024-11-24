@@ -6,6 +6,7 @@ import {GET_Request, POST_Request, Play_Audio} from "./components/Api_Caller";
 import { Score_Select } from './components/ScoreSelect';
 import { Start_Stop_Button } from './components/StartButton';
 import { MeasureSetBox } from './components/MeasureSetter';
+import { TempoBox } from './components/TempoBox';
 import { Fraction } from 'opensheetmusicdisplay';
 import AudioRecorder from './components/AudioRecorder';
 import { AudioPlayerRefactored } from './components/AudioPlayerRefactored';
@@ -35,8 +36,9 @@ export default function App() {
       score:"air_on_the_g_string.musicxml",
       sessionToken:"",
       accompanimentSound:null,
-      tempo:100,
-      score_tempo:100,
+      synth_tempo:100, // the tempo of the synthesized audio
+      tempo:100, // the tempo in the tempo box (even if changed more recently)
+      score_tempo:100, // the tempo in the musical score
       scores: [
         {
           filename: "air_on_the_g_string.musicxml",
@@ -82,6 +84,7 @@ export default function App() {
       
       <View style={styles.button_wrapper}>
         <Score_Select state={state} dispatch={dispatch}/>
+        <TempoBox state={state} dispatch={dispatch} wrapper_style={styles.measure_box} text_input_style={styles.text_input} label_text_style={styles.label}/>
         <Start_Stop_Button state={state} dispatch={dispatch}
         button_style={styles.play_button} text_style={styles.button_text}
         />
