@@ -90,14 +90,14 @@ export default function ScoreDisplay( { state, dispatch }:
         );
         // dt is a fraction indicating how much - in whole notes - the iterator moved
 
-        ct += 60 * dt.RealValue * state.time_signature.Denominator / state.score_tempo;
+        ct += 60 * dt.RealValue * state.time_signature.Denominator / state.synth_tempo;
         console.log("ct:",ct);
         ts_meas = Fraction.plus(ts_meas, dt);
       }
       cursorRef.current?.Iterator.moveToPreviousVisibleVoiceEntry(false);
       console.log("Cursor should be updating");
       cursorRef.current?.update();
-      dispatch( {type:'cursor_update', time:(60 * cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue * state.time_signature.Denominator / state.score_tempo)})
+      dispatch( {type:'cursor_update', time:(60 * cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue * state.time_signature.Denominator / state.synth_tempo)})
     }  
   }, [state.timestamp])
 
