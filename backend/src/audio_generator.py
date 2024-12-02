@@ -24,6 +24,9 @@ def check_soundfont_installed():
 def musicxml_to_midi(input_path, output_path):
     score = converter.parse(input_path)
     midi_file = midi.translate.streamToMidiFile(score)
+    # make sure the output directory exists
+    if not os.path.exists(os.path.dirname(output_path)):
+        os.makedirs(os.path.dirname(output_path))
     midi_file.open(output_path, "wb")
     midi_file.write()
     midi_file.close()
