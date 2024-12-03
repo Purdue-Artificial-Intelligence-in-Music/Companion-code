@@ -3,6 +3,9 @@ import os
 from flask_cors import CORS
 import librosa
 import numpy as np
+import io
+import base64
+import soundfile as sf
 import secrets
 from src.audio_generator import AudioGenerator
 from src.synchronizer import Synchronizer
@@ -86,7 +89,22 @@ def synthesize_audio(filename, tempo):
     # Return the accompaniment audio data to the client
     accompaniment, sr = librosa.load(os.path.join(output_dir, 'instrument_1.wav'), sr=44100, mono=True, dtype=np.float32)
     accompaniment = accompaniment.tolist()
-    return jsonify({'audio_data': accompaniment, 'sample_rate': sr}), 200
+    # print(accompaniment)
+    
+    # Converting accompaniment buffer into an encoded format
+    buffer_io = io.BytesIO()
+    sf.write(buffer_io, accompaniment, sr, format='WAV')
+    buffer_io.seek(0)
+    
+    #need to return the audio buffer in base64 format for compatability with native audio players
+    audio_base64 = base64.b64encode(buffer_io.read()).decode('utf-8')
+    
+    # print(audio_base64)
+    data = {
+        "buffer" : audio_base64,
+        "sr" : sr
+    }
+    return jsonify(data), 200
 
 @app.route('/synchronization', methods=['POST'])
 def synchronization():

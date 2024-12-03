@@ -1,4 +1,3 @@
-// utilsTest.tsx
 import React, { useState } from 'react';
 import {
   startSession,
@@ -7,7 +6,7 @@ import {
   getScore,
   synthesizeAudio,
   synchronize,
-} from './Utils'; // Importing functions from your utils.tsx
+} from './Utils'; // Importing functions from Utils.tsx
 
 const UtilsTest = () => {
   // State for storing inputs and API responses
