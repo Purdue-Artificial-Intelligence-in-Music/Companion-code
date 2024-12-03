@@ -94,8 +94,8 @@ export default function App() {
       <ScoreDisplay state={state} dispatch={dispatch}/>
       <StatusBar style="auto" />
       {/* Automatically adjusts the status bar style */}
-      <AudioPlayerRefactored state={state} dispatch={dispatch}/>
-      <UtilsTest/>
+      {/* <AudioPlayerRefactored state={state} dispatch={dispatch}/> */}
+      {/* <UtilsTest/> */}
     </SafeAreaView>
   );
 }
