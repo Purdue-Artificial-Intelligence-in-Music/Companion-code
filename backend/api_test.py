@@ -43,11 +43,15 @@ try:
 except requests.RequestException as e:
     print(f"Exception occurred while getting music scores: {e}")
 
+headers = {
+    "session-token": session_token
+}
+
 # Step 3: Fetch a specific music score
 score_filename = input("Enter the name of the music score file to fetch: ")
 score_url = f"{BASE_URL}/score/{score_filename}"
 try:
-    score_response = requests.get(score_url)
+    score_response = requests.get(score_url, headers=headers)
     if score_response.status_code == 200:
         with open(os.path.join('output', score_filename), 'wb') as f:
             f.write(score_response.content)

@@ -25,6 +25,8 @@ def start_session():
     try:
         # Generate a new session token
         session_token = generate_session_token()
+        # Create a new session entry in the SESSIONS dictionary
+        SESSIONS[session_token] = {}
         # Return the session token to the client
         return jsonify({'session_token': session_token}), 200
     except Exception as e:
@@ -40,6 +42,8 @@ def get_scores():
 
 @app.route('/score/<filename>', methods=['GET'])
 def get_score(filename):
+    session_token = request.headers.get('session-token')
+    SESSIONS[session_token]['filename'] = filename
     try:
         file_path = os.path.join(MUSICXML_FOLDER, filename)
         if os.path.exists(file_path):
@@ -49,12 +53,13 @@ def get_score(filename):
     except Exception as e:
         return str(e), 500
 
+
 @app.route('/synthesize-audio/<filename>/<int:tempo>', methods=['GET'])
 def synthesize_audio(filename, tempo):
     # Get the session token from the request headers
     print("synthesize start")
     session_token = request.headers.get('session-token')
-    if not session_token:
+    if not session_token or session_token not in SESSIONS:
         return 'Missing or invalid session token', 401
     
     # Check if the MusicXML file exists
@@ -63,12 +68,12 @@ def synthesize_audio(filename, tempo):
     if not os.path.exists(file_path):
         return 'MusicXML file not found', 404
     
-    # Generate the solo and accompaniment audio files
+    SESSIONS[session_token]['filename'] = filename
+
     generator = AudioGenerator(file_path)
     output_dir = os.path.join(BASE_DIR, 'data', 'audio', filename.replace('.musicxml', ''))
     print(output_dir)
     generator.generate_audio(output_dir, tempo)
-
     # Create a synchronizer object
     reference = os.path.join(output_dir, 'instrument_0.wav')
 
@@ -84,7 +89,7 @@ def synthesize_audio(filename, tempo):
                                 max_run_count=3,
                                 diag_weight=0.4)
     # Store the synchronizer in the SESSIONS dictionary
-    SESSIONS[session_token] = {'synchronizer': synchronizer}
+    SESSIONS[session_token]['synchronizer'] = synchronizer
 
     # Return the accompaniment audio data to the client
     accompaniment, sr = librosa.load(os.path.join(output_dir, 'instrument_1.wav'), sr=44100, mono=True, dtype=np.float32)
@@ -120,7 +125,7 @@ def synchronization():
     
     # Get the synchronizer object
 
-    synchronizer: Synchronizer = session_data['synchronizer']
+    synchronizer: Synchronizer = session_data.get('synchronizer')
 
     if not synchronizer:
         return 'Synchronizer not found', 404

@@ -1,0 +1,28 @@
+name: lint frontend code with eslint
+
+on:
+  push:
+    branches:
+      - main
+    paths: # only run on changes to the frontend/companion-app directory
+      - 'frontend/companion-app/**'
+  pull_request:
+    branches:
+      - main
+    paths: # only run on changes to the frontend/companion-app directory
+      - 'frontend/companion-app/**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code to be merged with main
+        uses: actions/checkout@v3
+      
+      - name: Install dependencies
+        working-directory: frontend/companion-app
+        run: npm install
+
+      - name: Run ESLint
+        working-directory: frontend/companion-app
+        run: npm run lint

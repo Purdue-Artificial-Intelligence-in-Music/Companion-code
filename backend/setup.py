@@ -12,7 +12,7 @@ response = requests.get(url)
 if response.status_code == 200:
     if not os.path.exists('soundfonts'):
         os.mkdir('soundfonts')
-    zip_path = os.path.join('soundfonts', 'soundfontsFluidR3_GM.zip')
+    zip_path = os.path.join('soundfonts', 'FluidR3_GM.zip')
 
     with open(zip_path, 'wb') as file:
         file.write(response.content)
