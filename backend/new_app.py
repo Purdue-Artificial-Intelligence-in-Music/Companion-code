@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
 import os
 from flask_cors import CORS
 import librosa
@@ -11,7 +12,7 @@ from src.audio_generator import AudioGenerator
 from src.synchronizer import Synchronizer
 
 app = Flask(__name__)
-CORS(app)
+CORS(app)  # Enable CORS for all routes and origins
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # setting a constant base directory
 MUSICXML_FOLDER = os.path.join(BASE_DIR, 'data', 'musicxml')
@@ -42,8 +43,8 @@ def get_scores():
 
 @app.route('/score/<filename>', methods=['GET'])
 def get_score(filename):
-    session_token = request.headers.get('session-token')
-    SESSIONS[session_token]['filename'] = filename
+    # session_token = request.headers.get('session-token')
+    # SESSIONS[session_token]['filename'] = filename
     try:
         file_path = os.path.join(MUSICXML_FOLDER, filename)
         if os.path.exists(file_path):

@@ -12,10 +12,50 @@ import AudioRecorder from "./components/AudioRecorder";
 import { AudioPlayerRefactored } from "./components/AudioPlayerRefactored";
 import reducer_function from "./Dispatch";
 import ScoreDisplay from "./components/ScoreDisplay";
-import UtilsTest from "./components/UtilsTest";
+
+async function getSessionToken(): Promise<string | null> {
+  try {
+    const response = await fetch("http://127.0.0.1:5000/start-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}), // Include any required payload here
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const data = await response.json(); // Parse JSON response
+    console.log("Session data:", data);
+
+    if (data.session_token) {
+      console.log("Session token:", data.session_token);
+      return data.session_token;
+    } else {
+      console.error("Session token not found in response.");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching session token:", error);
+    return null;
+  }
+}
 
 // Define the main application component
 export default function App() {
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchSessionToken() {
+      const token = await getSessionToken();
+      setSessionToken(token); // Store the token in state
+    }
+
+    fetchSessionToken();
+  }, []);
+  // const sessionToken = response.data['session_token'];
   ////////////////////////////////////////////////////////////////////////////////////
   // Main state - holds position in the piece, playback rate, etc.
   ////////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +75,7 @@ export default function App() {
       cursorTimestamp: 0.0,
       time_signature: new Fraction(4, 4, 0, false),
       score: "air_on_the_g_string.musicxml",
-      sessionToken: "",
+      sessionToken: sessionToken,
       accompanimentSound: null,
       synth_tempo: 100, // the tempo of the synthesized audio
       tempo: 100, // the tempo in the tempo box (even if changed more recently)
@@ -111,8 +151,6 @@ export default function App() {
       <ScoreDisplay state={state} dispatch={dispatch} />
       <StatusBar style="auto" />
       {/* Automatically adjusts the status bar style */}
-      {/* <AudioPlayerRefactored state={state} dispatch={dispatch}/> */}
-      {/* <UtilsTest/> */}
       <AudioPlayerRefactored state={state} />
     </SafeAreaView>
   );

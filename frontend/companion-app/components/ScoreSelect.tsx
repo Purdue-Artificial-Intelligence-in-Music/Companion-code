@@ -1,13 +1,35 @@
 import { View, Text } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
+import React, { useEffect } from "react";
 
 export function Score_Select({
   state,
   dispatch,
 }: {
-  state: { score: string; scores: Array<{ filename: string; piece: string }> };
+  state: { score: string; scores: { filename: string; piece: string }[] };
   dispatch: Function;
 }) {
+  // Fetch scores from the backend
+  useEffect(() => {
+    const fetchScores = async () => {
+      try {
+        const response = await fetch("http://127.0.0.1:5000/scores"); // Replace with your backend endpoint
+        console.log("Response is: ", response);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        const scores = data.files;
+        console.log("Scores are: ", scores);
+        dispatch({ type: "set_scores", scores });
+      } catch (error) {
+        console.error("Failed to fetch scores:", error);
+      }
+    };
+
+    fetchScores();
+  }, [dispatch]);
+
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
