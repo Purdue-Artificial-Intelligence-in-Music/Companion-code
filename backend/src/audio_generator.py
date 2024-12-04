@@ -146,7 +146,7 @@ class AudioGenerator:
             fluidsynth_command = [
                 "fluidsynth",
                 "-ni",
-                os.path.join(BASE_DIR, "soundfonts", "FluidR3_GM.sf2"),
+                os.path.join("soundfonts", "FluidR3_GM.sf2"),
                 temp_midi_file,
                 "-F",
                 output_audio_file,
