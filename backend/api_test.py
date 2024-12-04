@@ -3,6 +3,8 @@ import numpy as np
 import soundfile as sf
 import librosa 
 import os
+import base64
+import io
 
 # Define the base URL for the Flask application
 BASE_URL = "http://127.0.0.1:5000"
@@ -71,13 +73,20 @@ headers = {
 try:
     audio_response = requests.get(synthesize_audio_url, headers=headers)
     if audio_response.status_code == 200:
-        source_audio = audio_response.json().get('audio_data')
-        sample_rate = audio_response.json().get('sample_rate')
+        source_audio = audio_response.json().get('buffer')
+        sample_rate = audio_response.json().get('sr')
         if source_audio:
             print("Audio data received successfully")
             # Process the audio data as needed
-            source_audio = np.array(source_audio, dtype=np.float32)
-            sf.write("output/synthesized_accompaniment.wav", source_audio, sample_rate)
+            # source_audio = np.array(source_audio, dtype=np.float32)
+            # Decode the audio data and save it to a WAV file
+            audio_binary = base64.b64decode(source_audio)
+
+            # Read the WAV data from the binary data
+            buffer_io = io.BytesIO(audio_binary)
+            audio, sample_rate = sf.read(buffer_io)
+
+            sf.write("output/synthesized_accompaniment.wav", audio, sample_rate)
         else:
             print("Failed to get audio data")
     else:

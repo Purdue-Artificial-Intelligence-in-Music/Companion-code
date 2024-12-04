@@ -3,17 +3,20 @@ import { View, Text, TextInput, Button, Pressable } from "react-native";
 import Slider from "@react-native-community/slider";
 import { useState } from "react";
 import { Audio } from "expo-av";
+import { startSession, stopSession, getScores, getScore, synthesizeAudio, synchronize } from "./Utils";
 
 export function GET_Request() {
   const [output, setOutput] = useState("");
 
   const handlePress = async () => {
-    try {
+    /*try {
       const data = await fetchData("http://localhost:5000/getData"); // Adjust URL as needed
       setOutput(data); // Update state with the fetched data
     } catch (error) {
       setOutput("Error fetching data"); // Handle error case
-    }
+    }*/
+    let res = await startSession();
+    setOutput("Token: " + res['session_token']);
   };
   return (
     <Pressable onPress={handlePress}>
@@ -27,7 +30,7 @@ export function POST_Request() {
   const [response, setResponse] = useState("");
 
   const handlePostRequest = async () => {
-    try {
+    /*try {
       const response = await fetch("http://localhost:5000/squareInt", {
         method: "POST",
         headers: {
@@ -41,7 +44,9 @@ export function POST_Request() {
     } catch (error) {
       console.error("Error making POST request:", error);
       setResponse("Error making POST request");
-    }
+    }*/
+    let res = await startSession();
+    setResponse("Token: " + res['session_token']);
   };
 
   return (
