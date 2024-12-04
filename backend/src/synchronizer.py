@@ -89,27 +89,30 @@ class Synchronizer:
             channels=channels
         )
 
-        # Initialize Kalman Filter
-        self.kf = KalmanFilter(dim_x=2, dim_z=1)
+        self.kf = KalmanFilter(dim_x=3, dim_z=1)
 
-        # Initial state (error and error rate)
-        self.kf.x = np.array([0., 0.]) 
+        # Initial state
+        self.kf.x = np.array([0., 0., 0.])  # [position, velocity, acceleration]
 
         # State transition matrix (F)
-        dt = 1  # Time step;
-        self.kf.F = np.array([[1., dt], [0., 1.]])
+        dt = 1  # Time step
+        self.kf.F = np.array([[1., dt, 0.5 * dt**2],
+                              [0., 1., dt],
+                              [0., 0., 1.]])
 
-        # Measurement matrix (H)
-        self.kf.H = np.array([[1., 0.]])  # Only measuring the position (error)
+        # Measurement matrix (H) - measuring position only
+        self.kf.H = np.array([[1., 0., 0.]])
 
         # Covariance matrix (P)
-        self.kf.P = np.diag([10, 1])  # Higher uncertainty for position, less for velocity
+        self.kf.P = np.diag([10, 1, 0.5])  # Higher uncertainty for position
 
         # Measurement noise covariance (R)
         self.kf.R = 0.5  # Adjust based on measurement noise variance
 
         # Process noise covariance (Q)
-        self.kf.Q = np.array([[0.01, 0.], [0., 0.01]])  # Reduced process noise
+        self.kf.Q = np.array([[0.01, 0., 0.],
+                              [0., 0.01, 0.],
+                              [0., 0., 0.01]])  # Reduced process noise
 
         # Initialize Fuzzy Logic Controller
         self.fuzzy_controller = FuzzyLogicController()
@@ -129,7 +132,7 @@ class Synchronizer:
 
         # Adjust playback rate using fuzzy logic
         playback_rate = self.fuzzy_controller.get_playback_rate(smoothed_error)
-        playback_rate = max(0.3, min(1.8, playback_rate))  # Clamp playback rate
+        playback_rate = max(0.3, min(1.8, playback_rate))  # Clamp playback rate for keeping playback rate within 0.3 and 1.8
 
         return playback_rate, estimated_time
 
