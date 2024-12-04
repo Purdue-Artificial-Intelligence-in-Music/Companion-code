@@ -40,7 +40,7 @@ class TestSynchronizer(unittest.TestCase):
         # Assert that live_buffer.write was called with correct arguments
         self.synchronizer.live_buffer.write.assert_called_once_with(frames)
 
-        self.assertEqual(playback_rate, 1.0)
+        self.assertAlmostEqual(playback_rate, 1.0, places=6)
         self.assertEqual(estimated_time, soloist_time)
 
     def test_save_performance(self):

@@ -45,3 +45,6 @@ coverage
 transformers
 # may need for this project's cicd
 pylint
+filterpy
+scikit-fuzzy
+networkx

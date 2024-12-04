@@ -4,42 +4,44 @@ from src.alignment_error import load_data, calculate_alignment_error
 from src.accompaniment_error import calculate_accompaniment_error
 import os
 import librosa
+import matplotlib.pyplot as plt
 
 if not os.path.exists('output'):
     os.makedirs('output')
-output_file = open('output\\output.txt', 'w')
+output_file = open('output/output.txt', 'w')
 
 soloist_times = []
 estimated_times = []
 accompanist_times = []
 playback_rates = []
 
-reference = os.path.join('data', 'audio', 'air_on_the_g_string', 'synthesized', 'solo.wav')
-source = os.path.join('data', 'audio', 'air_on_the_g_string', 'live', 'constant_tempo.wav')
+# reference = os.path.join('backend', 'data', 'audio', 'air_on_the_g_string', 'synthesized', 'solo.wav')
+reference = os.path.join('backend', 'data', 'audio', 'twelve_duets', 'synthesized', 'solo.wav')
+# source = os.path.join('backend', 'data', 'audio', 'air_on_the_g_string', 'live', 'constant_tempo.wav')
+source = os.path.join('backend', 'data', 'audio', 'twelve_duets', 'live', 'constant_tempo.wav')
+
 
 source_audio, _ = librosa.load(source, sr=44100)
 source_audio = source_audio.reshape((1, -1))
 
-# create a synchronizer object
-synchronizer = Synchronizer(reference=reference,
-                            Kp=0.05,
-                            Ki=0.0,
-                            Kd=0.0,
-                            sample_rate=44100,
-                            channels=1,
-                            win_length=8192,
-                            hop_length=2048,
-                            c=50,
-                            max_run_count=3,
-                            diag_weight=0.4)
+# Create a Synchronizer object
+synchronizer = Synchronizer(
+    reference=reference,
+    sample_rate=44100,
+    channels=1,
+    win_length=8192,
+    hop_length=2048,
+    c=50,
+    max_run_count=3,
+    diag_weight=0.4
+)
 
 accompanist_time = 0
+accompanist_errors = []
 
-input('Press Enter to start the performance')
-# start the synchronizer
-
+# Start the synchronizer
 for i in range(0, source_audio.shape[-1], 8192):
-    frames = source_audio[:, i:i+8192]
+    frames = source_audio[:, i:i + 8192]
     playback_rate, estimated_time = synchronizer.step(frames, accompanist_time)
     accompanist_time += playback_rate * 8192 / 44100
     soloist_time = synchronizer.get_live_time()
@@ -48,15 +50,41 @@ for i in range(0, source_audio.shape[-1], 8192):
     estimated_times.append(estimated_time)
     accompanist_times.append(accompanist_time)
 
-    print(f'Soloist time: {soloist_time:.2f}, Estimated time: {estimated_time:.2f}, Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}')
-    output_file.write(f'Soloist time: {soloist_time:.2f}, Predicted time: {estimated_time:.2f}, '
-                      f'Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}\n')
+    # Get fuzzy membership for the error
+    error = accompanist_time - estimated_time
+    fuzzy_membership = synchronizer.fuzzy_controller.print_error_membership(error)
+
+    # Calculate errors
+    accompanist_error = accompanist_time - estimated_time
+    accompanist_errors.append(accompanist_error)
 
 
-synchronizer.save_performance(path='performance.wav')
+    print(f'Soloist time: {soloist_time:.2f}, Estimated time: {estimated_time:.2f}, '
+          f'Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}, '
+          f'Fuzzy membership: {fuzzy_membership}')
+    output_file.write(f'Soloist time: {soloist_time:.2f}, Estimated time: {estimated_time:.2f}, '
+                      f'Accompanist time: {accompanist_time:.2f}, Playback rate: {playback_rate:.2f}, '
+                      f'Fuzzy membership: {fuzzy_membership}\n')
+
+synchronizer.save_performance(path='output/performance.wav')
 output_file.close()
 
-df_alignment = load_data('data\\alignments\\constant_tempo.csv')
+
+# Plot the error data
+plt.figure(figsize=(10, 6))
+plt.plot(accompanist_errors, label='Accompanist Error', color='red')
+plt.title('Error Plot')
+plt.xlabel('Frames')
+plt.ylabel('Error (seconds)')
+plt.legend()
+plt.grid()
+
+# Save the plot
+plt.savefig('output/error_plot.png')
+plt.show()
+
+
+df_alignment = load_data('backend/data/alignments/constant_tempo.csv')
 warping_path = np.asarray([estimated_times, soloist_times], dtype=np.float32).T
 df_alignment = calculate_alignment_error(df_alignment, warping_path)
 
@@ -68,5 +96,5 @@ df_accompaniment = calculate_accompaniment_error(
 )
 
 df_accompaniment.to_csv(
-    'output\\error_analysis_per_measure_constant.csv', index=False)
+    'output/error_analysis_per_measure_constant.csv', index=False)
 print(df_accompaniment)
