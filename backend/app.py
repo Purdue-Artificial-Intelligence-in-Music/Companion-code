@@ -4,11 +4,21 @@ import librosa
 import io
 import base64
 import soundfile as sf
+import music21
 
 app = Flask(__name__)
 app.jinja_options = {}
 CORS(app)
 
+@app.route("/sendScore", methods=["GET"])
+def sendScore():
+    s1 = music21.stream.Stream()
+    c_scale = ["C4","D4", "E4", "F4", "G4", "A5", "B5"]
+    for note in c_scale:
+        s1.append(music21.note.Note(note, type="quarter"))
+    musicxml = music21.musicxml.m21ToXml.GeneralObjectExporter(s1)
+    musicxml_str = musicxml.parse().decode('utf-8')
+    return musicxml_str
 
 @app.route("/")
 def hello():
@@ -63,4 +73,5 @@ def audioBuffer():
     return jsonify(data)
 
 if __name__ == "__main__":
+    print(sendScore())
     app.run(debug=True)
