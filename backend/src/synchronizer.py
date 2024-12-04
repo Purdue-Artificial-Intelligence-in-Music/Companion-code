@@ -114,23 +114,18 @@ class Synchronizer:
                               [0., 0.01, 0.],
                               [0., 0., 0.01]])  # Reduced process noise
 
-        # Initialize Fuzzy Logic Controller
         self.fuzzy_controller = FuzzyLogicController()
 
     def step(self, frames, accompanist_time):
         """Step function to update Kalman filter and fuzzy logic playback rate controller."""
         self.live_buffer.write(frames)
         estimated_time = self.score_follower.step(frames)
-
-        # Calculate raw error
         raw_error = accompanist_time - estimated_time
 
-        # Smooth the error using Kalman filter
         self.kf.predict()
         self.kf.update([raw_error])
         smoothed_error = self.kf.x[0]
 
-        # Adjust playback rate using fuzzy logic
         playback_rate = self.fuzzy_controller.get_playback_rate(smoothed_error)
         playback_rate = max(0.3, min(1.8, playback_rate))  # Clamp playback rate for keeping playback rate within 0.3 and 1.8
 
