@@ -1,8 +1,12 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import os
+from flask_cors import CORS
 import librosa
 import numpy as np
+import io
+import base64
+import soundfile as sf
 import secrets
 from src.audio_generator import AudioGenerator
 from src.synchronizer import Synchronizer
@@ -10,7 +14,8 @@ from src.synchronizer import Synchronizer
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes and origins
 
-MUSICXML_FOLDER = os.path.join('data', 'musicxml')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # setting a constant base directory
+MUSICXML_FOLDER = os.path.join(BASE_DIR, 'data', 'musicxml')
 SESSIONS = {}
 
 def generate_session_token():
@@ -53,19 +58,21 @@ def get_score(filename):
 @app.route('/synthesize-audio/<filename>/<int:tempo>', methods=['GET'])
 def synthesize_audio(filename, tempo):
     # Get the session token from the request headers
+    print("synthesize start")
     session_token = request.headers.get('session-token')
     if not session_token or session_token not in SESSIONS:
         return 'Missing or invalid session token', 401
     
     # Check if the MusicXML file exists
     file_path = os.path.join(MUSICXML_FOLDER, filename)
+    print("file_path", file_path)
     if not os.path.exists(file_path):
         return 'MusicXML file not found', 404
     
     SESSIONS[session_token]['filename'] = filename
 
     generator = AudioGenerator(file_path)
-    output_dir = os.path.join('data', 'audio', filename.replace('.musicxml', ''))
+    output_dir = os.path.join(BASE_DIR, 'data', 'audio', filename.replace('.musicxml', ''))
     print(output_dir)
     generator.generate_audio(output_dir, tempo)
     # Create a synchronizer object
@@ -88,7 +95,22 @@ def synthesize_audio(filename, tempo):
     # Return the accompaniment audio data to the client
     accompaniment, sr = librosa.load(os.path.join(output_dir, 'instrument_1.wav'), sr=44100, mono=True, dtype=np.float32)
     accompaniment = accompaniment.tolist()
-    return jsonify({'audio_data': accompaniment, 'sample_rate': sr}), 200
+    # print(accompaniment)
+    
+    # Converting accompaniment buffer into an encoded format
+    buffer_io = io.BytesIO()
+    sf.write(buffer_io, accompaniment, sr, format='WAV')
+    buffer_io.seek(0)
+    
+    #need to return the audio buffer in base64 format for compatability with native audio players
+    audio_base64 = base64.b64encode(buffer_io.read()).decode('utf-8')
+    
+    # print(audio_base64)
+    data = {
+        "buffer" : audio_base64,
+        "sr" : sr
+    }
+    return jsonify(data), 200
 
 @app.route('/synchronization', methods=['POST'])
 def synchronization():

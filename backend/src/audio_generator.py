@@ -4,6 +4,7 @@ from music21 import converter, midi
 import subprocess
 import mido
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def check_fluidsynth_installed():
     '''Check if FluidSynth is installed'''
@@ -16,7 +17,7 @@ def check_fluidsynth_installed():
 
 def check_soundfont_installed():
     '''Check if the FluidR3_GM soundfont is installed'''
-    if not os.path.exists(os.path.join('soundfonts', 'FluidR3_GM.sf2')):
+    if not os.path.exists(os.path.join(BASE_DIR, 'soundfonts', 'FluidR3_GM.sf2')):
         raise RuntimeError(
             "FluidR3_GM soundfont is not installed. Please install it before using this package.")
 
@@ -93,7 +94,6 @@ class AudioGenerator:
     """
 
     def __init__(self, score_path: str):
-
         if not os.path.exists(score_path):
             raise FileNotFoundError(f"File not found: {score_path}")
         if not (score_path.endswith('.musicxml') or score_path.endswith('.mid')):
@@ -101,8 +101,10 @@ class AudioGenerator:
 
         title = os.path.basename(score_path)
         if score_path.endswith('.musicxml'):
-            self.score_path = musicxml_to_midi(score_path, os.path.join(
-                'data', 'midi', title.replace('.musicxml', '.mid')))
+            mid_path = score_path.replace('.musicxml', '.mid')
+            mid_path = mid_path.replace('musicxml', 'midi')
+            print("mid_path: ", mid_path)
+            self.score_path = musicxml_to_midi(score_path, mid_path)
         else:
             self.score_path = score_path
 
@@ -170,3 +172,4 @@ if __name__ == '__main__':
 
     generator = AudioGenerator(score_path=SCORE)
     generator.generate_audio(output_dir=OUTPUT_DIR, tempo=TEMPO)
+    
