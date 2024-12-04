@@ -47,3 +47,4 @@ transformers
 pylint
 filterpy
 scikit-fuzzy
+networkx
