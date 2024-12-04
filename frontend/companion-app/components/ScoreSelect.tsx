@@ -6,7 +6,7 @@ export function Score_Select({
   state,
   dispatch,
 }: {
-  state: { score: string; scores: Array<{ filename: string; piece: string }> };
+  state: { score: string; scores: { filename: string; piece: string }[] };
   dispatch: Function;
 }) {
   // Fetch scores from the backend

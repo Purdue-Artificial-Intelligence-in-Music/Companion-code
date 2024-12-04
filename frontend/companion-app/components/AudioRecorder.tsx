@@ -2,11 +2,14 @@ import { useState, useRef } from "react";
 
 const mimeType = "audio/webm";
 
-const AudioRecorder = ( {state, dispatch}:
-  {state: {playing:boolean}, // state.playing should likely take the role of recordingStatus;
+const AudioRecorder = ({
+  state,
+  dispatch,
+}: {
+  state: { playing: boolean }; // state.playing should likely take the role of recordingStatus;
   // it is changed by the big play/stop buttons
-  dispatch: Function}
-) => {
+  dispatch: Function;
+}) => {
   const [permission, setPermission] = useState(false);
   const mediaRecorder = useRef<MediaRecorder>(
     new MediaRecorder(new MediaStream()),

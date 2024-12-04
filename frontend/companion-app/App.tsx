@@ -90,7 +90,7 @@ export default function App() {
           piece: "Mozart - Twelve Duets",
         },
       ],
-    }
+    },
   );
 
   /////////////////////////////////////////////////////////
