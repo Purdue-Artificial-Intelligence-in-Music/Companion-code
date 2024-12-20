@@ -57,8 +57,10 @@ const reducer_function = (state: any, action: any) => {
         },
       };
     case "new_session":
+      console.log("New session token received.");
       return { ...state, ...{ sessionToken: action.token } };
     case "new_audio":
+      console.log("New audio received.");
       return {
         ...state,
         ...{ accompanimentSound: action.sound, synth_tempo: state.tempo },

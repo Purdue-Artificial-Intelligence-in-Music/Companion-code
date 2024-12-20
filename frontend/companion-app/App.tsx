@@ -2,6 +2,7 @@
 import { StatusBar } from "expo-status-bar"; // Manages the status bar on mobile devices
 import { StyleSheet, Text, View, SafeAreaView } from "react-native"; // Imports styling and layout components
 import React, { useEffect, useReducer, useRef, useState } from "react"; // Imports React and hooks
+import { startSession, synchronize } from "./components/Utils";
 import { GET_Request, POST_Request, Play_Audio } from "./components/Api_Caller";
 import { Score_Select } from "./components/ScoreSelect";
 import { Start_Stop_Button } from "./components/StartButton";
@@ -12,50 +13,10 @@ import AudioRecorder from "./components/AudioRecorder";
 import { AudioPlayerRefactored } from "./components/AudioPlayerRefactored";
 import reducer_function from "./Dispatch";
 import ScoreDisplay from "./components/ScoreDisplay";
-
-async function getSessionToken(): Promise<string | null> {
-  try {
-    const response = await fetch("http://127.0.0.1:5000/start-session", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({}), // Include any required payload here
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    const data = await response.json(); // Parse JSON response
-    console.log("Session data:", data);
-
-    if (data.session_token) {
-      console.log("Session token:", data.session_token);
-      return data.session_token;
-    } else {
-      console.error("Session token not found in response.");
-      return null;
-    }
-  } catch (error) {
-    console.error("Error fetching session token:", error);
-    return null;
-  }
-}
+import { SynthesizeButton } from "./components/SynthesizeButton";
 
 // Define the main application component
 export default function App() {
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchSessionToken() {
-      const token = await getSessionToken();
-      setSessionToken(token); // Store the token in state
-    }
-
-    fetchSessionToken();
-  }, []);
-  // const sessionToken = response.data['session_token'];
   ////////////////////////////////////////////////////////////////////////////////////
   // Main state - holds position in the piece, playback rate, etc.
   ////////////////////////////////////////////////////////////////////////////////////
@@ -75,7 +36,7 @@ export default function App() {
       cursorTimestamp: 0.0,
       time_signature: new Fraction(4, 4, 0, false),
       score: "air_on_the_g_string.musicxml",
-      sessionToken: sessionToken,
+      sessionToken: null,
       accompanimentSound: null,
       synth_tempo: 100, // the tempo of the synthesized audio
       tempo: 100, // the tempo in the tempo box (even if changed more recently)
@@ -93,6 +54,25 @@ export default function App() {
     },
   );
 
+  // Sync sessionToken with useReducer state
+  // Fetch the session token and dispatch it to the reducer
+  useEffect(() => {
+    const fetchSessionToken = async () => {
+      try {
+        const data = await startSession();
+        const token = data.session_token;
+        console.log("Fetched session token:", token);
+        dispatch({ type: "new_session", token: token });
+      } catch (error) {
+        console.error("Error fetching session token:", error);
+      }
+    };
+
+    fetchSessionToken();
+  }, []);
+
+  console.log(state);
+
   /////////////////////////////////////////////////////////
   // The code below updates the timestamp but is not yet tied to the API
   // This could be moved to any sub-component (e.g., ScoreDisplay, AudioPlayer)
@@ -101,16 +81,32 @@ export default function App() {
   // be handled there
   const UPDATE_INTERVAL = 500; // milliseconds between updates to timestamp and rate
 
-  const getAPIData = async () => {
-    const newPlayRate = 0.5 + Math.random(); // Update this to actual get data from API!!!
-    const newTimeStamp =
-      state.timestamp + (UPDATE_INTERVAL * state.playRate) / 1000;
-    dispatch({ type: "increment", time: newTimeStamp, rate: newPlayRate });
-  };
-
   useEffect(() => {
-    if (state.playing) setTimeout(getAPIData, UPDATE_INTERVAL);
-  }, [state.playing, state.timestamp]);
+    const getAPIData = async () => {
+      const {
+        playback_rate: newPlayRate,
+        estimated_position: estimated_position,
+      } = await synchronize(state.sessionToken, [0], state.timestamp);
+      console.log("New play rate:", newPlayRate);
+      console.log("New timestamp:", estimated_position);
+      // const newPlayRate = 0.5 + Math.random(); // Update this to actual get data from API!!!
+      // const newTimeStamp =
+      //   state.timestamp + (UPDATE_INTERVAL * state.playRate) / 1000;
+      dispatch({
+        type: "increment",
+        time: estimated_position,
+        rate: newPlayRate,
+      });
+    };
+
+    // Start polling
+    setInterval(() => {
+      if (state.playing) {
+        getAPIData();
+      }
+    }, UPDATE_INTERVAL);
+    // if (state.playing) setTimeout(getAPIData, UPDATE_INTERVAL);
+  }, [state.playing, state.timestamp, state.sessionToken]);
   // The "could be moved into any subcomponent" comment refers to the above
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -131,6 +127,12 @@ export default function App() {
           wrapper_style={styles.tempo_box}
           text_input_style={styles.text_input}
           label_text_style={styles.label}
+        />
+        <SynthesizeButton
+          state={state}
+          dispatch={dispatch}
+          button_style={styles.synthesize_button}
+          text_style={styles.button_text}
         />
         <Start_Stop_Button
           state={state}
@@ -171,6 +173,13 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
+  },
+  synthesize_button: {
+    flex: 0.2,
+    borderColor: "black",
+    borderRadius: 15,
+    backgroundColor: "lightblue",
+    justifyContent: "center",
   },
   play_button: {
     flex: 0.2,

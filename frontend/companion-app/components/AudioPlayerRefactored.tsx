@@ -8,7 +8,7 @@ export function AudioPlayerRefactored({
   state: {
     playRate: number;
     timestamp: number;
-    sound: Audio.Sound | null;
+    accompanimentSound: Audio.Sound | null;
     playing: boolean;
   };
 }) {
@@ -17,22 +17,27 @@ export function AudioPlayerRefactored({
   ///////////////////////////////////////////////////////////////////////////////////////
   useEffect(() => {
     const updateThePlayRate = async () => {
-      if (state.sound) {
-        await state.sound.setRateAsync(state.playRate, true);
+      if (state.accompanimentSound) {
+        await state.accompanimentSound.setRateAsync(state.playRate, true);
       }
     };
     updateThePlayRate();
-  }, [state.playRate]);
+  }, [state.playRate, state.accompanimentSound]);
 
   useEffect(() => {
     const updateWhetherPlaying = async () => {
-      if (state.sound) {
-        if (state.playing) await state.sound.playAsync();
-        else await state.sound.pauseAsync();
+      console.log("Playing:", state.playing);
+      console.log("Sound:", state.accompanimentSound);
+      if (state.accompanimentSound) {
+        if (state.playing) {
+          await state.accompanimentSound.playAsync();
+        } else {
+          await state.accompanimentSound.pauseAsync();
+        }
       }
     };
     updateWhetherPlaying();
-  }, [state.playing]);
+  }, [state.playing, state.accompanimentSound]);
 
   // The code to update the position in the case of reset is in Dispatch.ts,
   // in the reducer function's reset case, because it runs then and not on
@@ -45,7 +50,7 @@ export function AudioPlayerRefactored({
       </Text>
       <Text style={styles.text}>Position: {state.timestamp.toFixed(1)}s</Text>
       <Text style={styles.text}>
-        Audio Status: {state.sound ? "Audio Loaded" : "Audio Unavailable"}
+        Audio Status: {state.accompanimentSound ? "Audio Loaded" : "Audio Unavailable"}
       </Text>
     </View>
   );

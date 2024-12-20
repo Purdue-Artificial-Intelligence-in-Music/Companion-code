@@ -93,24 +93,27 @@ def synthesize_audio(filename, tempo):
     SESSIONS[session_token]['synchronizer'] = synchronizer
 
     # Return the accompaniment audio data to the client
-    accompaniment, sr = librosa.load(os.path.join(output_dir, 'instrument_1.wav'), sr=44100, mono=True, dtype=np.float32)
-    accompaniment = accompaniment.tolist()
+    accompaniment_path = os.path.join(output_dir, 'instrument_1.wav')
+    # accompaniment, sr = librosa.load(os.path.join(output_dir, 'instrument_1.wav'), sr=44100, mono=True, dtype=np.float32)
+    # accompaniment = accompaniment.tolist()
     # print(accompaniment)
     
     # Converting accompaniment buffer into an encoded format
-    buffer_io = io.BytesIO()
-    sf.write(buffer_io, accompaniment, sr, format='WAV')
-    buffer_io.seek(0)
+    # buffer_io = io.BytesIO()
+    # sf.write(buffer_io, accompaniment, sr, format='WAV')
+    # buffer_io.seek(0)
     
     #need to return the audio buffer in base64 format for compatability with native audio players
-    audio_base64 = base64.b64encode(buffer_io.read()).decode('utf-8')
+    # audio_base64 = base64.b64encode(buffer_io.read()).decode('utf-8')
     
     # print(audio_base64)
-    data = {
-        "buffer" : audio_base64,
-        "sr" : sr
-    }
-    return jsonify(data), 200
+    # data = {
+    #     "audio_data" : accompaniment,
+    #     "sr" : sr
+    # }
+    response = send_file(accompaniment_path, mimetype='audio/wav')
+    response.headers['X-Sample-Rate'] = 44100  # Add the sample rate as a custom header
+    return response, 200
 
 @app.route('/synchronization', methods=['POST'])
 def synchronization():

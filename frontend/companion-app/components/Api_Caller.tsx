@@ -16,7 +16,7 @@ export function GET_Request() {
       setOutput("Error fetching data"); // Handle error case
     }*/
     let res = await startSession();
-    setOutput("Token: " + res['session_token']);
+    setOutput("Token: " + res["session_token"]);
   };
   return (
     <Pressable onPress={handlePress}>
@@ -46,7 +46,7 @@ export function POST_Request() {
       setResponse("Error making POST request");
     }*/
     let res = await startSession();
-    setResponse("Token: " + res['session_token']);
+    setResponse("Token: " + res["session_token"]);
   };
 
   return (
