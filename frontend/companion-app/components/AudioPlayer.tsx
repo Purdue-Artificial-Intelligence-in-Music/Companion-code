@@ -5,8 +5,7 @@ import { useState, useEffect } from "react";
 import { Audio } from "expo-av";
 
 export function AudioPlayer() {
-  const [sample_rate, setSampleRate] = useState("");
-  const [buffer, setBuffer] = useState();
+  const [, setSampleRate] = useState("");
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [playbackRate, setPlaybackRate] = useState(1.0); // Default rate of 1x
   const [currentPosition, setCurrentPosition] = useState(0); // Playback position in seconds

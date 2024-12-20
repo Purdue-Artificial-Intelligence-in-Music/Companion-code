@@ -18,8 +18,7 @@ const AudioRecorder = ({
   const [stream, setStream] = useState<MediaStream>(new MediaStream());
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [audio, setAudio] = useState<string>("");
-  const [analyserData, setAnalyserData] = useState<any>();
-  const audioContext = new AudioContext();
+  const [, setAnalyserData] = useState<any>();
   const recordingStatusRef = useRef("inactive");
 
   const audioContextRef = useRef<any>(null);
@@ -79,7 +78,7 @@ const AudioRecorder = ({
         body: JSON.stringify(data),
       };
       console.log(JSON.stringify(data));
-      const res = await fetch("http://127.0.0.1:5000/sendWaveform", options);
+      await fetch("http://127.0.0.1:5000/sendWaveform", options);
     } catch (error) {
       console.error("Error occurred: ", error);
     }

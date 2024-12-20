@@ -50,7 +50,8 @@ export function AudioPlayerRefactored({
       </Text>
       <Text style={styles.text}>Position: {state.timestamp.toFixed(1)}s</Text>
       <Text style={styles.text}>
-        Audio Status: {state.accompanimentSound ? "Audio Loaded" : "Audio Unavailable"}
+        Audio Status:{" "}
+        {state.accompanimentSound ? "Audio Loaded" : "Audio Unavailable"}
       </Text>
     </View>
   );

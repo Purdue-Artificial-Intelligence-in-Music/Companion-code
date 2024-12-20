@@ -1,9 +1,8 @@
 // Import necessary modules and components from the Expo and React Native libraries
-import { StatusBar } from "expo-status-bar"; // Manages the status bar on mobile devices
-import { StyleSheet, Text, View, SafeAreaView } from "react-native"; // Imports styling and layout components
-import React, { useEffect, useReducer, useRef, useState } from "react"; // Imports React and hooks
+import { StatusBar } from "expo-status-bar";
+import { StyleSheet, Text, View, SafeAreaView } from "react-native";
+import React, { useEffect, useReducer } from "react";
 import { startSession, synchronize } from "./components/Utils";
-import { GET_Request, POST_Request, Play_Audio } from "./components/Api_Caller";
 import { Score_Select } from "./components/ScoreSelect";
 import { Start_Stop_Button } from "./components/StartButton";
 import { MeasureSetBox } from "./components/MeasureSetter";

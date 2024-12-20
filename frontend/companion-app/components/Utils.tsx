@@ -1,4 +1,3 @@
-import { Audio } from "expo-av";
 const BASE_URL = "http://127.0.0.1:5000"; // Replace with your API base URL
 
 // Helper function to handle fetch responses

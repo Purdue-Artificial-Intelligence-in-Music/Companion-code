@@ -83,7 +83,7 @@ export default function ScoreDisplay({
 
     // Cleanup function to dispose of the OpenSheetMusicDisplay instance if needed
     return () => {};
-  }, [state.score]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
+  }, [dispatch, state.score, state.scores]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
 
   /////////////////////////////////////////////////////////////////////////////////
   // useEffect to tie the cursor position to the state
@@ -132,7 +132,13 @@ export default function ScoreDisplay({
           state.synth_tempo,
       });
     }
-  }, [state.timestamp]);
+  }, [
+    dispatch,
+    state.cursorTimestamp,
+    state.synth_tempo,
+    state.time_signature.Denominator,
+    state.timestamp,
+  ]);
 
   return (
     <div style={styles.scrollContainer}>
