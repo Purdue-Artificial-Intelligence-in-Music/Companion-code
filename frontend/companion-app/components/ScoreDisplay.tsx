@@ -28,9 +28,8 @@ export default function ScoreDisplay({
     }
 
     if (state.score) {
-      const selectedScore = state.scores.find(
-        (s: { filename: string }) => s.filename === state.score,
-      );
+      const selectedScore: string = state.score;
+      console.log("Selected score:", selectedScore);
       if (selectedScore) {
         // Create an instance of OpenSheetMusicDisplay, passing the reference to the container
         const osm = new OpenSheetMusicDisplay(

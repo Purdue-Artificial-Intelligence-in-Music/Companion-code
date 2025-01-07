@@ -9,7 +9,7 @@ import { MeasureSetBox } from "./components/MeasureSetter";
 import { TempoBox } from "./components/TempoBox";
 import { Fraction } from "opensheetmusicdisplay";
 import AudioRecorder from "./components/AudioRecorder";
-import { AudioPlayerRefactored } from "./components/AudioPlayerRefactored";
+import { AudioPlayer } from "./components/AudioPlayer";
 import reducer_function from "./Dispatch";
 import ScoreDisplay from "./components/ScoreDisplay";
 import { SynthesizeButton } from "./components/SynthesizeButton";
@@ -28,28 +28,19 @@ export default function App() {
   const [state, dispatch] = useReducer(
     reducer_function, // The reducer function is found in Dispatch.ts
     {
-      playing: false,
-      resetMeasure: 1,
-      playRate: 1.0,
-      timestamp: 0.0,
-      cursorTimestamp: 0.0,
+      playing: false, // whether the audio is playing
+      resetMeasure: 1, // the measure to reset to
+      playRate: 1.0, // the rate at which the audio is playing
+      timestamp: 0.0, // the current position in the piece in seconds
+      cursorTimestamp: 0.0, // the position of the cursor in the piece in seconds
       time_signature: new Fraction(4, 4, 0, false),
-      score: "air_on_the_g_string.musicxml",
-      sessionToken: null,
-      accompanimentSound: null,
+      score: "", // the score to display
+      sessionToken: null, // the session token for the API
+      accompanimentSound: null, // the accompaniment sound
       synth_tempo: 100, // the tempo of the synthesized audio
       tempo: 100, // the tempo in the tempo box (even if changed more recently)
       score_tempo: 100, // the tempo in the musical score
-      scores: [
-        {
-          filename: "air_on_the_g_string.musicxml",
-          piece: "Bach - Air on the G String",
-        },
-        {
-          filename: "twelve_duets.musicxml",
-          piece: "Mozart - Twelve Duets",
-        },
-      ],
+      scores: [], // the list of scores to choose from
     },
   );
 
@@ -88,13 +79,11 @@ export default function App() {
       } = await synchronize(state.sessionToken, [0], state.timestamp);
       console.log("New play rate:", newPlayRate);
       console.log("New timestamp:", estimated_position);
-      // const newPlayRate = 0.5 + Math.random(); // Update this to actual get data from API!!!
-      // const newTimeStamp =
-      //   state.timestamp + (UPDATE_INTERVAL * state.playRate) / 1000;
+
       dispatch({
         type: "increment",
         time: estimated_position,
-        rate: newPlayRate,
+        rate: 1,
       });
     };
 
@@ -104,7 +93,6 @@ export default function App() {
         getAPIData();
       }
     }, UPDATE_INTERVAL);
-    // if (state.playing) setTimeout(getAPIData, UPDATE_INTERVAL);
   }, [state.playing, state.timestamp, state.sessionToken]);
   // The "could be moved into any subcomponent" comment refers to the above
   ///////////////////////////////////////////////////////////////////////////////
@@ -152,7 +140,7 @@ export default function App() {
       <ScoreDisplay state={state} dispatch={dispatch} />
       <StatusBar style="auto" />
       {/* Automatically adjusts the status bar style */}
-      <AudioPlayerRefactored state={state} />
+      <AudioPlayer state={state} />
     </SafeAreaView>
   );
 }
