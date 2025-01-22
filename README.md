@@ -15,7 +15,7 @@ Companion is your on-demand accompanist, allowing you to practice with professio
    ```bash
    cd backend
    ```
-2. Install dependencies:
+2. Run this command in a Python 3.8 conda environment to install all dependencies:
    ```bash
    python setup.py install
    ```

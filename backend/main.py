@@ -25,9 +25,18 @@ estimated_times = []
 accompanist_times = []
 playback_rates = []
 
+<<<<<<< HEAD
 reference = os.path.join('data', 'audio', 'air_on_the_g_string', '130bpm', 'instrument_0.wav')
 source = os.path.join('data', 'audio', 'air_on_the_g_string', '150bpm', 'instrument_0.wav')
 accompaniment = os.path.join('data', 'audio', 'air_on_the_g_string', '130bpm', 'instrument_1.wav')
+=======
+reference = os.path.join(
+    'data', 'audio', 'air_on_the_g_string', 'synthesized', 'solo.wav')
+source = os.path.join('data', 'audio', 'air_on_the_g_string',
+                      'live', 'constant_tempo.wav')
+accompaniment = os.path.join(
+    'data', 'audio', 'air_on_the_g_string', 'synthesized', 'accompaniment.wav')
+>>>>>>> main
 
 source_audio, _ = librosa.load(source, sr=44100)
 source_audio = source_audio.reshape((1, -1))
