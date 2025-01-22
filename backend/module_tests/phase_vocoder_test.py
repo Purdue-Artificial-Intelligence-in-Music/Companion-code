@@ -1,94 +1,168 @@
 import unittest
-from unittest.mock import patch
+import tempfile
+import os
+
 import numpy as np
-from src.phase_vocoder import PhaseVocoder, normalize_audio
+import soundfile as sf
 
+from src.phase_vocoder import PhaseVocoder  # import your PhaseVocoder class here
 
-class TestNormalizeAudio(unittest.TestCase):
-    def test_normalize_audio(self):
-        """Test if audio is normalized correctly."""
-        # all audio inputs should be non-empty
-        audio = np.array([0.5, -0.5, 0.75, -0.75, 1.0, -1.0])
-        normalized_audio = normalize_audio(audio)
-        self.assertTrue(np.all(normalized_audio <= 1.0))
-        self.assertTrue(np.all(normalized_audio >= -1.0))
-        np.testing.assert_almost_equal(np.max(np.abs(normalized_audio)), 1.0)
 
 class TestPhaseVocoder(unittest.TestCase):
-    @patch('librosa.load')
-    def setUp(self, mock_load):
-        # Mock librosa.load to avoid loading an actual file
-        mock_load.return_value = (np.random.random(44100), 44100)
-        
-        # Instantiate the PhaseVocoder
-        self.phase_vocoder = PhaseVocoder(path='dummy_path.wav',
-                                          playback_rate=1.0,
-                                          sample_rate=44100,
-                                          channels=1,
-                                          n_fft=8192,
-                                          win_length=8192,
-                                          hop_length=2048)
 
-    def test_initialization(self):
-        # Test if the PhaseVocoder is initialized properly
-        self.assertEqual(self.phase_vocoder.sample_rate, 44100)
-        self.assertEqual(self.phase_vocoder.playback_rate, 1.0)
-        self.assertEqual(self.phase_vocoder.channels, 1)
-        self.assertEqual(self.phase_vocoder.n_fft, 8192)
-        self.assertEqual(self.phase_vocoder.win_length, 8192)
-        self.assertEqual(self.phase_vocoder.hop_length, 2048)
-        
-        # Check if audio is normalized between [-1, 1]
-        self.assertTrue(np.max(np.abs(self.phase_vocoder.audio)) <= 1.0)
+    @classmethod
+    def setUpClass(cls):
+        """
+        Create a short test WAV file to use in all tests.
+        We'll generate a 1-second sine wave at 440 Hz, 44.1 kHz sample rate, mono.
+        """
+        sr = 44100
+        duration = 1.0  # seconds
+        t = np.linspace(0, duration, int(sr * duration), endpoint=False)
+        freq = 440.0  # Hz
+        audio = 0.5 * np.sin(2.0 * np.pi * freq * t)  # amplitude 0.5
 
-    @patch('librosa.load')
-    @patch('librosa.core.stft')
-    def test_stft_computation(self, mock_stft, mock_load):
-        # Mock librosa.load to avoid loading an actual file
-        mock_load.return_value = (np.random.random(44100), 44100)
-        
-        # Mock STFT to return a predefined complex array
-        mock_stft.return_value = np.random.random((1, 4096)) + 1j * np.random.random((1, 4096))
-        
-        # Reinitialize PhaseVocoder to trigger STFT computation
-        self.phase_vocoder = PhaseVocoder(path='dummy_path.wav',
-                                          playback_rate=1.0,
-                                          sample_rate=44100,
-                                          channels=1,
-                                          n_fft=8192,
-                                          win_length=8192,
-                                          hop_length=2048)
-        
-        # Verify STFT was called
-        mock_stft.assert_called_once_with(self.phase_vocoder.audio,
-                                          n_fft=8192,
-                                          hop_length=2048,
-                                          win_length=8192,
-                                          window='hann')
+        # Write to a temporary file
+        cls.test_wav = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+        sf.write(cls.test_wav.name, audio, sr)
+        cls.sample_rate = sr
+        cls.num_samples = len(audio)  # total samples in the file
 
-    def test_get_next_frames(self):
-        # Mock the STFT to have a known value
-        self.phase_vocoder.stft = np.random.random((1, 4096)) + 1j * np.random.random((1, 4096))
-        
-        # Get the next frames
-        frames = self.phase_vocoder.get_next_frames()
-        
-        # Check the output shape
-        self.assertIsInstance(frames, np.ndarray)
-        self.assertEqual(frames.shape, (1, 2048))
+    @classmethod
+    def tearDownClass(cls):
+        """
+        Clean up the temporary file after all tests are done.
+        """
+        cls.test_wav.close()
+        os.remove(cls.test_wav.name)
 
-    def test_get_time(self):
-        # Check if get_time returns the correct timestamp
-        self.assertEqual(self.phase_vocoder.get_time(), 0.0)
-        
-        # Simulate advancing in the audio
-        self.phase_vocoder.audio_index = 44100  # 1 second worth of samples
-        self.assertEqual(self.phase_vocoder.get_time(), 1.0)
+    def test_vocoder_default_speed(self):
+        """
+        Test reading the entire file at default playback rate (1.0)
+        and confirm we get roughly the same number of samples out.
+        """
+        pv = PhaseVocoder(path=self.test_wav.name,
+                          sample_rate=self.sample_rate,
+                          channels=1,
+                          n_fft=1024,
+                          win_length=1024,
+                          hop_length=256,
+                          playback_rate=1.0)
 
-    def test_set_playback_rate(self):
-        # Set a new playback rate and verify
-        self.phase_vocoder.set_playback_rate(1.5)
-        self.assertEqual(self.phase_vocoder.playback_rate, 1.5)
+        all_frames = []
+        frames_per_call = 512
+
+        while True:
+            frames = pv.get_next_frames(frames_per_call)
+            if frames is None:
+                break
+            all_frames.append(frames)
+
+        # Concatenate all and compare length
+        output_audio = np.concatenate(all_frames, axis=1)  # shape: (1, total_samples)
+        total_out = output_audio.shape[1]
+
+        # Because of windowing or partial frames, it's normal to have slight differences.
+        # We'll allow some tolerance. Ideally, it should be close to ~ num_samples.
+        self.assertTrue(abs(total_out - self.num_samples) < 2048,
+                        msg=f"Output length off by more than 2048 samples. Got {total_out}, expected ~ {self.num_samples}")
+
+        # Test that time index is close to 1.0s
+        self.assertAlmostEqual(pv.get_time(), total_out / self.sample_rate, places=3)
+
+    def test_vocoder_slow_speed(self):
+        """
+        Test reading the entire file at 0.5 playback rate (half-speed).
+        We expect roughly double the samples out.
+        """
+        pv = PhaseVocoder(path=self.test_wav.name,
+                          sample_rate=self.sample_rate,
+                          channels=1,
+                          n_fft=1024,
+                          win_length=1024,
+                          hop_length=256,
+                          playback_rate=0.5)
+
+        all_frames = []
+        frames_per_call = 512
+
+        while True:
+            frames = pv.get_next_frames(frames_per_call)
+            if frames is None:
+                break
+            all_frames.append(frames)
+
+        output_audio = np.concatenate(all_frames, axis=1)  # shape: (1, total_samples)
+        total_out = output_audio.shape[1]
+
+        # For half-speed, we expect about double the original sample count
+        self.assertTrue(abs(total_out - 2*self.num_samples) < 2048,
+                        msg=f"Output length off by more than 2048 from expected. Got {total_out}, expected ~ {2*self.num_samples}")
+
+        # Check final get_time
+        self.assertAlmostEqual(pv.get_time(), total_out / self.sample_rate, places=2)
+
+    def test_vocoder_fast_speed(self):
+        """
+        Test reading the entire file at 2.0 playback rate (double-speed).
+        We expect roughly half the samples out.
+        """
+        pv = PhaseVocoder(path=self.test_wav.name,
+                          sample_rate=self.sample_rate,
+                          channels=1,
+                          n_fft=1024,
+                          win_length=1024,
+                          hop_length=256,
+                          playback_rate=2.0)
+
+        all_frames = []
+        frames_per_call = 512
+
+        while True:
+            frames = pv.get_next_frames(frames_per_call)
+            if frames is None:
+                break
+            all_frames.append(frames)
+
+        output_audio = np.concatenate(all_frames, axis=1)  # shape: (1, total_samples)
+        total_out = output_audio.shape[1]
+
+        # For double-speed, we expect about half the original sample count
+        self.assertTrue(abs(total_out - 0.5*self.num_samples) < 1024,
+                        msg=f"Output length off by more than 1024 from expected. Got {total_out}, expected ~ {0.5*self.num_samples}")
+
+        # Check final get_time
+        self.assertAlmostEqual(pv.get_time(), total_out / self.sample_rate, places=2)
+
+    def test_vocoder_end_of_file(self):
+        """
+        Make sure the vocoder eventually returns None to indicate end of file.
+        """
+        pv = PhaseVocoder(path=self.test_wav.name,
+                          sample_rate=self.sample_rate,
+                          channels=1,
+                          n_fft=1024,
+                          win_length=1024,
+                          hop_length=256,
+                          playback_rate=1.0)
+
+        frames_per_call = 1024
+
+        got_data = False
+        while True:
+            frames = pv.get_next_frames(frames_per_call)
+            if frames is None:
+                # end of file
+                break
+            if frames.shape[1] > 0:
+                got_data = True
+
+        # We expect to have gotten *some* frames
+        self.assertTrue(got_data, "Never received any frames from the PhaseVocoder.")
+        # By now, we expect repeated calls to also give None
+        frames_after_eof = pv.get_next_frames(frames_per_call)
+        self.assertIsNone(frames_after_eof, "Should still return None after end of file.")
+
 
 if __name__ == '__main__':
     unittest.main()

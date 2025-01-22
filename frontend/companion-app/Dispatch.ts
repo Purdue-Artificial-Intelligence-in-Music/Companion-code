@@ -57,8 +57,10 @@ const reducer_function = (state: any, action: any) => {
         },
       };
     case "new_session":
+      console.log("New session token received.");
       return { ...state, ...{ sessionToken: action.token } };
     case "new_audio":
+      console.log("New audio received.");
       return {
         ...state,
         ...{ accompanimentSound: action.sound, synth_tempo: state.tempo },
@@ -78,24 +80,15 @@ const reducer_function = (state: any, action: any) => {
 
     // Gets list of scores - without overwriting uploaded score
     case "new_scores_from_backend":
-      var known_files = state.scores.map(
-        (s: { filename: string }) => s.filename,
-      );
+      var known_files = state.scores;
       var new_files = action.scores.filter(
         (filename: string) => !known_files.includes(filename),
       );
+      console.log("New files are: ", new_files);
       return {
         ...state,
         ...{
-          scores: [
-            ...state.scores,
-            new_files.map((filename: string) => {
-              return {
-                filename: filename,
-                piece: filename.replace(".musicxml", ""),
-              };
-            }),
-          ],
+          scores: [...state.scores, ...new_files],
         },
       };
 

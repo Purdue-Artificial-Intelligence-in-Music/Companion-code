@@ -6,7 +6,7 @@ export function Score_Select({
   state,
   dispatch,
 }: {
-  state: { score: string; scores: { filename: string; piece: string }[] };
+  state: { score: string; scores: string[] };
   dispatch: Function;
 }) {
   // Fetch scores from the backend
@@ -21,7 +21,7 @@ export function Score_Select({
         const data = await response.json();
         const scores = data.files;
         console.log("Scores are: ", scores);
-        dispatch({ type: "set_scores", scores });
+        dispatch({ type: "new_scores_from_backend", scores });
       } catch (error) {
         console.error("Failed to fetch scores:", error);
       }
@@ -59,13 +59,12 @@ export function Score_Select({
       <RNPickerSelect
         key={state.scores.length} //RNPicker is a new instance depending on the length of score. So, it will rerender if updated
         onValueChange={(value) => {
-          // setScore(value);
           console.log("The dispatch function is being sent.");
           dispatch({ type: "change_score", score: value });
         }}
         items={state.scores.map((score) => ({
-          label: score.piece,
-          value: score.filename,
+          label: score,
+          value: score,
         }))}
         placeholder={{
           label: "Select a score",

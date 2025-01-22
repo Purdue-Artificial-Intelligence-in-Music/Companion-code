@@ -3,7 +3,7 @@ import { View, Text, TextInput, Button, Pressable } from "react-native";
 import Slider from "@react-native-community/slider";
 import { useState } from "react";
 import { Audio } from "expo-av";
-import { startSession, stopSession, getScores, getScore, synthesizeAudio, synchronize } from "./Utils";
+import { startSession } from "./Utils";
 
 export function GET_Request() {
   const [output, setOutput] = useState("");
@@ -16,7 +16,7 @@ export function GET_Request() {
       setOutput("Error fetching data"); // Handle error case
     }*/
     let res = await startSession();
-    setOutput("Token: " + res['session_token']);
+    setOutput("Token: " + res["session_token"]);
   };
   return (
     <Pressable onPress={handlePress}>
@@ -46,7 +46,7 @@ export function POST_Request() {
       setResponse("Error making POST request");
     }*/
     let res = await startSession();
-    setResponse("Token: " + res['session_token']);
+    setResponse("Token: " + res["session_token"]);
   };
 
   return (
@@ -70,8 +70,7 @@ export function POST_Request() {
 }
 
 export function Play_Audio() {
-  const [sample_rate, setSampleRate] = useState("");
-  const [buffer, setBuffer] = useState();
+  const [, setSampleRate] = useState("");
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [playbackRate, setPlaybackRate] = useState(1.0); // Default rate of 1x
 
@@ -126,7 +125,7 @@ export function Play_Audio() {
   return (
     <View>
       <Button title="Get and play Audio" onPress={fetchAndPlay} />
-      <Button title="Play Audio" onPress={fetchAndPlay} />
+      <Button title="Play Audio" onPress={startAudio} />
       <Button title="Stop Audio" onPress={stopAudio} />
 
       <View
@@ -154,8 +153,5 @@ export function Play_Audio() {
         Audio Status: {sound ? "Audio Loaded" : "Audio Unavailable"}
       </Text>
     </View>
-    // <Pressable onPress={retrieveAndPlay}>
-    // <Text> Output: {buffer ? JSON.stringify(buffer) : 'No output yet'}</Text>
-    // </Pressable>
   );
 }
