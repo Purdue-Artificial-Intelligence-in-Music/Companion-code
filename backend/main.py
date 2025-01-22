@@ -25,12 +25,9 @@ estimated_times = []
 accompanist_times = []
 playback_rates = []
 
-reference = os.path.join(
-    'data', 'audio', 'air_on_the_g_string', 'synthesized', 'solo.wav')
-source = os.path.join('data', 'audio', 'air_on_the_g_string',
-                      'live', 'constant_tempo.wav')
-accompaniment = os.path.join(
-    'data', 'audio', 'air_on_the_g_string', 'synthesized', 'accompaniment.wav')
+reference = os.path.join('data', 'audio', 'air_on_the_g_string', '130bpm', 'instrument_0.wav')
+source = os.path.join('data', 'audio', 'air_on_the_g_string', '150bpm', 'instrument_0.wav')
+accompaniment = os.path.join('data', 'audio', 'air_on_the_g_string', '130bpm', 'instrument_1.wav')
 
 source_audio, _ = librosa.load(source, sr=44100)
 source_audio = source_audio.reshape((1, -1))
@@ -39,8 +36,8 @@ use_mic = False
 
 # create a synchronizer object
 synchronizer = Synchronizer(reference=reference,
-                            Kp=0.05,
-                            Ki=0.0,
+                            Kp=0.09,
+                            Ki=0.01,
                             Kd=0.0,
                             sample_rate=SAMPLE_RATE,
                             channels=CHANNELS,

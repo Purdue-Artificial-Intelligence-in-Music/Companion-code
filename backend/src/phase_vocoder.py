@@ -88,7 +88,7 @@ class PhaseVocoder:
 
         # This controls how many frames we process in one iSTFT call.
         # Feel free to adjust. A bigger block = more efficient, but more latency.
-        self._synthesis_block_size = 8
+        self._synthesis_block_size = 6
 
     def set_playback_rate(self, new_rate: float):
         """Adjust the playback rate on the fly."""
@@ -278,7 +278,7 @@ class PhaseVocoder:
         self._output_buffer = self._output_buffer[:, n_take:]
 
         # Update the global “audio index”
-        self._audio_index += n_take
+        self._audio_index += n_take * self.playback_rate
 
         return output
 
@@ -330,7 +330,7 @@ if __name__ == '__main__':
     phase_vocoder = PhaseVocoder(path=reference,
                                  sample_rate=44100,
                                  channels=1,
-                                 playback_rate=1,
+                                 playback_rate=2,
                                  n_fft=8192,
                                  win_length=8192,
                                  hop_length=2048)
@@ -339,7 +339,7 @@ if __name__ == '__main__':
     frames_per_buffer = 1024
 
     while True:
-        phase_vocoder.set_playback_rate(1)
+        phase_vocoder.set_playback_rate(2)
         frames = phase_vocoder.get_next_frames(frames_per_buffer)
         if frames is None:
             break

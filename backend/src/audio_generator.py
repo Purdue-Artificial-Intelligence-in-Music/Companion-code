@@ -165,10 +165,10 @@ class AudioGenerator:
 
 if __name__ == '__main__':
 
-    SCORE = os.path.join('data', 'musicxml', 'twelve_duets.musicxml')
-    OUTPUT_DIR = os.path.join('data', 'audio', 'test')
+    SCORE = os.path.join('data', 'musicxml', 'air_on_the_g_string.musicxml')
+    OUTPUT_DIR = os.path.join('data', 'audio', 'air_on_the_g_string', '130bpm')
     SAMPLE_RATE = 44100
-    TEMPO = 120
+    TEMPO = 130
 
     generator = AudioGenerator(score_path=SCORE)
     generator.generate_audio(output_dir=OUTPUT_DIR, tempo=TEMPO)
