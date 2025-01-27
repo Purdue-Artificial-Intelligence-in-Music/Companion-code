@@ -25,9 +25,9 @@ estimated_times = []
 accompanist_times = []
 playback_rates = []
 
-reference = os.path.join('data', 'audio', 'air_on_the_g_string', '130bpm', 'instrument_0.wav')
-source = os.path.join('data', 'audio', 'air_on_the_g_string', '150bpm', 'instrument_0.wav')
-accompaniment = os.path.join('data', 'audio', 'air_on_the_g_string', '130bpm', 'instrument_1.wav')
+reference = os.path.join('backend', 'data', 'audio', 'air_on_the_g_string', '130bpm', 'instrument_0.wav')
+source = os.path.join('backend', 'data', 'audio', 'air_on_the_g_string', '150bpm', 'instrument_0.wav')
+accompaniment = os.path.join('backend', 'data', 'audio', 'air_on_the_g_string', '130bpm', 'instrument_1.wav')
 
 source_audio, _ = librosa.load(source, sr=44100)
 source_audio = source_audio.reshape((1, -1))
@@ -91,6 +91,26 @@ def callback(in_data, frame_count, time_info, status):
     # If channels=1, flatten to shape (frame_count,)
     output_data = frames.flatten().tobytes()
     return (output_data, pyaudio.paContinue)
+
+# def callback(in_data, frame_count, time_info, status):
+#     global source_index
+
+#     if use_mic:
+#         # Convert data to numpy array
+#         data = np.frombuffer(in_data, dtype=np.float32)
+#         data = data.reshape((1, -1))  # Reshape to 2D array
+#     else:
+#         data = source_audio[:, source_index:source_index + frame_count]
+#         source_index += frame_count
+
+#     # Process live frames and synthesize notes
+#     estimated_time = synchronizer.step(data)
+
+#     print(f'Estimated time: {estimated_time:.2f}')
+
+#     # Return silent audio to continue the stream
+#     return (np.zeros((frame_count,), dtype=np.float32).tobytes(), pyaudio.paContinue)
+
 
 
 # PyAudio
