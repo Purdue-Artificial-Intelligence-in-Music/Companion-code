@@ -1,9 +1,12 @@
 from .score_follower import ScoreFollower
 from .audio_buffer import AudioBuffer
 from simple_pid import PID
+from pyo import Server, Sine
+import time
 
 
 class Synchronizer:
+
     """Synchronize microphone and accompaniment audio
 
     Parameters
@@ -99,3 +102,29 @@ class Synchronizer:
 
     def save_performance(self, path):
         self.live_buffer.save(path)
+
+class RealTimeSynthesisSynchronizer:
+    def __init__(self, score):
+        self.score = score
+        self.server = Server().boot()
+        self.server.start()
+        self.current_note_index = 0
+
+    def synthesize_and_play(self, frequency, duration):
+        # Create a sine wave oscillator
+        sine_wave = Sine(freq=frequency, mul=0.5).out()
+        # Play the note for the specified duration
+        self.server.recstart()
+        time.sleep(duration)
+        self.server.recstop()
+        sine_wave.stop()
+
+    def synchronize(self, current_position):
+        # Check if the current position matches the next note in the score
+        if self.current_note_index < len(self.score):
+            note = self.score[self.current_note_index]
+            if current_position >= note['start_time']:
+                frequency = note['frequency']
+                duration = note['duration']
+                self.synthesize_and_play(frequency, duration)
+                self.current_note_index += 1

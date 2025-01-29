@@ -92,27 +92,6 @@ def callback(in_data, frame_count, time_info, status):
     output_data = frames.flatten().tobytes()
     return (output_data, pyaudio.paContinue)
 
-# def callback(in_data, frame_count, time_info, status):
-#     global source_index
-
-#     if use_mic:
-#         # Convert data to numpy array
-#         data = np.frombuffer(in_data, dtype=np.float32)
-#         data = data.reshape((1, -1))  # Reshape to 2D array
-#     else:
-#         data = source_audio[:, source_index:source_index + frame_count]
-#         source_index += frame_count
-
-#     # Process live frames and synthesize notes
-#     estimated_time = synchronizer.step(data)
-
-#     print(f'Estimated time: {estimated_time:.2f}')
-
-#     # Return silent audio to continue the stream
-#     return (np.zeros((frame_count,), dtype=np.float32).tobytes(), pyaudio.paContinue)
-
-
-
 # PyAudio
 p = pyaudio.PyAudio()
 stream = p.open(rate=44100,
