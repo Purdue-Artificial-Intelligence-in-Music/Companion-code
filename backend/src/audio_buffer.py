@@ -39,8 +39,7 @@ class AudioBuffer:
         self.length = max_duration * self.sample_rate
 
         # Create buffer
-        self.buffer = np.empty(
-            shape=(channels, self.length), dtype=np.float32)
+        self.buffer = np.empty(shape=(channels, self.length), dtype=np.float32)
 
         # Track buffer
         self.write_index = 0
