@@ -1,4 +1,4 @@
-import { View, Text } from "react-native";
+import { StyleSheet, View, Text } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 import React, { useEffect } from "react";
 
@@ -54,7 +54,7 @@ export function Score_Select({
   };
 
   return (
-    <View>
+    <View style={styles.flexing_box}>
       <Text>Select a score:</Text>
       <RNPickerSelect
         key={state.scores.length} //RNPicker is a new instance depending on the length of score. So, it will rerender if updated
@@ -76,3 +76,21 @@ export function Score_Select({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+    tempo_text_shape: {
+        width: "30%",
+        height: "100%"
+    },
+    tempo_input_shape: {
+      width: "40%",
+      height: "100%",
+      backgroundColor: "white"
+    },
+    flexing_box: {
+        width: "25%",
+        height: "100%",
+        display: "flex",
+        backgroundColor: "gray"
+    }
+})

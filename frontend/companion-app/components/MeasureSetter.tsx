@@ -1,26 +1,19 @@
-import { View, Text } from "react-native";
+import { StyleSheet, View, Text } from "react-native";
 import { Pressable, TextInput, TextStyle, ViewStyle } from "react-native";
 
 export function MeasureSetBox({
   state,
   dispatch,
-  wrapper_style,
   button_style,
-  text_input_style,
-  button_text_style,
-  label_text_style,
+  button_text_style
 }: {
   state: { resetMeasure: number };
   dispatch: Function;
-  wrapper_style: ViewStyle;
   button_style: ViewStyle;
-  text_input_style: ViewStyle;
   button_text_style: TextStyle;
-  label_text_style: TextStyle;
 }) {
   return (
-    <View style={wrapper_style}>
-      <Text style={label_text_style}>Start measure:</Text>
+    <View style={styles.flexing_box}>
       <TextInput
         onChangeText={(text) =>
           dispatch({ type: "change_reset", measure: text as unknown as number })
@@ -28,10 +21,10 @@ export function MeasureSetBox({
         value={String(state.resetMeasure)}
         placeholder="Enter measure number"
         inputMode="numeric"
-        style={text_input_style}
+        style={styles.measure_input_shape}
       />
       <Pressable
-        style={button_style}
+        style={{...button_style, ...styles.measure_button_shape}}
         onPress={() => {
           dispatch({ type: "reset" });
         }}
@@ -41,3 +34,25 @@ export function MeasureSetBox({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+    measure_button_shape: {
+        width: "50%",
+        height: "100%",
+        marginVertical: "25%",
+        marginLeft: "12.5%",
+        marginRight: "25%"
+    },
+    measure_input_shape: {
+      width: "50%",
+      height: "100%",
+      marginVertical: "25%",
+      marginHorizontal: "12.5%",
+      backgroundColor: "white"
+    },
+    flexing_box: {
+        width: "37.5%",
+        height: "100%",
+        display: "flex"
+    }
+})

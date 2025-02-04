@@ -31,6 +31,14 @@ const reducer_function = (state: any, action: any) => {
           timestamp: action.time as number,
         },
       };
+    
+    case "swap_mode":
+      return {
+        ...state,
+        ...{
+          inPlayMode: !state.inPlayMode
+        }
+      }
 
     // When resetting, move the cursor, then adjust the timestamp accordingly and reset the playback rate
     case "reset":

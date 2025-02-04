@@ -1,6 +1,6 @@
 // Import necessary modules and components from the Expo and React Native libraries
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View, SafeAreaView } from "react-native";
+import { StyleSheet, Text, View, Image, SafeAreaView } from "react-native";
 import React, { useEffect, useReducer } from "react";
 import { startSession, synchronize } from "./components/Utils";
 import { Score_Select } from "./components/ScoreSelect";
@@ -28,6 +28,7 @@ export default function App() {
   const [state, dispatch] = useReducer(
     reducer_function, // The reducer function is found in Dispatch.ts
     {
+      inPlayMode: false, // whether we are in play mode (and not score selection mode)
       playing: false, // whether the audio is playing
       resetMeasure: 1, // the measure to reset to
       playRate: 1.0, // the rate at which the audio is playing
@@ -104,39 +105,32 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       {/* Provides safe area insets for mobile devices */}
       <AudioRecorder state={state} dispatch={dispatch} />
-      <Text style={styles.title}>Companion, the digital accompanist</Text>
-
-      <View style={styles.button_wrapper}>
-        <Score_Select state={state} dispatch={dispatch} />
-        <TempoBox
-          state={state}
-          dispatch={dispatch}
-          wrapper_style={styles.tempo_box}
-          text_input_style={styles.text_input}
-          label_text_style={styles.label}
-        />
-        <SynthesizeButton
-          state={state}
-          dispatch={dispatch}
-          button_style={styles.synthesize_button}
-          text_style={styles.button_text}
-        />
+      <View style={styles.menu_bar}>
+        <Image source={{ uri: './companion.png' }} style={styles.logo}/>
         <Start_Stop_Button
           state={state}
           dispatch={dispatch}
-          button_style={styles.play_button}
+          button_format={styles.button_format}
           text_style={styles.button_text}
         />
-        <MeasureSetBox
-          state={state}
-          dispatch={dispatch}
-          wrapper_style={styles.measure_box}
-          text_input_style={styles.text_input}
-          button_style={styles.reset_button}
-          button_text_style={styles.button_text}
-          label_text_style={styles.label}
-        />
+        {
+          state.inPlayMode ?
+          <MeasureSetBox
+            state={state}
+            dispatch={dispatch}
+            button_style={styles.button_format}
+            button_text_style={styles.button_text}
+          />
+          :
+          <TempoBox
+            state={state}
+            dispatch={dispatch}
+            label_text_style={styles.label}
+          />
+        }
       </View>
+      { // List of scores, show when not in play mode
+      state.inPlayMode || <Score_Select state={state} dispatch={dispatch} /> }
       <ScoreDisplay state={state} dispatch={dispatch} />
       <StatusBar style="auto" />
       {/* Automatically adjusts the status bar style */}
@@ -161,31 +155,17 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
   },
-  synthesize_button: {
-    flex: 0.2,
+  button_format: {
     borderColor: "black",
     borderRadius: 15,
     backgroundColor: "lightblue",
-    justifyContent: "center",
-  },
-  play_button: {
-    flex: 0.2,
-    borderColor: "black",
-    borderRadius: 15,
-    backgroundColor: "lightblue",
-    justifyContent: "center",
-  },
-  reset_button: {
-    flex: 0.8,
-    borderColor: "black",
-    borderRadius: 15,
-    backgroundColor: "lightblue",
+    justifyContent: "center"
   },
   button_text: {
     fontSize: 20,
     textAlign: "center",
   },
-  button_wrapper: {
+  menu_bar: {
     flex: 1,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -193,26 +173,9 @@ const styles = StyleSheet.create({
     backgroundColor: "lightgray",
     width: "100%",
     minHeight: 72,
-  },
-  measure_box: {
-    flexDirection: "row",
-    padding: 10,
-    justifyContent: "space-between",
-    width: "40%",
-    flex: 0.4,
-    height: "80%",
-  },
-  tempo_box: {
-    flexDirection: "row",
-    padding: 10,
-    justifyContent: "space-between",
-    width: "20%",
-    flex: 0.2,
-    height: "80%",
-  },
-  text_input: {
+  },logo: {
     backgroundColor: "white",
-    flex: 0.3,
+    flex: 0.25,
     height: "100%",
   },
 });
