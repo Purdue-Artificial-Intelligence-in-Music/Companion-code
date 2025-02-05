@@ -1,164 +1,138 @@
-
 import fluidsynth
 from typing import List, Tuple
 from music21 import converter, note, chord
 from time import sleep, time
 import math
 
-# Initialize the synthesizer
+# ---------------------------
+# Initialize FluidSynth
+# ---------------------------
 fs = fluidsynth.Synth(samplerate=44100)
-fs.start()  # you can pass a specific audio driver if needed
+fs.start()  # Optionally specify an audio driver
 
 # Load a SoundFont (ensure you have a high-quality one with cello sounds)
-sfid = fs.sfload("soundfonts\FluidR3_GM.sf2")
-fs.program_select(0, sfid, 0, 42)  # the last number (42 here) is the MIDI program number for a cello (may vary by SoundFont)
+sfid = fs.sfload(r"soundfonts\FluidR3_GM.sf2")
+fs.program_select(0, sfid, 0, 42)  # channel 0, bank 0, program 42 (adjust as needed)
 
-def midi_to_notes(
+# ---------------------------
+# Function: Extract notes in quarter-note units
+# ---------------------------
+def midi_to_notes_quarter(
     midi_file_path: str,
-    tempo_bpm: float,
     instrument_index: int
 ) -> List[Tuple[float, float, float]]:
     """
-    Parse a MIDI file and extract note information from a specified instrument.
+    Parse a MIDI file and extract note information from a specified instrument,
+    returning timing in quarter note units.
 
-    This function reads a MIDI file, extracts notes from the given instrument index,
-    and returns a list of tuples. Each tuple contains the frequency in Hertz, duration
-    in seconds, and timestamp in seconds for a note. In the case of chords, each note
-    in the chord is processed individually.
-
-    Parameters
-    ----------
-    midi_file_path : str
-        The path to the MIDI file.
-    tempo_bpm : float
-        The tempo of the piece in beats per minute (BPM).
-    instrument_index : int
-        The index of the instrument (part) from which to extract the notes.
-        An IndexError is raised if the index is out of range.
-
-    Returns
-    -------
-    List[Tuple[float, float, float]]
-        A list where each element is a tuple containing:
-        - frequency (float): The frequency of the note in Hertz.
-        - duration (float): The duration of the note in seconds.
-        - timestamp (float): The starting time of the note in seconds.
-
-    Notes
-    -----
-    - If an error occurs during MIDI file parsing, an error message is printed and
-      an empty list is returned.
-    - Tied notes within the MIDI file are merged to form a single note duration.
+    Returns a list of tuples (frequency, quarter_duration, quarter_offset) where:
+      - frequency (Hz)
+      - quarter_duration: note duration in quarter note lengths (beats)
+      - quarter_offset: note start time in quarter note units (beats)
     """
-    # Parse the MIDI file
     try:
         midi_stream = converter.parse(midi_file_path)
     except Exception as e:
         print(f"Error parsing MIDI file: {e}")
         return []
 
-    # Get all parts
     parts = midi_stream.parts
-
-    # Validate instrument_index
     if instrument_index < 0 or instrument_index >= len(parts):
         raise IndexError(f"Instrument index {instrument_index} is out of range. "
                          f"Please choose between 0 and {len(parts)-1}.")
 
-    # Select the specified part
     selected_part = parts[instrument_index]
-
-    # Attempt to get the instrument name
     instr = selected_part.getInstrument(returnDefault=False)
-    if instr:
-        instr_name = instr.instrumentName
-    else:
-        instr_name = "Unknown Instrument"
-
+    instr_name = instr.instrumentName if instr else "Unknown Instrument"
     print(f"\nExtracting notes from Instrument Index {instrument_index}: {instr_name}\n")
 
-    # Flatten the selected part to simplify iteration
-    flat_part = selected_part.flat
+    flat_part = selected_part.flat.stripTies()  # merge tied notes
 
-    # Handle ties to merge long notes
-    flat_part = flat_part.stripTies()  # This merges tied notes into single notes
-
-    freq_dur_timestamp_list = []
-
-    # Calculate the duration of one quarter note in seconds
-    quarter_note_duration_sec = 60.0 / tempo_bpm
-
-    # Iterate through all notes and chords in the flat part
+    notes_list = []
     for element in flat_part.notes:
-        # Determine the start time (offset) in quarter lengths
-        offset_quarter = element.offset
-        timestamp_sec = offset_quarter * quarter_note_duration_sec
-
-        # If the element is a Note, extract its frequency and duration
+        quarter_offset = element.offset           # offset in quarter note units (beats)
+        quarter_duration = element.duration.quarterLength  # duration in beats
         if isinstance(element, note.Note):
             frequency = element.pitch.frequency
-            duration_sec = element.duration.quarterLength * quarter_note_duration_sec
-            freq_dur_timestamp_list.append(
-                (frequency, duration_sec, timestamp_sec))
-
-        # If the element is a Chord, handle each note in the chord
+            notes_list.append((frequency, quarter_duration, quarter_offset))
         elif isinstance(element, chord.Chord):
             for pitch in element.pitches:
                 frequency = pitch.frequency
-                duration_sec = element.duration.quarterLength * quarter_note_duration_sec
-                freq_dur_timestamp_list.append(
-                    (frequency, duration_sec, timestamp_sec))
+                notes_list.append((frequency, quarter_duration, quarter_offset))
+    return notes_list
 
-    return freq_dur_timestamp_list
-
+# ---------------------------
+# Helper: Convert frequency (Hz) to MIDI note number
+# ---------------------------
 def frequency_to_midi(frequency: float) -> int:
-    """
-    Convert a frequency in Hz to the corresponding MIDI note number.
-
-    Parameters
-    ----------
-    frequency : float
-        Frequency in Hertz.
-
-    Returns
-    -------
-    int
-        The MIDI note number (0-127).
-    """
     midi_note = 69 + 12 * math.log2(frequency / 440.0)
     return int(round(midi_note))
 
-# Assuming 'fs' is your FluidSynth synthesizer object.
+# ---------------------------
+# Function: Play a note via FluidSynth using MIDI
+# ---------------------------
 def play_note(frequency: float, duration: float):
     """
-    Play a note using FluidSynth by converting the given frequency to a MIDI note number.
-
-    Parameters
-    ----------
-    frequency : float
-        The frequency of the note in Hz.
-    duration : float
-        Duration to hold the note (in seconds).
+    Play a note using FluidSynth by converting frequency to a MIDI note.
+    
+    Parameters:
+      frequency : float
+          The frequency of the note in Hz.
+      duration : float
+          The duration (in seconds) to hold the note.
     """
     midi_note = frequency_to_midi(frequency)
-    
     fs.noteon(0, midi_note, 100)  # channel 0, note, velocity 100
     sleep(duration)
     fs.noteoff(0, midi_note)
 
+# ---------------------------
+# Global tempo and tempo update logic
+# ---------------------------
+# Start with an initial tempo (BPM)
+current_tempo = 60  # BPM
 
-MIDI_FILE = 'data/midi/air.mid'
-TEMPO = 60
+# For demonstration, we simulate a tempo change after a set time.
+# In a real scenario, you could update this variable in response to external input.
+TEMPO_CHANGE_TIME = 10  # seconds after performance start to change tempo
+NEW_TEMPO = 90          # New BPM after the change
+
+# ---------------------------
+# Main performance loop
+# ---------------------------
+MIDI_FILE = r'data/midi/air.mid'
 INSTRUMENT = 1
 
-notes = midi_to_notes(MIDI_FILE, TEMPO, INSTRUMENT)
+# Extract notes as (frequency, quarter_duration, quarter_offset)
+notes = midi_to_notes_quarter(MIDI_FILE, INSTRUMENT)
+# Sort by quarter note offset
+notes.sort(key=lambda n: n[2])
 
-start_time = time()
-for n in notes:
-    freq, dur, ts = n
-    if time() - start_time < ts:
-        sleep(ts - (time() - start_time))
-    play_note(freq, dur)
-    print(f"Playing note: {freq:.2f} Hz for {dur:.2f} seconds")
+print("Starting performance...")
+
+performance_start = time()
+
+for freq, quarter_duration, quarter_offset in notes:
+    # Before scheduling each note, check if we need to update the tempo.
+    elapsed = time() - performance_start
+    if elapsed > TEMPO_CHANGE_TIME and current_tempo != NEW_TEMPO:
+        current_tempo = NEW_TEMPO
+        print(f"\nTempo changed to {current_tempo} BPM at elapsed time {elapsed:.2f} sec\n")
+    
+    # Compute scheduled onset (in seconds) using the current tempo.
+    # (60 / current_tempo) gives the length of one beat in seconds.
+    scheduled_time = quarter_offset * (60 / current_tempo)
+    
+    # Wait until it is time to play the note.
+    while time() - performance_start < scheduled_time:
+        sleep(0.001)
+    
+    # Compute note duration in seconds using the current tempo.
+    note_duration = quarter_duration * (60 / current_tempo)
+    
+    play_note(freq, note_duration)
+    print(f"Playing note: {freq:.2f} Hz for {note_duration:.2f} sec (quarter offset {quarter_offset})")
+
+print("Performance complete.")
 
 fs.delete()
