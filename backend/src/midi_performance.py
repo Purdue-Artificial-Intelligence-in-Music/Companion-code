@@ -2,7 +2,6 @@ import math
 import threading
 from time import sleep, time
 from typing import List, Tuple
-
 import fluidsynth
 from music21 import converter, chord, note
 
