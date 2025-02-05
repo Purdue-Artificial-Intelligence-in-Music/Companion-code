@@ -29,7 +29,8 @@ jobs:
       - name: install dependencies
         working-directory: backend
         run: |  
-          sudo apt install portaudio19-dev python3-pyaudio          
+          sudo apt install portaudio19-dev python3-pyaudio
+          sudo apt install fluid-soundfont-gm
           python -m pip install --upgrade pip
           pip install -r requirements.txt
  
