@@ -7,6 +7,104 @@ from typing import List, Tuple
 from music21 import converter, note, chord
 from time import sleep, time
 
+def midi_to_notes(
+    midi_file_path: str,
+    tempo_bpm: float,
+    instrument_index: int
+) -> List[Tuple[float, float, float]]:
+    """
+    Parse a MIDI file and extract note information from a specified instrument.
+
+    This function reads a MIDI file, extracts notes from the given instrument index,
+    and returns a list of tuples. Each tuple contains the frequency in Hertz, duration
+    in seconds, and timestamp in seconds for a note. In the case of chords, each note
+    in the chord is processed individually.
+
+    Parameters
+    ----------
+    midi_file_path : str
+        The path to the MIDI file.
+    tempo_bpm : float
+        The tempo of the piece in beats per minute (BPM).
+    instrument_index : int
+        The index of the instrument (part) from which to extract the notes.
+        An IndexError is raised if the index is out of range.
+
+    Returns
+    -------
+    List[Tuple[float, float, float]]
+        A list where each element is a tuple containing:
+        - frequency (float): The frequency of the note in Hertz.
+        - duration (float): The duration of the note in seconds.
+        - timestamp (float): The starting time of the note in seconds.
+
+    Notes
+    -----
+    - If an error occurs during MIDI file parsing, an error message is printed and
+      an empty list is returned.
+    - Tied notes within the MIDI file are merged to form a single note duration.
+    """
+    # Parse the MIDI file
+    try:
+        midi_stream = converter.parse(midi_file_path)
+    except Exception as e:
+        print(f"Error parsing MIDI file: {e}")
+        return []
+
+    # Get all parts
+    parts = midi_stream.parts
+
+    # Validate instrument_index
+    if instrument_index < 0 or instrument_index >= len(parts):
+        raise IndexError(f"Instrument index {instrument_index} is out of range. "
+                         f"Please choose between 0 and {len(parts)-1}.")
+
+    # Select the specified part
+    selected_part = parts[instrument_index]
+
+    # Attempt to get the instrument name
+    instr = selected_part.getInstrument(returnDefault=False)
+    if instr:
+        instr_name = instr.instrumentName
+    else:
+        instr_name = "Unknown Instrument"
+
+    print(f"\nExtracting notes from Instrument Index {instrument_index}: {instr_name}\n")
+
+    # Flatten the selected part to simplify iteration
+    flat_part = selected_part.flat
+
+    # Handle ties to merge long notes
+    flat_part = flat_part.stripTies()  # This merges tied notes into single notes
+
+    freq_dur_timestamp_list = []
+
+    # Calculate the duration of one quarter note in seconds
+    quarter_note_duration_sec = 60.0 / tempo_bpm
+
+    # Iterate through all notes and chords in the flat part
+    for element in flat_part.notes:
+        # Determine the start time (offset) in quarter lengths
+        offset_quarter = element.offset
+        timestamp_sec = offset_quarter * quarter_note_duration_sec
+
+        # If the element is a Note, extract its frequency and duration
+        if isinstance(element, note.Note):
+            frequency = element.pitch.frequency
+            duration_sec = element.duration.quarterLength * quarter_note_duration_sec
+            freq_dur_timestamp_list.append(
+                (frequency, duration_sec, timestamp_sec))
+
+        # If the element is a Chord, handle each note in the chord
+        elif isinstance(element, chord.Chord):
+            for pitch in element.pitches:
+                frequency = pitch.frequency
+                duration_sec = element.duration.quarterLength * quarter_note_duration_sec
+                freq_dur_timestamp_list.append(
+                    (frequency, duration_sec, timestamp_sec))
+
+    return freq_dur_timestamp_list
+
 
 # ----------------------- Synthesizer Function ----------------------- #
 
@@ -72,126 +170,6 @@ def synthesize_cello(frequency: float, duration: float, initial_phase: float = 0
     final_phase = (2 * np.pi * frequency * duration + initial_phase) % (2 * np.pi)
 
     return waveform.astype(np.float32), final_phase
-
-# ----------------------- MIDI Parsing Functions ----------------------- #
-
-def list_instruments(midi_file_path: str) -> List[str]:
-    """
-    Parses the MIDI file and returns a list of instrument names with their indices.
-
-    Args:
-        midi_file_path (str): Path to the MIDI file.
-
-    Returns:
-        List[str]: List of instrument names.
-    """
-    # Parse the MIDI file
-    try:
-        midi_stream = converter.parse(midi_file_path)
-    except Exception as e:
-        print(f"Error parsing MIDI file: {e}")
-        return []
-
-    # Get all parts
-    parts = midi_stream.parts
-
-    instrument_names = []
-
-    for i, part in enumerate(parts):
-        # Attempt to get the instrument for the part
-        instr = part.getInstrument(returnDefault=False)
-        if instr:
-            instr_name = instr.instrumentName
-        else:
-            # If no instrument is found, assign a default name
-            instr_name = "Unknown Instrument"
-        instrument_names.append(instr_name)
-
-    # Print the list of instruments with their indices
-    print("\nList of Instruments in the MIDI File:")
-    for idx, name in enumerate(instrument_names):
-        print(f"Index {idx}: {name}")
-
-    return instrument_names
-
-def midi_to_notes(
-    midi_file_path: str,
-    tempo_bpm: float,
-    instrument_index: int
-) -> List[Tuple[float, float, float]]:
-    """
-    Parses a MIDI file and returns a list of tuples containing
-    (frequency in Hz, duration in seconds, timestamp in seconds)
-    for each note from the specified instrument.
-
-    Args:
-        midi_file_path (str): Path to the MIDI file.
-        tempo_bpm (float): Tempo in Beats Per Minute (BPM).
-        instrument_index (int): Index of the instrument to extract notes from.
-
-    Returns:
-        List[Tuple[float, float, float]]: List of (frequency, duration, timestamp) tuples.
-    """
-    # Parse the MIDI file
-    try:
-        midi_stream = converter.parse(midi_file_path)
-    except Exception as e:
-        print(f"Error parsing MIDI file: {e}")
-        return []
-
-    # Get all parts
-    parts = midi_stream.parts
-
-    # Validate instrument_index
-    if instrument_index < 0 or instrument_index >= len(parts):
-        raise IndexError(f"Instrument index {instrument_index} is out of range. "
-                         f"Please choose between 0 and {len(parts)-1}.")
-
-    # Select the specified part
-    selected_part = parts[instrument_index]
-
-    # Attempt to get the instrument name
-    instr = selected_part.getInstrument(returnDefault=False)
-    if instr:
-        instr_name = instr.instrumentName
-    else:
-        instr_name = "Unknown Instrument"
-
-    print(f"\nExtracting notes from Instrument Index {instrument_index}: {instr_name}\n")
-
-    # Flatten the selected part to simplify iteration
-    flat_part = selected_part.flat
-
-    # Handle ties to merge long notes
-    flat_part = flat_part.stripTies()  # This merges tied notes into single notes
-
-    freq_dur_timestamp_list = []
-
-    # Calculate the duration of one quarter note in seconds
-    quarter_note_duration_sec = 60.0 / tempo_bpm
-
-    # Iterate through all notes and chords in the flat part
-    for element in flat_part.notes:
-        # Determine the start time (offset) in quarter lengths
-        offset_quarter = element.offset
-        timestamp_sec = offset_quarter * quarter_note_duration_sec
-
-        # If the element is a Note, extract its frequency and duration
-        if isinstance(element, note.Note):
-            frequency = element.pitch.frequency
-            duration_sec = element.duration.quarterLength * quarter_note_duration_sec
-            freq_dur_timestamp_list.append(
-                (frequency, duration_sec, timestamp_sec))
-
-        # If the element is a Chord, handle each note in the chord
-        elif isinstance(element, chord.Chord):
-            for pitch in element.pitches:
-                frequency = pitch.frequency
-                duration_sec = element.duration.quarterLength * quarter_note_duration_sec
-                freq_dur_timestamp_list.append(
-                    (frequency, duration_sec, timestamp_sec))
-
-    return freq_dur_timestamp_list
 
 # ----------------------- Synthesizer and Playback ----------------------- #
 
