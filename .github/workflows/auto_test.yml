@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main  # Runs the workflow on pull requests to the main branch
+  push:
+    branches:
+      - fluidsynth-cicd
  
 jobs:
   test:
@@ -29,7 +32,8 @@ jobs:
       - name: install dependencies
         working-directory: backend
         run: |  
-          sudo apt install portaudio19-dev python3-pyaudio          
+          sudo apt install portaudio19-dev python3-pyaudio
+          sudo apt install fluid-soundfont-gm
           python -m pip install --upgrade pip
           pip install -r requirements.txt
  
