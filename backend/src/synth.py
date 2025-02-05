@@ -108,43 +108,68 @@ def midi_to_notes(
 
 # ----------------------- Synthesizer Function ----------------------- #
 
+import numpy as np
+from typing import Tuple
+
 def synthesize_cello(frequency: float, duration: float, initial_phase: float = 0.0, sample_rate: int = 44100) -> Tuple[np.ndarray, float]:
     """
     Synthesize a cello note as a waveform (NumPy array) with phase continuity.
 
-    Args:
-        frequency (float): The frequency of the note (Hz).
-        duration (float): Duration of the note in seconds.
-        initial_phase (float): The initial phase in radians. Defaults to 0.0.
-        sample_rate (int): Sampling rate in Hz. Defaults to 44100.
+    The synthesis simulates a bowed cello by using a fundamental frequency together
+    with adjusted harmonic amplitudes that emphasize lower partials (especially the second
+    harmonic) and attenuate higher ones. A subtle vibrato is also applied to mimic the
+    natural pitch variations produced when a cello is bowed.
 
-    Returns:
-        Tuple[np.ndarray, float]: 
-            - Waveform of the synthesized cello note.
-            - Final phase in radians.
+    Parameters
+    ----------
+    frequency : float
+        The frequency of the note (Hz).
+    duration : float
+        Duration of the note in seconds.
+    initial_phase : float, optional
+        The initial phase in radians (default is 0.0).
+    sample_rate : int, optional
+        The sampling rate in Hz (default is 44100).
+
+    Returns
+    -------
+    Tuple[np.ndarray, float]
+        - The waveform of the synthesized cello note as a NumPy array (dtype float32).
+        - The final phase in radians.
     """
-    # Time vector
+    # Create the time vector
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
 
-    # Initialize waveform with the initial phase
-    waveform = np.sin(2 * np.pi * frequency * t + initial_phase)
+    # Apply a subtle vibrato to simulate the slight pitch fluctuations of a bowed cello.
+    vibrato_rate = 5.0         # Vibrato frequency in Hz
+    vibrato_depth = 0.003      # Vibrato depth (small relative modulation)
+    vibrato = vibrato_depth * np.sin(2 * np.pi * vibrato_rate * t)
 
-    # Add harmonics (approximation of cello sound)
-    harmonics = [0.5, 0.3, 0.2, 0.1]  # Amplitude ratios for harmonics
-    for i, amp in enumerate(harmonics, start=2):
-        waveform += amp * np.sin(2 * np.pi * frequency * i * t + initial_phase)
+    # Fundamental: include vibrato in the phase
+    fundamental_phase = 2 * np.pi * frequency * t + vibrato + initial_phase
+    waveform = np.sin(fundamental_phase)
 
-    # Corrected Envelope (ADSR)
-    attack_time = 0.05 * duration  # seconds
-    release_time = 0.05 * duration  # seconds
-    sustain_level = 0.7  # Amplitude level (0 to 1)
+    # Adjusted harmonics for a bowed cello sound.
+    # These amplitudes emphasize the 2nd harmonic (which is typically strong in cello timbre)
+    # and then gradually attenuate higher harmonics.
+    harmonic_amplitudes = [0.9, 0.6, 0.3, 0.15, 0.1]  # Represents 2nd to 6th harmonics
+
+    for i, amp in enumerate(harmonic_amplitudes, start=2):
+        # For each harmonic, scale the vibrato effect by the harmonic number.
+        harmonic_phase = 2 * np.pi * frequency * i * t + vibrato * i + initial_phase
+        waveform += amp * np.sin(harmonic_phase)
+
+    # Create a simple ADSR envelope
+    attack_time = 0.05 * duration   # Attack time as 5% of the duration
+    release_time = 0.05 * duration  # Release time as 5% of the duration
+    sustain_level = 0.7             # Sustain amplitude level
 
     attack_samples = int(attack_time * sample_rate)
     release_samples = int(release_time * sample_rate)
     sustain_samples = len(t) - attack_samples - release_samples
 
+    # Adjust envelope segments if the note is very short
     if sustain_samples < 0:
-        # Adjust the envelope if the note is too short
         attack_samples = int(0.3 * len(t))
         release_samples = int(0.3 * len(t))
         sustain_samples = len(t) - attack_samples - release_samples
@@ -153,23 +178,25 @@ def synthesize_cello(frequency: float, duration: float, initial_phase: float = 0
             sustain_samples = len(t) - attack_samples - release_samples
 
     envelope = np.concatenate([
-        np.linspace(0, 1, attack_samples),  # Attack
-        np.ones(sustain_samples) * sustain_level,  # Sustain
-        np.linspace(sustain_level, 0, release_samples)  # Release
+        np.linspace(0, 1, attack_samples),               # Attack
+        np.ones(sustain_samples) * sustain_level,          # Sustain
+        np.linspace(sustain_level, 0, release_samples)      # Release
     ])
-    envelope = envelope[:len(t)]  # Ensure envelope matches waveform length
+    envelope = envelope[:len(t)]  # Ensure the envelope is exactly the same length as the waveform
 
+    # Apply the envelope to the waveform
     waveform *= envelope
 
-    # Normalize waveform to prevent clipping
+    # Normalize to avoid clipping
     max_amp = np.max(np.abs(waveform))
     if max_amp > 0:
         waveform /= max_amp
 
-    # Calculate final phase
+    # Compute the final phase for continuity
     final_phase = (2 * np.pi * frequency * duration + initial_phase) % (2 * np.pi)
 
     return waveform.astype(np.float32), final_phase
+
 
 # ----------------------- Synthesizer and Playback ----------------------- #
 
