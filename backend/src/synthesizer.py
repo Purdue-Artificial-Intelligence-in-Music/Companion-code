@@ -1,138 +1,321 @@
-import fluidsynth
-from typing import List, Tuple
-from music21 import converter, note, chord
-from time import sleep, time
 import math
+import threading
+from time import sleep, time
+from typing import List, Tuple
 
-# ---------------------------
-# Initialize FluidSynth
-# ---------------------------
-fs = fluidsynth.Synth(samplerate=44100)
-fs.start()  # Optionally specify an audio driver
+import fluidsynth
+from music21 import converter, chord, note
 
-# Load a SoundFont (ensure you have a high-quality one with cello sounds)
-sfid = fs.sfload(r"soundfonts\FluidR3_GM.sf2")
-fs.program_select(0, sfid, 0, 42)  # channel 0, bank 0, program 42 (adjust as needed)
 
-# ---------------------------
-# Function: Extract notes in quarter-note units
-# ---------------------------
-def midi_to_notes_quarter(
-    midi_file_path: str,
-    instrument_index: int
-) -> List[Tuple[float, float, float]]:
+class MidiPerformance:
     """
-    Parse a MIDI file and extract note information from a specified instrument,
-    returning timing in quarter note units.
+    Class for performing a MIDI file’s score in real time based on an external score follower.
 
-    Returns a list of tuples (frequency, quarter_duration, quarter_offset) where:
-      - frequency (Hz)
-      - quarter_duration: note duration in quarter note lengths (beats)
-      - quarter_offset: note start time in quarter note units (beats)
+    The class extracts note information from a MIDI file (with timing in quarter-note units)
+    and plays the notes using FluidSynth. The performance is run in a separate thread.
+    During the performance, the current tempo (in BPM) can be adjusted via the
+    set_tempo() method, and an external score follower can update the current score position
+    (in beats) via update_score_position(). A note is played only once the score follower’s
+    position has passed its scheduled offset; if the score follower skips ahead, any currently
+    playing note is stopped and only the most recently passed note is played.
+
+    Attributes
+    ----------
+    midi_file_path : str
+        Path to the MIDI file.
+    current_tempo : float
+        Current tempo in beats per minute.
+    instrument_index : int
+        Index of the instrument (part) to extract notes from.
+    notes : List[Tuple[float, float, float]]
+        List of note tuples (frequency, quarter_duration, quarter_offset), where:
+            frequency : float
+                Frequency of the note in Hertz.
+            quarter_duration : float
+                Duration of the note in beats.
+            quarter_offset : float
+                Onset time (offset) in beats.
+    score_position : float
+        Current position (in beats) of the soloist as estimated by the score follower.
     """
-    try:
-        midi_stream = converter.parse(midi_file_path)
-    except Exception as e:
-        print(f"Error parsing MIDI file: {e}")
-        return []
 
-    parts = midi_stream.parts
-    if instrument_index < 0 or instrument_index >= len(parts):
-        raise IndexError(f"Instrument index {instrument_index} is out of range. "
-                         f"Please choose between 0 and {len(parts)-1}.")
+    def __init__(self, midi_file_path: str, tempo: float, instrument_index: int = 0):
+        """
+        Initialize the MidiPerformance with a MIDI file and an initial tempo.
 
-    selected_part = parts[instrument_index]
-    instr = selected_part.getInstrument(returnDefault=False)
-    instr_name = instr.instrumentName if instr else "Unknown Instrument"
-    print(f"\nExtracting notes from Instrument Index {instrument_index}: {instr_name}\n")
+        Parameters
+        ----------
+        midi_file_path : str
+            Path to the MIDI file.
+        tempo : float
+            Initial tempo in beats per minute.
+        instrument_index : int, optional
+            Index of the instrument to extract from the MIDI file (default is 0).
+        """
+        self.midi_file_path = midi_file_path
+        self.current_tempo = tempo
+        self.instrument_index = instrument_index
+        self.score_position = 0.0  # in beats
+        self._next_note_index = 0
 
-    flat_part = selected_part.flat.stripTies()  # merge tied notes
+        # Initialize FluidSynth.
+        self.fs = fluidsynth.Synth(samplerate=44100)
+        self.fs.start()
+        sfid = self.fs.sfload(r"soundfonts\FluidR3_GM.sf2")
+        self.fs.program_select(0, sfid, 0, 42)
 
-    notes_list = []
-    for element in flat_part.notes:
-        quarter_offset = element.offset           # offset in quarter note units (beats)
-        quarter_duration = element.duration.quarterLength  # duration in beats
-        if isinstance(element, note.Note):
-            frequency = element.pitch.frequency
-            notes_list.append((frequency, quarter_duration, quarter_offset))
-        elif isinstance(element, chord.Chord):
-            for pitch in element.pitches:
-                frequency = pitch.frequency
+        # Extract note info in quarter-note units.
+        self.notes = self._midi_to_notes_quarter(self.midi_file_path, self.instrument_index)
+        self.notes.sort(key=lambda n: n[2])
+
+        # Threading and note playback management.
+        self._stop_event = threading.Event()
+        self._performance_thread = None
+
+        # For playing notes without overlapping.
+        self._current_note_thread = None
+        self._current_note_midi = None
+        self._stop_current_note_flag = False
+        self._note_lock = threading.Lock()
+
+    def _midi_to_notes_quarter(
+        self, midi_file_path: str, instrument_index: int
+    ) -> List[Tuple[float, float, float]]:
+        """
+        Parse a MIDI file and extract note information in quarter-note units.
+
+        Parameters
+        ----------
+        midi_file_path : str
+            Path to the MIDI file.
+        instrument_index : int
+            Index of the instrument (part) to extract notes from.
+
+        Returns
+        -------
+        List[Tuple[float, float, float]]
+            List of tuples, where each tuple is (frequency, quarter_duration, quarter_offset).
+        """
+        try:
+            midi_stream = converter.parse(midi_file_path)
+        except Exception as e:
+            print(f"Error parsing MIDI file: {e}")
+            return []
+
+        parts = midi_stream.parts
+        if instrument_index < 0 or instrument_index >= len(parts):
+            raise IndexError(
+                f"Instrument index {instrument_index} is out of range. Please choose between 0 and {len(parts)-1}."
+            )
+
+        selected_part = parts[instrument_index]
+        flat_part = selected_part.flat.stripTies()
+
+        notes_list = []
+        for element in flat_part.notes:
+            quarter_offset = element.offset
+            quarter_duration = element.duration.quarterLength
+            if isinstance(element, note.Note):
+                frequency = element.pitch.frequency
                 notes_list.append((frequency, quarter_duration, quarter_offset))
-    return notes_list
+            elif isinstance(element, chord.Chord):
+                for pitch in element.pitches:
+                    frequency = pitch.frequency
+                    notes_list.append((frequency, quarter_duration, quarter_offset))
+        return notes_list
 
-# ---------------------------
-# Helper: Convert frequency (Hz) to MIDI note number
-# ---------------------------
-def frequency_to_midi(frequency: float) -> int:
-    midi_note = 69 + 12 * math.log2(frequency / 440.0)
-    return int(round(midi_note))
+    @staticmethod
+    def _frequency_to_midi(frequency: float) -> int:
+        """
+        Convert a frequency in Hertz to a MIDI note number.
 
-# ---------------------------
-# Function: Play a note via FluidSynth using MIDI
-# ---------------------------
-def play_note(frequency: float, duration: float):
-    """
-    Play a note using FluidSynth by converting frequency to a MIDI note.
-    
-    Parameters:
-      frequency : float
-          The frequency of the note in Hz.
-      duration : float
-          The duration (in seconds) to hold the note.
-    """
-    midi_note = frequency_to_midi(frequency)
-    fs.noteon(0, midi_note, 100)  # channel 0, note, velocity 100
-    sleep(duration)
-    fs.noteoff(0, midi_note)
+        Parameters
+        ----------
+        frequency : float
+            Frequency in Hertz.
 
-# ---------------------------
-# Global tempo and tempo update logic
-# ---------------------------
-# Start with an initial tempo (BPM)
-current_tempo = 60  # BPM
+        Returns
+        -------
+        int
+            MIDI note number (0-127).
+        """
+        midi_note = 69 + 12 * math.log2(frequency / 440.0)
+        return int(round(midi_note))
 
-# For demonstration, we simulate a tempo change after a set time.
-# In a real scenario, you could update this variable in response to external input.
-TEMPO_CHANGE_TIME = 10  # seconds after performance start to change tempo
-NEW_TEMPO = 90          # New BPM after the change
+    def set_tempo(self, tempo: float):
+        """
+        Update the current tempo.
 
-# ---------------------------
-# Main performance loop
-# ---------------------------
-MIDI_FILE = r'data/midi/air.mid'
-INSTRUMENT = 1
+        Parameters
+        ----------
+        tempo : float
+            New tempo in beats per minute.
+        """
+        self.current_tempo = tempo
+        print(f"Tempo updated to {tempo} BPM")
 
-# Extract notes as (frequency, quarter_duration, quarter_offset)
-notes = midi_to_notes_quarter(MIDI_FILE, INSTRUMENT)
-# Sort by quarter note offset
-notes.sort(key=lambda n: n[2])
+    def update_score_position(self, position: float):
+        """
+        Update the score follower's current position.
 
-print("Starting performance...")
+        Parameters
+        ----------
+        position : float
+            Current position in beats (quarter-note units).
+        """
+        self.score_position = position
 
-performance_start = time()
+    def _note_worker(self, midi_note: int, duration_sec: float):
+        """
+        Worker function to play a note and allow for early termination.
 
-for freq, quarter_duration, quarter_offset in notes:
-    # Before scheduling each note, check if we need to update the tempo.
-    elapsed = time() - performance_start
-    if elapsed > TEMPO_CHANGE_TIME and current_tempo != NEW_TEMPO:
-        current_tempo = NEW_TEMPO
-        print(f"\nTempo changed to {current_tempo} BPM at elapsed time {elapsed:.2f} sec\n")
-    
-    # Compute scheduled onset (in seconds) using the current tempo.
-    # (60 / current_tempo) gives the length of one beat in seconds.
-    scheduled_time = quarter_offset * (60 / current_tempo)
-    
-    # Wait until it is time to play the note.
-    while time() - performance_start < scheduled_time:
-        sleep(0.001)
-    
-    # Compute note duration in seconds using the current tempo.
-    note_duration = quarter_duration * (60 / current_tempo)
-    
-    play_note(freq, note_duration)
-    print(f"Playing note: {freq:.2f} Hz for {note_duration:.2f} sec (quarter offset {quarter_offset})")
+        Parameters
+        ----------
+        midi_note : int
+            MIDI note number to play.
+        duration_sec : float
+            Duration in seconds to play the note.
+        """
+        self.fs.noteon(0, midi_note, 100)
+        start_time = time()
+        while time() - start_time < duration_sec:
+            sleep(0.01)
+            with self._note_lock:
+                if self._stop_current_note_flag:
+                    break
+        self.fs.noteoff(0, midi_note)
+        with self._note_lock:
+            self._current_note_thread = None
+            self._current_note_midi = None
+            self._stop_current_note_flag = False
 
-print("Performance complete.")
+    def stop_current_note(self):
+        """
+        Stop the currently playing note, if any.
+        """
+        with self._note_lock:
+            if self._current_note_thread is not None:
+                self._stop_current_note_flag = True
+        if self._current_note_thread is not None:
+            self._current_note_thread.join()
 
-fs.delete()
+    def _play_note(self, frequency: float, quarter_duration: float):
+        """
+        Play a note based on the current tempo, ensuring no overlap with a previous note.
+
+        Parameters
+        ----------
+        frequency : float
+            Frequency of the note in Hertz.
+        quarter_duration : float
+            Duration of the note in beats.
+        """
+        duration_sec = quarter_duration * (60.0 / self.current_tempo)
+        midi_note = self._frequency_to_midi(frequency)
+        # Stop any note that is currently playing.
+        self.stop_current_note()
+        with self._note_lock:
+            self._current_note_midi = midi_note
+            self._current_note_thread = threading.Thread(
+                target=self._note_worker, args=(midi_note, duration_sec), daemon=True
+            )
+            self._current_note_thread.start()
+
+    def _performance_loop(self):
+        """
+        Internal loop that monitors the score follower and plays notes accordingly.
+
+        The loop waits until the score follower's position (in beats) passes a note's scheduled offset.
+        If multiple notes are passed, only the most recent passed note is played. If a note is currently
+        playing and the score follower jumps ahead, the current note is stopped and the new note is played.
+        """
+        while not self._stop_event.is_set() and self._next_note_index < len(self.notes):
+            if self.score_position >= self.notes[self._next_note_index][2]:
+                # Skip to the most recent note that has been passed.
+                while (
+                    self._next_note_index < len(self.notes)
+                    and self.notes[self._next_note_index][2] <= self.score_position
+                ):
+                    self._next_note_index += 1
+                # Play the most recent passed note.
+                note_to_play = self.notes[self._next_note_index - 1]
+                frequency, quarter_duration, quarter_offset = note_to_play
+                print(
+                    f"Playing note at beat {quarter_offset:.2f}: {frequency:.2f} Hz, "
+                    f"duration {quarter_duration:.2f} beats"
+                )
+                self._play_note(frequency, quarter_duration)
+                # Wait until the note finishes before checking again.
+                if self._current_note_thread is not None:
+                    self._current_note_thread.join()
+            else:
+                sleep(0.005)
+        print("Performance loop ended.")
+
+    def start(self):
+        """
+        Start the performance.
+
+        Begins the performance loop (in a separate thread), which monitors the score
+        follower's position and plays notes as they are passed.
+        """
+        self._stop_event.clear()
+        self._performance_thread = threading.Thread(
+            target=self._performance_loop, daemon=True
+        )
+        self._performance_thread.start()
+        print("Performance started.")
+
+    def stop(self):
+        """
+        Stop the performance.
+
+        Signals the performance loop to stop, waits for the loop to finish, stops any currently
+        playing note, and cleans up the FluidSynth synthesizer.
+        """
+        self._stop_event.set()
+        if self._performance_thread is not None:
+            self._performance_thread.join()
+        self.stop_current_note()
+        self.fs.delete()
+        print("Performance stopped.")
+
+
+# =============================================================================
+# Example usage of the MidiPerformance class.
+# =============================================================================
+if __name__ == "__main__":
+    import threading
+    from time import sleep
+    import numpy as np
+
+    # Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
+    performance = MidiPerformance(midi_file_path=r"data/midi/air.mid", tempo=60, instrument_index=1)
+
+    # Start the performance.
+    performance.start()
+    # Simulate score follower updates and a tempo change.
+    def simulate_score_follower():
+        position = 0
+        prev_time = time()
+        while position < 144:  # Assume the piece is 144 beats long.
+            elapsed_time = time() - prev_time
+            position += elapsed_time * performance.current_tempo / 60  # in beats (assue 60 bpm)
+            prev_time = time()
+            sleep(0.01)  # update roughly every 10ms
+            performance.update_score_position(position)
+            if position > 40:
+                position = 0
+
+    sf_thread = threading.Thread(target=simulate_score_follower, daemon=True)
+    sf_thread.start()
+
+    # Let the performance run for some time.
+    sleep(10)
+    performance.set_tempo(120)  # Change the tempo to 120 BPM.
+    sleep(10)
+    performance.set_tempo(90)  # Change the tempo to 90 BPM.
+    sleep(20)
+
+    # Stop the performance.
+    performance.stop()
