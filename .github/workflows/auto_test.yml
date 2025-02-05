@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - main  # Runs the workflow on pull requests to the main branch
-  push:
-    branches:
-      - fluidsynth-cicd
  
 jobs:
   test:
