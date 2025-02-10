@@ -123,34 +123,36 @@ def synchronization():
         return 'Missing or invalid session token', 401
     
     # Retrieve the session data from the SESSIONS dictionary
-    session_data = SESSIONS.get(session_token)
-    if not session_data:
-        return 'Session not found or expired', 404
+    # session_data = SESSIONS.get(session_token)
+    # if not session_data:
+    #     return 'Session not found or expired', 404
     
     # Get the synchronizer object
 
-    synchronizer: Synchronizer = session_data.get('synchronizer')
+    # synchronizer: Synchronizer = session_data.get('synchronizer')
 
-    if not synchronizer:
-        return 'Synchronizer not found', 404
+    # if not synchronizer:
+    #     return 'Synchronizer not found', 404
     
     # Parse the incoming data
-    if not request.is_json:
-        return 'Invalid request data', 400
+    # if not request.is_json:
+    #     return 'Invalid request data', 400
 
-    data = request.get_json()
-    frames = data.get('frames')
-    timestamp = data.get('timestamp')
+    # data = request.get_json()
+    # frames = data.get('frames')
+    # timestamp = data.get('timestamp')
 
-    if frames is None or timestamp is None:
-        return 'Invalid request data', 400
+    # if frames is None or timestamp is None:
+    #     return 'Invalid request data', 400
 
-    frames = np.asarray(frames, np.float32)
-    frames = frames.reshape((1, -1))
-    print(frames.shape)
-    print(timestamp)
-    playback_rate, estimated_position = synchronizer.step(frames, timestamp)
-    return jsonify({'playback_rate': playback_rate, 'estimated_position': estimated_position}), 200
+    # frames = np.asarray(frames, np.float32)
+    # frames = frames.reshape((1, -1))
+    # print(frames.shape)
+    # print(timestamp)
+    # playback_rate, estimated_position = synchronizer.step(frames, timestamp)
+    global estimated_time
+    playback_rate = 1.0
+    return jsonify({'playback_rate': playback_rate, 'estimated_position': estimated_time}), 200
 
 @app.route('/stop-session', methods=['POST'])
 def stop_session():

@@ -151,7 +151,6 @@ class MidiPerformance:
             New tempo in beats per minute.
         """
         self.current_tempo = tempo
-        print(f"Tempo updated to {tempo} BPM")
 
     def update_score_position(self, position: float):
         """
@@ -240,8 +239,8 @@ class MidiPerformance:
                 note_to_play = self.notes[self._next_note_index - 1]
                 frequency, quarter_duration, quarter_offset = note_to_play
                 print(
-                    f"Playing note at beat {quarter_offset:.2f}: {frequency:.2f} Hz, "
-                    f"duration {quarter_duration:.2f} beats"
+                    f"Playing note at beat {quarter_offset}: {frequency:.2f} Hz, "
+                    f"duration {quarter_duration} beats"
                 )
                 self._play_note(frequency, quarter_duration)
                 # Wait until the note finishes before checking again.
@@ -289,7 +288,7 @@ if __name__ == "__main__":
     import numpy as np
 
     # Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
-    performance = MidiPerformance(midi_file_path=r"data/midi/air.mid", tempo=60, instrument_index=1)
+    performance = MidiPerformance(midi_file_path=r"data/midi/the_entertainer.mid", tempo=100, instrument_index=0)
 
     # Start the performance.
     performance.start()
@@ -303,18 +302,17 @@ if __name__ == "__main__":
             prev_time = time()
             sleep(0.01)  # update roughly every 10ms
             performance.update_score_position(position)
-            if position > 40:
-                position = 0
+            # if position > 40:
+            #     position = 40
+
+            # if 5 < position < 10:
+            #     position += 10  # Skip ahead by 10 beats.
 
     sf_thread = threading.Thread(target=simulate_score_follower, daemon=True)
     sf_thread.start()
 
     # Let the performance run for some time.
-    sleep(10)
-    performance.set_tempo(120)  # Change the tempo to 120 BPM.
-    sleep(10)
-    performance.set_tempo(90)  # Change the tempo to 90 BPM.
-    sleep(20)
+    sleep(100)
 
     # Stop the performance.
     performance.stop()
