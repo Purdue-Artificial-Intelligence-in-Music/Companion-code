@@ -91,6 +91,7 @@ const styles = StyleSheet.create({
         width: "25%",
         height: "100%",
         display: "flex",
-        backgroundColor: "gray"
+        padding: "2%",
+        backgroundColor: "lightgray"
     }
 })

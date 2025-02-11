@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, Image, SafeAreaView } from "react-native";
 import React, { useEffect, useReducer } from "react";
 import { startSession, synchronize } from "./components/Utils";
 import { Score_Select } from "./components/ScoreSelect";
+import { Return_Button } from "./components/ReturnButton";
 import { Start_Stop_Button } from "./components/StartButton";
 import { MeasureSetBox } from "./components/MeasureSetter";
 import { TempoBox } from "./components/TempoBox";
@@ -106,7 +107,13 @@ export default function App() {
       {/* Provides safe area insets for mobile devices */}
       <AudioRecorder state={state} dispatch={dispatch} />
       <View style={styles.menu_bar}>
-        <Image source={{ uri: './companion.png' }} style={styles.logo}/>
+        <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
+        <Return_Button
+          state={state}
+          dispatch={dispatch}
+          button_format={styles.button_format}
+          text_style={styles.button_text}
+        />
         <Start_Stop_Button
           state={state}
           dispatch={dispatch}
@@ -125,13 +132,15 @@ export default function App() {
           <TempoBox
             state={state}
             dispatch={dispatch}
-            label_text_style={styles.label}
+            label_text_style={styles.button_text}
           />
         }
       </View>
-      { // List of scores, show when not in play mode
-      state.inPlayMode || <Score_Select state={state} dispatch={dispatch} /> }
-      <ScoreDisplay state={state} dispatch={dispatch} />
+      <View style={styles.main_area}>
+        { // List of scores, show when not in play mode
+        state.inPlayMode || <Score_Select state={state} dispatch={dispatch} /> }
+        <ScoreDisplay state={state} dispatch={dispatch} />
+      </View>
       <StatusBar style="auto" />
       {/* Automatically adjusts the status bar style */}
       <AudioPlayer state={state} />
@@ -148,13 +157,6 @@ const styles = StyleSheet.create({
     justifyContent: "center", // Center children vertically
     padding: 16, // Add padding around the container
   },
-  title: {
-    fontSize: 20, // Set the font size for the title
-    marginBottom: 20, // Add space below the title
-  },
-  label: {
-    fontSize: 16,
-  },
   button_format: {
     borderColor: "black",
     borderRadius: 15,
@@ -162,20 +164,30 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   button_text: {
-    fontSize: 20,
+    fontSize: 24,
     textAlign: "center",
   },
   menu_bar: {
+    flex: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "lightgray",
+    width: "100%",
+    minHeight: 100,
+  },
+  main_area: {
     flex: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 10,
-    backgroundColor: "lightgray",
+    backgroundColor: "white",
     width: "100%",
-    minHeight: 72,
-  },logo: {
+    height: "80%",
+  },
+  logo: {
     backgroundColor: "white",
     flex: 0.25,
+    width: "25%",
     height: "100%",
+    resizeMode: 'contain'
   },
 });

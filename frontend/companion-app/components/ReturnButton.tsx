@@ -1,6 +1,6 @@
 import { StyleSheet, View, Text, TextStyle, ViewStyle, Pressable } from "react-native";
 
-export function Start_Stop_Button({
+export function Return_Button({
     state,
     dispatch,
     button_format,
@@ -25,12 +25,14 @@ export function Start_Stop_Button({
 
 const styles = StyleSheet.create({
     button_shape: {
-        margin: "25%",
-        width: "100%",
-        height: "100%"
+        width: "50%",
+        height: "50%"
     },
     flexing_box: {
         width: "12.5%",
-        height: "100%"
+        height: "100%",
+        justifyContent: "center",
+        alignContent: "center",
+        alignItems: "center"
     }
 })
