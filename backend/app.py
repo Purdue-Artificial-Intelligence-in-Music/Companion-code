@@ -150,9 +150,7 @@ def synchronization():
     print(frames.shape)
     print(timestamp)
     playback_rate, estimated_position = synchronizer.step(frames, timestamp)
-    global estimated_time
-    playback_rate = 1.0
-    return jsonify({'playback_rate': playback_rate, 'estimated_position': estimated_time}), 200
+    return jsonify({'playback_rate': playback_rate, 'estimated_position': estimated_position}), 200
 
 @app.route('/stop-session', methods=['POST'])
 def stop_session():
