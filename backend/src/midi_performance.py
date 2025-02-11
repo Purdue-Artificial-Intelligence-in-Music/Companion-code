@@ -38,7 +38,7 @@ class MidiPerformance:
         Current position (in beats) of the soloist as estimated by the score follower.
     """
 
-    def __init__(self, midi_file_path: str, tempo: float, instrument_index: int = 0):
+    def __init__(self, midi_file_path: str, tempo: float, instrument_index: int = 0, program_number: int = 43):
         """
         Initialize the MidiPerformance with a MIDI file and an initial tempo.
 
@@ -50,6 +50,8 @@ class MidiPerformance:
             Initial tempo in beats per minute.
         instrument_index : int, optional
             Index of the instrument to extract from the MIDI file (default is 0).
+        program_number : int, optional
+            MIDI program number to choose the instrument (default is 43, which is a cello).
         """
         self.midi_file_path = midi_file_path
         self.current_tempo = tempo
@@ -61,7 +63,7 @@ class MidiPerformance:
         self.fs = fluidsynth.Synth(samplerate=44100)
         self.fs.start()
         sfid = self.fs.sfload(r"soundfonts\FluidR3_GM.sf2")
-        self.fs.program_select(0, sfid, 0, 42)
+        self.fs.program_select(0, sfid, 0, program_number)
 
         # Extract note info in quarter-note units.
         self.notes = self._midi_to_notes_quarter(self.midi_file_path, self.instrument_index)
@@ -288,7 +290,7 @@ if __name__ == "__main__":
     import numpy as np
 
     # Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
-    performance = MidiPerformance(midi_file_path=r"data/midi/the_entertainer.mid", tempo=100, instrument_index=0)
+    performance = MidiPerformance(midi_file_path=r"data/midi/ode_to_joy.mid", tempo=300, instrument_index=0)
 
     # Start the performance.
     performance.start()
