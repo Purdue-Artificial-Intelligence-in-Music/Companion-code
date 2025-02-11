@@ -91,7 +91,7 @@ class ScoreFollower:
         # Return a chroma feature for the audio
         return self.chroma_maker.insert(audio)
 
-    def step(self, frames: np.ndarray) -> int:
+    def step(self, frames: np.ndarray) -> float:
         """Calculate next step in the alignment path between the microphone and reference audio """
 
         # Generate chroma feature

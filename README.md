@@ -19,7 +19,12 @@ Companion is your on-demand accompanist, allowing you to practice with professio
    ```bash
    python setup.py install
    ```
-3. Start the Flask server:
+3. If you are on Windows, install FluidSynth and add "~/fluidsynth/bin" to your path. If you are on Linux, install FluidSynth and add it to your path.
+4. Start the program:
+   ```bash
+   python main.py
+   ```
+5. Start the Flask server (if you want to use the frontend):
    ```bash
    python app.py
    ```
