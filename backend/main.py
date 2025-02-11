@@ -17,29 +17,27 @@ def normalize_audio(audio: np.ndarray) -> np.ndarray:
 
 SAMPLE_RATE = 44100  # Universal sample rate
 CHANNELS = 1  # Universal number of channels
-WIN_LENGTH = 8192  # Samples per window for score follower
-HOP_LENGTH = 8192  # Samples per hop for score follower
-C = 50  # Search width for score follower. Higher values are more computationally expensive
+WIN_LENGTH = 4096  # Samples per window for score follower
+HOP_LENGTH = 4096  # Samples per hop for score follower. This should be the same as WIN_LENGTH for now. Can add support for different values in the future
+C = 100  # Search width for score follower. Higher values are more computationally expensive
 MAX_RUN_COUNT = 3  # Slope constraint for score follower. 1 / MAX_RUN_COUNT <= slope <= MAX_RUN_COUNT
-DIAG_WEIGHT = 1  # Weight for the diagonal in the cost matrix for score follower. Values less than 2 bias toward diagonal steps
+DIAG_WEIGHT = 0.5  # Weight for the diagonal in the cost matrix for score follower. Values less than 2 bias toward diagonal steps
 MAX_DURATION = 600  # Maximum duration of audio buffer in seconds
 
-soloist_times = []
-estimated_times = []
-accompanist_times = []
-playback_rates = []
 
-TEMPO = 240  # Tempo at which piece is played in BPM
-piece_name = 'greensleeves'  # Name of piece
+TEMPO = 180  # Tempo at which piece is played in BPM
+PIECE_NAME = 'twinkle_twinkle'  # Name of piece
+PROGAM_NUMBER = 43  # Program number for accompaniment instrument
+SOLO_VOLUME_MULTIPLIER = 1
 
-MIDI_SCORE = os.path.join('data', 'midi', piece_name + '.mid')  # Path to MIDI file
-OUTPUT_DIR = os.path.join('data', 'audio', piece_name)  # Directory where synthesized audio will be saved
+MIDI_SCORE = os.path.join('data', 'midi', PIECE_NAME + '.mid')  # Path to MIDI file
+OUTPUT_DIR = os.path.join('data', 'audio', PIECE_NAME)  # Directory where synthesized audio will be saved
 
 generator = AudioGenerator(score_path=MIDI_SCORE)  # Create an AudioGenerator instance
 generator.generate_audio(output_dir=OUTPUT_DIR, tempo=TEMPO)  # Generate a WAV file for each instrument in the MIDI file
 
-reference = os.path.join('data', 'audio', piece_name, 'instrument_0.wav')  # Path to reference audio file
-source = os.path.join('data', 'audio', piece_name, 'instrument_0.wav')  # Path to soloist audio file (can optionally replace mic input)
+reference = os.path.join('data', 'audio', PIECE_NAME, 'instrument_0.wav')  # Path to reference audio file
+source = os.path.join('data', 'audio', PIECE_NAME, 'instrument_0.wav')  # Path to soloist audio file (can optionally replace mic input)
 
 source_audio, _ = librosa.load(source, sr=SAMPLE_RATE)  # load soloist audio
 source_audio = source_audio.reshape((CHANNELS, -1))  # reshape soloist audio to 2D array
@@ -56,6 +54,11 @@ score_follower = ScoreFollower(reference=reference,
                                diag_weight=DIAG_WEIGHT, 
                                sample_rate=SAMPLE_RATE, 
                                win_length=WIN_LENGTH)
+
+soloist_times = []
+estimated_times = []
+accompanist_times = []
+playback_rates = []
 
 # PyAudio callback function
 def callback(in_data, frame_count, time_info, status):
@@ -80,7 +83,7 @@ def callback(in_data, frame_count, time_info, status):
     # The MidiPerformance instance will play the most recently passed note in the accompaniment.
     performance.update_score_position(position)
     sleep(0.01)  # update roughly every 10ms
-    return (data, pyaudio.paContinue)  # Output the solo to the speakers. The accompaniment is already being played by the MidiPerformance instance.
+    return (SOLO_VOLUME_MULTIPLIER * data, pyaudio.paContinue)  # Output the solo to the speakers. The accompaniment is already being played by the MidiPerformance instance.
 
 # PyAudio
 p = pyaudio.PyAudio()
@@ -91,12 +94,12 @@ stream = p.open(rate=SAMPLE_RATE,
                 format=pyaudio.paFloat32,
                 input=True,
                 output=True,
-                frames_per_buffer=8192,
+                frames_per_buffer=WIN_LENGTH,
                 start=False,
                 stream_callback=callback)
 
 # Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
-performance = MidiPerformance(midi_file_path=MIDI_SCORE, tempo=TEMPO, instrument_index=1, program_number=43)
+performance = MidiPerformance(midi_file_path=MIDI_SCORE, tempo=TEMPO, instrument_index=1, program_number=PROGAM_NUMBER)
 
 # Wait for user input to start the performance
 input('Press Enter to start the performance')

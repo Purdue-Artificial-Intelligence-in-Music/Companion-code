@@ -14,9 +14,8 @@ class MidiPerformance:
     and plays the notes using FluidSynth. The performance is run in a separate thread.
     During the performance, the current tempo (in BPM) can be adjusted via the
     set_tempo() method, and an external score follower can update the current score position
-    (in beats) via update_score_position(). A note is played only once the score follower’s
-    position has passed its scheduled offset; if the score follower skips ahead, any currently
-    playing note is stopped and only the most recently passed note is played.
+    (in beats) via update_score_position(). This polyphonic version allows multiple notes to
+    play concurrently.
 
     Attributes
     ----------
@@ -73,11 +72,9 @@ class MidiPerformance:
         self._stop_event = threading.Event()
         self._performance_thread = None
 
-        # For playing notes without overlapping.
-        self._current_note_thread = None
-        self._current_note_midi = None
-        self._stop_current_note_flag = False
-        self._note_lock = threading.Lock()
+        # List to track active note threads (for polyphony).
+        self._active_note_threads = []
+        self._active_note_lock = threading.Lock()
 
     def _midi_to_notes_quarter(
         self, midi_file_path: str, instrument_index: int
@@ -167,7 +164,7 @@ class MidiPerformance:
 
     def _note_worker(self, midi_note: int, duration_sec: float):
         """
-        Worker function to play a note and allow for early termination.
+        Worker function to play a note.
 
         Parameters
         ----------
@@ -177,31 +174,17 @@ class MidiPerformance:
             Duration in seconds to play the note.
         """
         self.fs.noteon(0, midi_note, 100)
-        start_time = time()
-        while time() - start_time < duration_sec:
-            sleep(0.01)
-            with self._note_lock:
-                if self._stop_current_note_flag:
-                    break
+        sleep(duration_sec)
         self.fs.noteoff(0, midi_note)
-        with self._note_lock:
-            self._current_note_thread = None
-            self._current_note_midi = None
-            self._stop_current_note_flag = False
-
-    def stop_current_note(self):
-        """
-        Stop the currently playing note, if any.
-        """
-        with self._note_lock:
-            if self._current_note_thread is not None:
-                self._stop_current_note_flag = True
-        if self._current_note_thread is not None:
-            self._current_note_thread.join()
+        # Remove this thread from active note threads.
+        current = threading.current_thread()
+        with self._active_note_lock:
+            if current in self._active_note_threads:
+                self._active_note_threads.remove(current)
 
     def _play_note(self, frequency: float, quarter_duration: float):
         """
-        Play a note based on the current tempo, ensuring no overlap with a previous note.
+        Play a note based on the current tempo, allowing for overlapping (polyphonic) playback.
 
         Parameters
         ----------
@@ -212,44 +195,33 @@ class MidiPerformance:
         """
         duration_sec = quarter_duration * (60.0 / self.current_tempo)
         midi_note = self._frequency_to_midi(frequency)
-        # Stop any note that is currently playing.
-        self.stop_current_note()
-        with self._note_lock:
-            self._current_note_midi = midi_note
-            self._current_note_thread = threading.Thread(
-                target=self._note_worker, args=(midi_note, duration_sec), daemon=True
-            )
-            self._current_note_thread.start()
+        # Create a new thread for this note.
+        note_thread = threading.Thread(
+            target=self._note_worker, args=(midi_note, duration_sec), daemon=True
+        )
+        with self._active_note_lock:
+            self._active_note_threads.append(note_thread)
+        note_thread.start()
 
     def _performance_loop(self):
         """
         Internal loop that monitors the score follower and plays notes accordingly.
 
         The loop waits until the score follower's position (in beats) passes a note's scheduled offset.
-        If multiple notes are passed, only the most recent passed note is played. If a note is currently
-        playing and the score follower jumps ahead, the current note is stopped and the new note is played.
+        If multiple notes are reached, they are all launched (allowing for polyphony).
         """
         while not self._stop_event.is_set() and self._next_note_index < len(self.notes):
-            if self.score_position >= self.notes[self._next_note_index][2]:
-                # Skip to the most recent note that has been passed.
-                while (
-                    self._next_note_index < len(self.notes)
-                    and self.notes[self._next_note_index][2] <= self.score_position
-                ):
-                    self._next_note_index += 1
-                # Play the most recent passed note.
-                note_to_play = self.notes[self._next_note_index - 1]
-                frequency, quarter_duration, quarter_offset = note_to_play
+            # Launch all notes whose scheduled beat is reached.
+            while (self._next_note_index < len(self.notes) and
+                   self.score_position >= self.notes[self._next_note_index][2]):
+                frequency, quarter_duration, quarter_offset = self.notes[self._next_note_index]
                 print(
                     f"Playing note at beat {quarter_offset}: {frequency:.2f} Hz, "
                     f"duration {quarter_duration} beats"
                 )
                 self._play_note(frequency, quarter_duration)
-                # Wait until the note finishes before checking again.
-                if self._current_note_thread is not None:
-                    self._current_note_thread.join()
-            else:
-                sleep(0.005)
+                self._next_note_index += 1
+            sleep(0.005)
         print("Performance loop ended.")
 
     def start(self):
@@ -257,7 +229,7 @@ class MidiPerformance:
         Start the performance.
 
         Begins the performance loop (in a separate thread), which monitors the score
-        follower's position and plays notes as they are passed.
+        follower's position and plays notes as they are reached.
         """
         self._stop_event.clear()
         self._performance_thread = threading.Thread(
@@ -270,45 +242,49 @@ class MidiPerformance:
         """
         Stop the performance.
 
-        Signals the performance loop to stop, waits for the loop to finish, stops any currently
-        playing note, and cleans up the FluidSynth synthesizer.
+        Signals the performance loop to stop, waits for the loop to finish, and cleans up
+        the FluidSynth synthesizer after waiting for all active note threads to finish.
         """
         self._stop_event.set()
         if self._performance_thread is not None:
             self._performance_thread.join()
-        self.stop_current_note()
+        # Wait for all active note threads to finish.
+        while True:
+            with self._active_note_lock:
+                if not self._active_note_threads:
+                    break
+            sleep(0.01)
         self.fs.delete()
         print("Performance stopped.")
 
 
 # =============================================================================
-# Example usage of the MidiPerformance class.
+# Example usage of the MidiPerformance class (polyphonic).
 # =============================================================================
 if __name__ == "__main__":
     import threading
     from time import sleep
-    import numpy as np
 
     # Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
-    performance = MidiPerformance(midi_file_path=r"data/midi/ode_to_joy.mid", tempo=300, instrument_index=0)
+    performance = MidiPerformance(
+        midi_file_path=r"data/midi/house_of_the_rising_sun.mid", tempo=100, instrument_index=1, program_number=25
+    )
 
     # Start the performance.
     performance.start()
-    # Simulate score follower updates and a tempo change.
+
+    # Simulate score follower updates.
     def simulate_score_follower():
         position = 0
         prev_time = time()
-        while position < 144:  # Assume the piece is 144 beats long.
-            elapsed_time = time() - prev_time
-            position += elapsed_time * performance.current_tempo / 60  # in beats (assue 60 bpm)
-            prev_time = time()
-            sleep(0.01)  # update roughly every 10ms
+        # Assume the piece is 144 beats long.
+        while position < 144:
+            current_time = time()
+            elapsed_time = current_time - prev_time
+            position += elapsed_time * performance.current_tempo / 60  # in beats
+            prev_time = current_time
+            sleep(0.01)
             performance.update_score_position(position)
-            # if position > 40:
-            #     position = 40
-
-            # if 5 < position < 10:
-            #     position += 10  # Skip ahead by 10 beats.
 
     sf_thread = threading.Thread(target=simulate_score_follower, daemon=True)
     sf_thread.start()
