@@ -1,0 +1,3 @@
+[run]
+branch = True
+omit = module_tests/*, CI_test_runner.py, local_run_tests.py
