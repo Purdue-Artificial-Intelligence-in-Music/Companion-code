@@ -1,175 +1,198 @@
 import os
-import pretty_midi
-from music21 import converter, midi
 import subprocess
+import logging
+import tempfile
+import shutil
+from pathlib import Path
+
+import pretty_midi
 import mido
+from music21 import converter, midi
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-def check_fluidsynth_installed():
-    '''Check if FluidSynth is installed'''
-    try:
-        subprocess.check_output(['fluidsynth', '--version'])
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        raise RuntimeError(
-            "FluidSynth is not installed. Please install it before using this package.")
-
-
-def check_soundfont_installed():
-    '''Check if the FluidR3_GM soundfont is installed'''
-    if not os.path.exists(os.path.join(BASE_DIR, 'soundfonts', 'FluidR3_GM.sf2')):
-        raise RuntimeError(
-            "FluidR3_GM soundfont is not installed. Please install it before using this package.")
-
-
-def musicxml_to_midi(input_path, output_path):
-    score = converter.parse(input_path)
-    midi_file = midi.translate.streamToMidiFile(score)
-    # make sure the output directory exists
-    if not os.path.exists(os.path.dirname(output_path)):
-        os.makedirs(os.path.dirname(output_path))
-    midi_file.open(output_path, "wb")
-    midi_file.write()
-    midi_file.close()
-    return output_path
-
-
-def change_midi_tempo(midi_file_path, new_tempo_bpm):
-    """
-    Change the tempo of a MIDI file and save it to the same file.
-
-    Parameters:
-    midi_file_path (str): Path to the original MIDI file.
-    new_tempo_bpm (int or float): The new tempo in beats per minute (BPM).
-
-    Returns:
-    None
-    """
-    # Convert BPM to microseconds per beat (MIDI uses microseconds per quarter note)
-    microseconds_per_beat = mido.bpm2tempo(new_tempo_bpm)
-
-    # Load the MIDI file
-    mid = mido.MidiFile(midi_file_path)
-
-    # Create a new track list
-    new_tracks = []
-
-    for track in mid.tracks:
-        new_track = mido.MidiTrack()
-
-        # Have the tempo message at the beginning of the track
-        new_track.append(mido.MetaMessage(
-            'set_tempo', tempo=microseconds_per_beat, time=0))
-
-        for msg in track:
-            # Skip other 'set_tempo' messages in the track to avoid conflicts
-            if msg.type != 'set_tempo':
-                new_track.append(msg)
-        new_tracks.append(new_track)
-
-    # Create a new MIDI file with the updated tempo
-    new_mid = mido.MidiFile()
-    for new_track in new_tracks:
-        new_mid.tracks.append(new_track)
-
-    # Save the modified MIDI file
-    new_mid.save(midi_file_path)
-    print(
-        f"Tempo changed to {new_tempo_bpm} BPM and saved to {midi_file_path}")
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class AudioGenerator:
-    """Class to generate audio from MusicXML and MIDI scores
+    """
+    Class to generate audio from MusicXML and MIDI scores using FluidSynth.
 
     Parameters
     ----------
-    path : str
-        Path to MusicXML or MIDI score
+    score_path : Path or str
+        Path to a MusicXML or MIDI file.
+    soundfont_path : Path or str, optional
+        Path to the soundfont file. Defaults to a bundled 'FluidR3_GM.sf2' in a 'soundfonts'
+        subdirectory relative to this file.
 
-    Attributes
-    ----------
-    score_path : str
-        Path to MusicXML file
-
+    Raises
+    ------
+    FileNotFoundError
+        If the input score or the soundfont file cannot be found.
+    RuntimeError
+        If FluidSynth is not installed.
+    ValueError
+        If the score file does not have a supported extension.
     """
 
-    def __init__(self, score_path: str):
-        if not os.path.exists(score_path):
-            raise FileNotFoundError(f"File not found: {score_path}")
-        if not (score_path.endswith('.musicxml') or score_path.endswith('.mid')):
+    def __init__(self, score_path, soundfont_path=None):
+        self.score_path = Path(score_path)
+        if not os.path.exists(self.score_path):
+            raise FileNotFoundError(f"Score file not found: {self.score_path}")
+
+        if self.score_path.suffix.lower() not in ['.musicxml', '.mid', '.midi']:
             raise ValueError("Input file must be a MusicXML or MIDI file")
 
-        title = os.path.basename(score_path)
-        if score_path.endswith('.musicxml'):
-            mid_path = score_path.replace('.musicxml', '.mid')
-            mid_path = mid_path.replace('musicxml', 'midi')
-            print("mid_path: ", mid_path)
-            self.score_path = musicxml_to_midi(score_path, mid_path)
+        # Determine soundfont path
+        if soundfont_path is None:
+            # Assume the soundfont is in a subdirectory called 'soundfonts'
+            self.soundfont_path = os.path.join('soundfonts', 'FluidR3_GM.sf2')
         else:
-            self.score_path = score_path
+            self.soundfont_path = Path(soundfont_path)
+        if not os.path.exists(self.soundfont_path):
+            raise FileNotFoundError(f"Soundfont not found: {self.soundfont_path}")
 
-    def generate_audio(self, output_dir: str, tempo: int = 120, sample_rate: int = 44100):
+        # Ensure FluidSynth is installed
+        self.check_fluidsynth_installed()
+
+        # Convert MusicXML to MIDI if necessary
+        if self.score_path.suffix.lower() == '.musicxml':
+            midi_path = self.score_path.with_suffix('.mid')
+            self.score_path = self.musicxml_to_midi(self.score_path, midi_path)
+            logger.info(f"Converted MusicXML to MIDI: {self.score_path}")
+
+    @staticmethod
+    def check_fluidsynth_installed():
+        """Raise an error if FluidSynth is not installed."""
+        try:
+            subprocess.check_output(['fluidsynth', '--version'])
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            raise RuntimeError("FluidSynth is not installed. Please install it before using this package.")
+
+    @staticmethod
+    def musicxml_to_midi(input_path: Path, output_path: Path) -> Path:
         """
+        Convert a MusicXML file to MIDI using music21.
 
         Parameters
         ----------
-        output_path : str
-            Path for generated audio file
+        input_path : Path
+            Path to the MusicXML file.
+        output_path : Path
+            Path where the MIDI file will be written.
 
         Returns
         -------
-        None
-
+        Path
+            The path to the generated MIDI file.
         """
+        logger.info("Converting MusicXML to MIDI...")
+        score = converter.parse(str(input_path))
+        midi_file = midi.translate.streamToMidiFile(score)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        # Write the MIDI file to disk
+        with output_path.open('wb') as f:
+            midi_file.writeFile(f)
+        return output_path
 
-        # If the output directory does not exist, create it
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+    @staticmethod
+    def change_midi_tempo(midi_file_path: Path, new_tempo_bpm: float) -> None:
+        """
+        Change the tempo of a MIDI file in-place.
 
-        change_midi_tempo(self.score_path, tempo)
+        Parameters
+        ----------
+        midi_file_path : Path
+            Path to the MIDI file to modify.
+        new_tempo_bpm : float
+            New tempo in beats per minute (BPM).
+        """
+        logger.info(f"Changing tempo to {new_tempo_bpm} BPM in {midi_file_path}...")
+        microseconds_per_beat = mido.bpm2tempo(new_tempo_bpm)
+        mid = mido.MidiFile(str(midi_file_path))
+        # Process each track: remove existing tempo messages and insert the new one at the start
+        for track in mid.tracks:
+            track[:] = [msg for msg in track if msg.type != 'set_tempo']
+            track.insert(0, mido.MetaMessage('set_tempo', tempo=microseconds_per_beat, time=0))
+        mid.save(str(midi_file_path))
+        logger.info(f"Tempo updated and saved to {midi_file_path}")
 
-        midi_data = pretty_midi.PrettyMIDI(self.score_path)  # load the midi file
+    def generate_audio(self, output_dir, tempo: float = 120, sample_rate: int = 44100) -> None:
+        """
+        Generate audio files for each instrument in the MIDI score.
 
-        for i, instrument in enumerate(midi_data.instruments):  # iterate over each instrument in the midi file
-            # Create a new PrettyMIDI object for the instrument
+        Parameters
+        ----------
+        output_dir : Path or str
+            Directory where the generated audio files will be saved.
+        tempo : float, optional
+            The tempo (BPM) to set for the MIDI file, by default 120 BPM.
+        sample_rate : int, optional
+            The sample rate for the generated audio, by default 44100.
+        """
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create a temporary copy of the MIDI file so that the original file is not modified.
+        with tempfile.NamedTemporaryFile(suffix=".mid", delete=False) as tempo_temp:
+            temp_full_midi = Path(tempo_temp.name)
+        shutil.copy(self.score_path, temp_full_midi)
+        self.change_midi_tempo(temp_full_midi, tempo)
+
+        # Load the tempo-modified MIDI file using pretty_midi
+        midi_data = pretty_midi.PrettyMIDI(str(temp_full_midi))
+        logger.info(f"Loaded MIDI file with {len(midi_data.instruments)} instrument(s)")
+
+        # Process each instrument separately
+        for i, instrument in enumerate(midi_data.instruments):
+            logger.info(f"Processing instrument {i}...")
+            # Create a new MIDI object for this instrument
             instrument_midi = pretty_midi.PrettyMIDI()
-
-            # Add the instrument to the new PrettyMIDI object
             instrument_midi.instruments.append(instrument)
-
-            # Save the instrument's MIDI data to a temporary file
-            temp_midi_file = os.path.join(output_dir, f"instrument_{i}.mid")
-            instrument_midi.write(temp_midi_file)
-
-            # Generate the corresponding audio file using Fluidsynth
-            output_audio_file = os.path.join(output_dir, f"instrument_{i}.wav")
+            
+            # Use a temporary file for the instrument MIDI
+            with tempfile.NamedTemporaryFile(suffix=".mid", delete=False) as tmp_file:
+                temp_midi_path = Path(tmp_file.name)
+            instrument_midi.write(str(temp_midi_path))
+            
+            # Define the output audio file
+            output_audio_file = output_dir / f"instrument_{i}.wav"
             fluidsynth_command = [
                 "fluidsynth",
                 "-ni",
-                os.path.join("soundfonts", "FluidR3_GM.sf2"),
-                temp_midi_file,
+                str(self.soundfont_path),
+                str(temp_midi_path),
                 "-F",
-                output_audio_file,
+                str(output_audio_file),
                 "-r",
                 str(sample_rate)
             ]
+            try:
+                subprocess.run(fluidsynth_command, check=True)
+                logger.info(f"Generated audio file: {output_audio_file}")
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Error generating audio for instrument {i}: {e}")
+            finally:
+                # Clean up the temporary instrument MIDI file
+                if os.path.exists(temp_midi_path):
+                    temp_midi_path.unlink()
 
-            # Run the Fluidsynth command
-            subprocess.run(fluidsynth_command, check=True)
-
-            # Optional: Remove the temporary MIDI file
-            os.remove(temp_midi_file)
-
-            print(f"Generated {output_audio_file}")
+        # Clean up the temporary full MIDI file with updated tempo
+        if os.path.exists(temp_full_midi):
+            temp_full_midi.unlink()
 
 
 if __name__ == '__main__':
-
-    SCORE = os.path.join('data', 'midi', 'mozart_k487_no2.mid')
-    OUTPUT_DIR = os.path.join('data', 'audio', 'mozart_k487_no2')
+    # Example usage:
+    base_dir = Path(__file__).parent
+    score = os.path.join('data', 'midi', 'mozart_k487_no2.mid')
+    output_dir = os.path.join('data', 'audio', 'mozart_k487_no2')
     SAMPLE_RATE = 44100
     TEMPO = 60
 
-    generator = AudioGenerator(score_path=SCORE)
-    generator.generate_audio(output_dir=OUTPUT_DIR, tempo=TEMPO)
-    
+    try:
+        generator = AudioGenerator(score_path=score)
+        generator.generate_audio(output_dir=output_dir, tempo=TEMPO, sample_rate=SAMPLE_RATE)
+    except Exception as e:
+        logger.error(e)

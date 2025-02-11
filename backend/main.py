@@ -30,7 +30,7 @@ accompanist_times = []
 playback_rates = []
 
 TEMPO = 240  # Tempo at which piece is played in BPM
-piece_name = 'twinkle_twinkle'  # Name of piece
+piece_name = 'greensleeves'  # Name of piece
 
 MIDI_SCORE = os.path.join('data', 'midi', piece_name + '.mid')  # Path to MIDI file
 OUTPUT_DIR = os.path.join('data', 'audio', piece_name)  # Directory where synthesized audio will be saved
