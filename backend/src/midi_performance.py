@@ -109,18 +109,28 @@ class MidiPerformance:
         selected_part = parts[instrument_index]
         flat_part = selected_part.flat.stripTies()
 
-        notes_list = []
+        notes_dict = {}
         for element in flat_part.notes:
             quarter_offset = element.offset
             quarter_duration = element.duration.quarterLength
             if isinstance(element, note.Note):
                 frequency = element.pitch.frequency
-                notes_list.append((frequency, quarter_duration, quarter_offset))
+                midi_note = self._frequency_to_midi(frequency)
+                notes_dict.setdefault(quarter_offset, []).append((midi_note, quarter_duration))
             elif isinstance(element, chord.Chord):
                 for pitch in element.pitches:
                     frequency = pitch.frequency
                     notes_list.append((frequency, quarter_duration, quarter_offset))
+        # print(f"Extracted {len(notes_list)} notes from MIDI file.")
         return notes_list
+
+    def _schedule_notes(self):
+        """Schedules notes using a priority queue based on their onset time."""
+        with self.queue_lock:
+            for frequency, duration, offset in self.notes:
+                midi_note = self._frequency_to_midi(frequency)
+                heapq.heappush(self.queue, (offset, midi_note, duration))
+                # print(f"Scheduled note at beat {offset}: {frequency:.2f} Hz, MIDI {midi_note}, duration {duration} beats.")
 
     @staticmethod
     def _frequency_to_midi(frequency: float) -> int:
@@ -279,11 +289,10 @@ if __name__ == "__main__":
         prev_time = time()
         # Assume the piece is 144 beats long.
         while position < 144:
-            current_time = time()
-            elapsed_time = current_time - prev_time
-            position += elapsed_time * performance.current_tempo / 60  # in beats
-            prev_time = current_time
-            sleep(0.01)
+            elapsed_time = time() - prev_time
+            position += elapsed_time * performance.current_tempo / 60
+            prev_time = time()
+            sleep(0.1)
             performance.update_score_position(position)
 
     sf_thread = threading.Thread(target=simulate_score_follower, daemon=True)
