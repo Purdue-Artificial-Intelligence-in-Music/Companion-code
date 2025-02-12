@@ -217,7 +217,7 @@ class MidiPerformance:
             while (self._next_note_index < len(self.notes) and
                    self.score_position >= self.notes[self._next_note_index][2]):
                 frequency, quarter_duration, quarter_offset = self.notes[self._next_note_index]
-                if (self.score_position - quarter_offset < .05 and self.last_beat is not quarter_offset):
+                if (self.score_position - quarter_offset < .1 and self.last_beat is not quarter_offset):
                     print(
                         f"Playing note at beat {quarter_offset}: {frequency:.2f} Hz, "
                         f"duration {quarter_duration} beats"
@@ -271,16 +271,16 @@ if __name__ == "__main__":
 
     # Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
     performance = MidiPerformance(
-        midi_file_path=r"data/midi/house_of_the_rising_sun.mid", tempo=100, instrument_index=1, program_number=25
+        midi_file_path=r"data/midi/twinkle_twinkle.mid", tempo=180, instrument_index=0, program_number=25
     )
 
     # Start the performance.
+    sleep(2)
     performance.start()
 
     # Simulate score follower updates.
     def simulate_score_follower():
         position = 0
-        sleep(2)
         prev_time = time()
         # Assume the piece is 144 beats long.
         while position < 144:
@@ -288,8 +288,8 @@ if __name__ == "__main__":
             elapsed_time = current_time - prev_time
             position += elapsed_time * performance.current_tempo / 60  # in beats
             prev_time = current_time
-            if position > 6 and position < 7:
-                position -= 3
+            if position > 5 and position < 6:
+                position += 10
             sleep(0.01)
             performance.update_score_position(position)
 
