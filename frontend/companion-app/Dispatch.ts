@@ -46,7 +46,7 @@ const reducer_function = (state: any, action: any) => {
       var reset_time =
         (60 * state.time_signature.Numerator * (state.resetMeasure - 1)) /
         state.synth_tempo;
-      state.sound?.setPositionAsync(reset_time * 1000);
+      state.accompanimentSound.setPositionAsync(reset_time * 1000);
       return {
         ...state,
         ...{ playing: false, playRate: 1.0, timestamp: reset_time },

@@ -42,7 +42,7 @@ export default function App() {
       synth_tempo: 100, // the tempo of the synthesized audio
       tempo: 100, // the tempo in the tempo box (even if changed more recently)
       score_tempo: 100, // the tempo in the musical score
-      scores: [], // the list of scores to choose from
+      scores: [] // the list of scores to choose from
     },
   );
 
@@ -63,8 +63,6 @@ export default function App() {
     fetchSessionToken();
   }, []);
 
-  console.log(state);
-
   /////////////////////////////////////////////////////////
   // The code below updates the timestamp but is not yet tied to the API
   // This could be moved to any sub-component (e.g., ScoreDisplay, AudioPlayer)
@@ -73,28 +71,26 @@ export default function App() {
   // be handled there
   const UPDATE_INTERVAL = 500; // milliseconds between updates to timestamp and rate
 
+  const getAPIData = async () => {
+    const {
+      playback_rate: newPlayRate,
+      estimated_position: estimated_position,
+    } = await synchronize(state.sessionToken, [0], state.timestamp);
+    console.log("New play rate:", newPlayRate);
+    console.log("New timestamp:", estimated_position);
+
+    dispatch({
+      type: "increment",
+      time: estimated_position,
+      rate: newPlayRate,
+    });
+  }
+
   useEffect(() => {
-    const getAPIData = async () => {
-      const {
-        playback_rate: newPlayRate,
-        estimated_position: estimated_position,
-      } = await synchronize(state.sessionToken, [0], state.timestamp);
-      console.log("New play rate:", newPlayRate);
-      console.log("New timestamp:", estimated_position);
-
-      dispatch({
-        type: "increment",
-        time: estimated_position,
-        rate: 1,
-      });
-    };
-
-    // Start polling
-    setInterval(() => {
-      if (state.playing) {
-        getAPIData();
-      }
-    }, UPDATE_INTERVAL);
+    if (state.playing) {
+      console.log("To send another request, bc state is: ", state);
+      setTimeout(getAPIData, UPDATE_INTERVAL);
+    }
   }, [state.playing, state.timestamp, state.sessionToken]);
   // The "could be moved into any subcomponent" comment refers to the above
   ///////////////////////////////////////////////////////////////////////////////
