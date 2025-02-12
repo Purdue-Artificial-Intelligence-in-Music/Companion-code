@@ -57,6 +57,7 @@ class MidiPerformance:
         self.instrument_index = instrument_index
         self.score_position = 0.0  # in beats
         self._next_note_index = 0
+        self.last_beat = 0
 
         # Initialize FluidSynth.
         self.fs = fluidsynth.Synth(samplerate=44100)
@@ -161,6 +162,7 @@ class MidiPerformance:
             Current position in beats (quarter-note units).
         """
         self.score_position = position
+        self._next_note_index = 0
 
     def _note_worker(self, midi_note: int, duration_sec: float):
         """
@@ -215,11 +217,13 @@ class MidiPerformance:
             while (self._next_note_index < len(self.notes) and
                    self.score_position >= self.notes[self._next_note_index][2]):
                 frequency, quarter_duration, quarter_offset = self.notes[self._next_note_index]
-                print(
-                    f"Playing note at beat {quarter_offset}: {frequency:.2f} Hz, "
-                    f"duration {quarter_duration} beats"
-                )
-                self._play_note(frequency, quarter_duration)
+                if (self.score_position - quarter_offset < .05 and self.last_beat is not quarter_offset):
+                    print(
+                        f"Playing note at beat {quarter_offset}: {frequency:.2f} Hz, "
+                        f"duration {quarter_duration} beats"
+                    )
+                    self._play_note(frequency, quarter_duration)
+                    self.last_beat = quarter_offset
                 self._next_note_index += 1
             sleep(0.005)
         print("Performance loop ended.")
@@ -276,6 +280,7 @@ if __name__ == "__main__":
     # Simulate score follower updates.
     def simulate_score_follower():
         position = 0
+        sleep(2)
         prev_time = time()
         # Assume the piece is 144 beats long.
         while position < 144:
@@ -283,6 +288,8 @@ if __name__ == "__main__":
             elapsed_time = current_time - prev_time
             position += elapsed_time * performance.current_tempo / 60  # in beats
             prev_time = current_time
+            if position > 6 and position < 7:
+                position -= 3
             sleep(0.01)
             performance.update_score_position(position)
 
