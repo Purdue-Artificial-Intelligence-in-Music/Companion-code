@@ -91,7 +91,7 @@ class ScoreFollower:
         # Return a chroma feature for the audio
         return self.chroma_maker.insert(audio)
 
-    def step(self, frames: np.ndarray) -> int:
+    def step(self, frames: np.ndarray) -> float:
         """Calculate next step in the alignment path between the microphone and reference audio """
 
         # Generate chroma feature
@@ -140,8 +140,7 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import os
     import librosa
-    reference = os.path.join('data', 'audio', 'bach',
-                             'synthesized', 'solo.wav')
+    reference = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
     source = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
 
     source_audio = librosa.load(source, sr=44100)
@@ -156,8 +155,9 @@ if __name__ == '__main__':
 
     for i in range(0, source_audio.shape[-1], 8192):
         frames = source_audio[:, i:i+8192]
-        ref_index = score_follower.step(frames)
+        estimated_time = score_follower.step(frames)
         print(
-            f'Live index: {score_follower.otw.live_index}, Ref index: {ref_index}')
+            f'Live index: {score_follower.otw.live_index}, Ref index: {score_follower.otw.ref_index}')
+
 
     print(score_follower.path)
