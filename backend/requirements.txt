@@ -23,9 +23,11 @@ packaging==24.1
 pandas==2.0.3
 pillow==10.4.0
 platformdirs==4.2.2
+pretty_midi==0.2.10
 pooch==1.8.2
 pyaudio==0.2.14
 pycparser==2.22
+pyFluidSynth==1.3.3
 pyparsing==3.1.4
 python-dateutil==2.9.0.post0
 requests==2.32.3
