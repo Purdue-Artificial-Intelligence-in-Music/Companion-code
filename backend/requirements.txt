@@ -17,7 +17,6 @@ librosa==0.10.2.post1
 llvmlite==0.41.1
 matplotlib==3.7.5
 msgpack==1.0.8
-music21==9.3.0
 numba==0.58.1
 numpy==1.24.4
 packaging==24.1
