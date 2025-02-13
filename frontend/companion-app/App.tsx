@@ -1,7 +1,7 @@
 // Import necessary modules and components from the Expo and React Native libraries
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View, Image, SafeAreaView } from "react-native";
-import React, { useEffect, useReducer } from "react";
+import React, { useEffect, useReducer, useRef } from "react";
 import { startSession, synchronize } from "./components/Utils";
 import { Score_Select } from "./components/ScoreSelect";
 import { Return_Button } from "./components/ReturnButton";
@@ -9,7 +9,7 @@ import { Start_Stop_Button } from "./components/StartButton";
 import { MeasureSetBox } from "./components/MeasureSetter";
 import { TempoBox } from "./components/TempoBox";
 import { Fraction } from "opensheetmusicdisplay";
-import AudioRecorder from "./components/AudioRecorder";
+import AudioRecorder from "./components/AudioRecorderStateVersion";
 import { AudioPlayer } from "./components/AudioPlayer";
 import reducer_function from "./Dispatch";
 import ScoreDisplay from "./components/ScoreDisplay";
@@ -45,6 +45,10 @@ export default function App() {
       scores: [] // the list of scores to choose from
     },
   );
+  const waveFormRef = useRef<Array<number>>([]); // audio data to send to backend
+  const updateWaveForm = (data: Array<number>) => { // function to update it from the recorder
+    waveFormRef.current = data;
+  }
 
   // Sync sessionToken with useReducer state
   // Fetch the session token and dispatch it to the reducer
@@ -72,10 +76,11 @@ export default function App() {
   const UPDATE_INTERVAL = 500; // milliseconds between updates to timestamp and rate
 
   const getAPIData = async () => {
+    // console.log("Sending data: ", waveFormRef.current);
     const {
       playback_rate: newPlayRate,
       estimated_position: estimated_position,
-    } = await synchronize(state.sessionToken, [0], state.timestamp);
+    } = await synchronize(state.sessionToken, [122, 123, 124], state.timestamp);
     console.log("New play rate:", newPlayRate);
     console.log("New timestamp:", estimated_position);
 
@@ -101,7 +106,7 @@ export default function App() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Provides safe area insets for mobile devices */}
-      <AudioRecorder state={state} dispatch={dispatch} />
+      {/* <AudioRecorder state={state} dispatch={dispatch} updateWaveFormData={updateWaveForm}/> */}
       <View style={styles.menu_bar}>
         <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
         <Return_Button
