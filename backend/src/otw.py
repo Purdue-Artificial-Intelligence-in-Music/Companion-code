@@ -162,9 +162,13 @@ class OnlineTimeWarping:
         if self.accumulated_cost[best_j, self.live_index] < self.accumulated_cost[self.ref_index, best_t]:
             best_t = self.live_index
             step = "live"
-        else:  # Otherwise, move in the reference sequence
+        elif self.accumulated_cost[best_j, self.live_index] > self.accumulated_cost[self.ref_index, best_t]:  # Otherwise, move in the reference sequence
             best_j = self.ref_index
             step = "ref"
+        else:
+            best_t = self.live_index
+            best_j = self.ref_index
+            step = "both"
 
         # If the best step is to move in both sequences, choose the one with the lowest cost
         if best_t == self.live_index and best_j == self.ref_index:
@@ -232,5 +236,4 @@ class OnlineTimeWarping:
         if live_index > 0:
             steps.append(
                 self.accumulated_cost[ref_index, live_index - 1] + cost)
-
         self.accumulated_cost[ref_index, live_index] = min(steps)
