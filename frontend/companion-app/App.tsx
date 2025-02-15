@@ -1,14 +1,15 @@
 // Import necessary modules and components from the Expo and React Native libraries
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View, SafeAreaView } from "react-native";
-import React, { useEffect, useReducer } from "react";
+import { StyleSheet, Text, View, Image, SafeAreaView } from "react-native";
+import React, { useEffect, useReducer, useRef, useState } from "react";
 import { startSession, synchronize } from "./components/Utils";
 import { Score_Select } from "./components/ScoreSelect";
+import { Return_Button } from "./components/ReturnButton";
 import { Start_Stop_Button } from "./components/StartButton";
 import { MeasureSetBox } from "./components/MeasureSetter";
 import { TempoBox } from "./components/TempoBox";
 import { Fraction } from "opensheetmusicdisplay";
-import AudioRecorder from "./components/AudioRecorder";
+import AudioRecorder from "./components/AudioRecorderStateVersion";
 import { AudioPlayer } from "./components/AudioPlayer";
 import reducer_function from "./Dispatch";
 import ScoreDisplay from "./components/ScoreDisplay";
@@ -28,6 +29,7 @@ export default function App() {
   const [state, dispatch] = useReducer(
     reducer_function, // The reducer function is found in Dispatch.ts
     {
+      inPlayMode: false, // whether we are in play mode (and not score selection mode)
       playing: false, // whether the audio is playing
       resetMeasure: 1, // the measure to reset to
       playRate: 1.0, // the rate at which the audio is playing
@@ -40,7 +42,7 @@ export default function App() {
       synth_tempo: 100, // the tempo of the synthesized audio
       tempo: 100, // the tempo in the tempo box (even if changed more recently)
       score_tempo: 100, // the tempo in the musical score
-      scores: [], // the list of scores to choose from
+      scores: [] // the list of scores to choose from
     },
   );
 
@@ -61,41 +63,121 @@ export default function App() {
     fetchSessionToken();
   }, []);
 
-  console.log(state);
+  ////////////////////////////////////////////////////////////////////////////////
+  // The lines below were modified, copied and pasted out of the audio recorder object
+  // (which never really needed a UI).
+  // *** THE ACT OF MOVING THEM FROM A COMPONENT TO APP.TSX MADE THE INTERFACE WORK ***
+  // *** Probably has to do with parent/child component state something idk ***
+  ////////////////////////////////////////////////////////////////////////////////
 
+  // Audio-related states and refs
+  // State for whether we have microphone permissions - is set to true on first trip to playmode
+  const [permission, setPermission] = useState(false);
+  // Assorted audio-related objects in need of reference
+  // Tend to be re-created upon starting a recording
+  const mediaRecorder = useRef<MediaRecorder>(
+    new MediaRecorder(new MediaStream()),
+  );
+  const [stream, setStream] = useState<MediaStream>(new MediaStream());
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+
+  const audioContextRef = useRef<any>(null);
+  const analyserRef = useRef<any>(null);
+  const dataArrayRef = useRef<any>(null);
+  const startTimeRef = useRef<any>(null);
+  
+  // Audio-related functions
   /////////////////////////////////////////////////////////
-  // The code below updates the timestamp but is not yet tied to the API
-  // This could be moved to any sub-component (e.g., ScoreDisplay, AudioPlayer)
-  // or made its own invisible component - OR,
-  // we will re-synchronize whenever the audiorecorder posts, in which case this should
-  // be handled there
-  const UPDATE_INTERVAL = 500; // milliseconds between updates to timestamp and rate
+  // This function sends a synchronization request and updates the state with the result
+  const UPDATE_INTERVAL = 100;
 
-  useEffect(() => {
-    const getAPIData = async () => {
-      const {
-        playback_rate: newPlayRate,
-        estimated_position: estimated_position,
-      } = await synchronize(state.sessionToken, [0], state.timestamp);
-      console.log("New play rate:", newPlayRate);
-      console.log("New timestamp:", estimated_position);
+  const getAPIData = async () => {
+    analyserRef.current?.getByteTimeDomainData(dataArrayRef.current);
+    const {
+      playback_rate: newPlayRate,
+      estimated_position: estimated_position,
+    } = await synchronize(state.sessionToken, Array.from(dataArrayRef.current), state.timestamp);
 
-      dispatch({
-        type: "increment",
-        time: estimated_position,
-        rate: 1,
-      });
+    dispatch({
+      type: "increment",
+      time: estimated_position,
+      rate: newPlayRate,
+    });
+  }
+  
+  // This function established new recording instances when re-entering play mode
+  const startRecording = async () => {
+    // It's possible some of these can be removed; not sure which relate to the 
+    // making of the recorded object we don't need and which relate to the
+    // buffer we send to the backend.
+    startTimeRef.current = Date.now();
+    //create new Media recorder instance using the stream
+    const media = new MediaRecorder(stream, { mimeType: "audio/webm" });
+    //set the MediaRecorder instance to the mediaRecorder ref
+    mediaRecorder.current = media;
+    //invokes the start method to start the recording process
+    mediaRecorder.current.start();
+    let localAudioChunks: Blob[] = [];
+    mediaRecorder.current.ondataavailable = (event) => {
+      if (typeof event.data === "undefined") return;
+      if (event.data.size === 0) return;
+      localAudioChunks.push(event.data);
     };
+    setAudioChunks(localAudioChunks);
 
-    // Start polling
-    setInterval(() => {
-      if (state.playing) {
-        getAPIData();
+    audioContextRef.current = new window.AudioContext();
+    const source = audioContextRef.current.createMediaStreamSource(stream);
+    analyserRef.current = audioContextRef.current.createAnalyser();
+    analyserRef.current.fftSize = 2048;
+    source.connect(analyserRef.current);
+
+    const bufferLength = analyserRef.current.frequencyBinCount;
+    dataArrayRef.current = new Uint8Array(bufferLength);
+
+    getAPIData(); // run the first call
+  };
+  
+  //stops the recording instance
+  const stopRecording = () => {
+    mediaRecorder.current.stop();
+    audioContextRef.current?.close();
+  };
+  
+  // Function to get permission to use browser microphone
+  const getMicrophonePermission = async () => {
+    if ("MediaRecorder" in window) {
+      try {
+        const streamData = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: false,
+        });
+        setPermission(true);
+        setStream(streamData);
+      } catch (err) {
+        alert((err as Error).message);
       }
-    }, UPDATE_INTERVAL);
-  }, [state.playing, state.timestamp, state.sessionToken]);
-  // The "could be moved into any subcomponent" comment refers to the above
-  ///////////////////////////////////////////////////////////////////////////////
+    } else {
+      alert("The MediaRecorder API is not supported in your browser.");
+    }
+  };
+  
+  /////////////////////////////////////////////
+  // Audio-related effects
+  // Get microphone permission on first time entering play state
+  useEffect(() => {
+    if (!permission) getMicrophonePermission();
+  }, [state.inPlayMode]);
+  
+  // Start and stop recording when player is or isn't playing
+  useEffect(() => {
+    if (state.playing) startRecording();
+    else stopRecording();
+  }, [state.playing]);
+
+  // Keep synchronizing while playing
+  useEffect(() => {
+    if (state.playing) setTimeout(getAPIData, UPDATE_INTERVAL);
+  }, [state.timestamp])
 
   ////////////////////////////////////////////////////////////////////////////////
   // Render the component's UI
@@ -103,41 +185,41 @@ export default function App() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Provides safe area insets for mobile devices */}
-      <AudioRecorder state={state} dispatch={dispatch} />
-      <Text style={styles.title}>Companion, the digital accompanist</Text>
-
-      <View style={styles.button_wrapper}>
-        <Score_Select state={state} dispatch={dispatch} />
-        <TempoBox
+      <View style={styles.menu_bar}>
+        <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
+        <Return_Button
           state={state}
           dispatch={dispatch}
-          wrapper_style={styles.tempo_box}
-          text_input_style={styles.text_input}
-          label_text_style={styles.label}
-        />
-        <SynthesizeButton
-          state={state}
-          dispatch={dispatch}
-          button_style={styles.synthesize_button}
+          button_format={styles.button_format}
           text_style={styles.button_text}
         />
         <Start_Stop_Button
           state={state}
           dispatch={dispatch}
-          button_style={styles.play_button}
+          button_format={styles.button_format}
           text_style={styles.button_text}
         />
-        <MeasureSetBox
-          state={state}
-          dispatch={dispatch}
-          wrapper_style={styles.measure_box}
-          text_input_style={styles.text_input}
-          button_style={styles.reset_button}
-          button_text_style={styles.button_text}
-          label_text_style={styles.label}
-        />
+        {
+          state.inPlayMode ?
+          <MeasureSetBox
+            state={state}
+            dispatch={dispatch}
+            button_style={styles.button_format}
+            button_text_style={styles.button_text}
+          />
+          :
+          <TempoBox
+            state={state}
+            dispatch={dispatch}
+            label_text_style={styles.button_text}
+          />
+        }
       </View>
-      <ScoreDisplay state={state} dispatch={dispatch} />
+      <View style={styles.main_area}>
+        { // List of scores, show when not in play mode
+        state.inPlayMode || <Score_Select state={state} dispatch={dispatch} /> }
+        <ScoreDisplay state={state} dispatch={dispatch} />
+      </View>
       <StatusBar style="auto" />
       {/* Automatically adjusts the status bar style */}
       <AudioPlayer state={state} />
@@ -154,65 +236,37 @@ const styles = StyleSheet.create({
     justifyContent: "center", // Center children vertically
     padding: 16, // Add padding around the container
   },
-  title: {
-    fontSize: 20, // Set the font size for the title
-    marginBottom: 20, // Add space below the title
-  },
-  label: {
-    fontSize: 16,
-  },
-  synthesize_button: {
-    flex: 0.2,
+  button_format: {
     borderColor: "black",
     borderRadius: 15,
     backgroundColor: "lightblue",
-    justifyContent: "center",
-  },
-  play_button: {
-    flex: 0.2,
-    borderColor: "black",
-    borderRadius: 15,
-    backgroundColor: "lightblue",
-    justifyContent: "center",
-  },
-  reset_button: {
-    flex: 0.8,
-    borderColor: "black",
-    borderRadius: 15,
-    backgroundColor: "lightblue",
+    justifyContent: "center"
   },
   button_text: {
-    fontSize: 20,
+    fontSize: 24,
     textAlign: "center",
   },
-  button_wrapper: {
+  menu_bar: {
+    flex: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "lightgray",
+    width: "100%",
+    minHeight: 100,
+  },
+  main_area: {
     flex: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 10,
-    backgroundColor: "lightgray",
-    width: "100%",
-    minHeight: 72,
-  },
-  measure_box: {
-    flexDirection: "row",
-    padding: 10,
-    justifyContent: "space-between",
-    width: "40%",
-    flex: 0.4,
-    height: "80%",
-  },
-  tempo_box: {
-    flexDirection: "row",
-    padding: 10,
-    justifyContent: "space-between",
-    width: "20%",
-    flex: 0.2,
-    height: "80%",
-  },
-  text_input: {
     backgroundColor: "white",
-    flex: 0.3,
+    width: "100%",
+    height: "80%",
+  },
+  logo: {
+    backgroundColor: "white",
+    flex: 0.25,
+    width: "25%",
     height: "100%",
+    resizeMode: 'contain'
   },
 });
