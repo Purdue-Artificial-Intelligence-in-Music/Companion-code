@@ -131,13 +131,8 @@ export default function ScoreDisplay({
           state.synth_tempo,
       });
     }
-  }, [
-    dispatch,
-    state.cursorTimestamp,
-    state.synth_tempo,
-    state.time_signature.Denominator,
-    state.timestamp,
-  ]);
+  },
+[state.timestamp]);
 
   return (
     <div style={styles.scrollContainer}>

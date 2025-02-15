@@ -45,10 +45,6 @@ export default function App() {
       scores: [] // the list of scores to choose from
     },
   );
-  const waveFormRef = useRef<Array<number>>([]); // audio data to send to backend
-  const updateWaveForm = (data: Array<number>) => { // function to update it from the recorder
-    waveFormRef.current = data;
-  }
 
   // Sync sessionToken with useReducer state
   // Fetch the session token and dispatch it to the reducer
@@ -67,46 +63,13 @@ export default function App() {
     fetchSessionToken();
   }, []);
 
-  /////////////////////////////////////////////////////////
-  // The code below updates the timestamp but is not yet tied to the API
-  // This could be moved to any sub-component (e.g., ScoreDisplay, AudioPlayer)
-  // or made its own invisible component - OR,
-  // we will re-synchronize whenever the audiorecorder posts, in which case this should
-  // be handled there
-  const UPDATE_INTERVAL = 500; // milliseconds between updates to timestamp and rate
-
-  const getAPIData = async () => {
-    // console.log("Sending data: ", waveFormRef.current);
-    const {
-      playback_rate: newPlayRate,
-      estimated_position: estimated_position,
-    } = await synchronize(state.sessionToken, [122, 123, 124], state.timestamp);
-    console.log("New play rate:", newPlayRate);
-    console.log("New timestamp:", estimated_position);
-
-    dispatch({
-      type: "increment",
-      time: estimated_position,
-      rate: newPlayRate,
-    });
-  }
-
-  useEffect(() => {
-    if (state.playing) {
-      console.log("To send another request, bc state is: ", state);
-      setTimeout(getAPIData, UPDATE_INTERVAL);
-    }
-  }, [state.playing, state.timestamp, state.sessionToken]);
-  // The "could be moved into any subcomponent" comment refers to the above
-  ///////////////////////////////////////////////////////////////////////////////
-
   ////////////////////////////////////////////////////////////////////////////////
   // Render the component's UI
   ////////////////////////////////////////////////////////////////////////////////
   return (
     <SafeAreaView style={styles.container}>
       {/* Provides safe area insets for mobile devices */}
-      {/* <AudioRecorder state={state} dispatch={dispatch} updateWaveFormData={updateWaveForm}/> */}
+      <AudioRecorder state={state} dispatch={dispatch}/>
       <View style={styles.menu_bar}>
         <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
         <Return_Button

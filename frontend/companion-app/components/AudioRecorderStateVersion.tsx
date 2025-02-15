@@ -5,26 +5,46 @@ const mimeType = "audio/webm";
 
 const AudioRecorder = ({
   state,
-  dispatch,
-  updateWaveFormData
+  dispatch
 }: {
-  state: { playing: boolean, inPlayMode: boolean };
-  dispatch: Function;
-  updateWaveFormData: Function
+  state: { playing: boolean, inPlayMode: boolean, timestamp: number, sessionToken: string };
+  dispatch: Function
 }) => {
+  ///////////////////////////////////
+  // States and references
+  ///////////////////////////////////
+  // State for whether we have microphone permissions - is set to true on first trip to playmode
   const [permission, setPermission] = useState(false);
+  // Assorted audio-related objects in need of reference
+  // Tend to be re-created upon starting a recording
   const mediaRecorder = useRef<MediaRecorder>(
     new MediaRecorder(new MediaStream()),
   );
   const [stream, setStream] = useState<MediaStream>(new MediaStream());
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-  const [audio, setAudio] = useState<string>("");
-  const [, setAnalyserData] = useState<any>();
 
   const audioContextRef = useRef<any>(null);
   const analyserRef = useRef<any>(null);
   const dataArrayRef = useRef<any>(null);
   const startTimeRef = useRef<any>(null);
+
+    /////////////////////////////////////////////////////////
+    // This function sends a synchronization request and updates the state with the result
+    const UPDATE_INTERVAL = 100;
+
+    const getAPIData = async () => {
+      analyserRef.current?.getByteTimeDomainData(dataArrayRef.current);
+      const {
+        playback_rate: newPlayRate,
+        estimated_position: estimated_position,
+      } = await synchronize(state.sessionToken, Array.from(dataArrayRef.current), state.timestamp);
+  
+      dispatch({
+        type: "increment",
+        time: estimated_position,
+        rate: newPlayRate,
+      });
+    }
 
   // Starts recorder instances
   const startRecording = async () => {
@@ -51,19 +71,9 @@ const AudioRecorder = ({
 
     const bufferLength = analyserRef.current.frequencyBinCount;
     dataArrayRef.current = new Uint8Array(bufferLength);
-  };
 
-    // Analyze frequency data continuously
-    const getFrequencyData = () => {
-        if (state.playing && dataArrayRef.current) {
-          analyserRef.current?.getByteTimeDomainData(dataArrayRef.current);
-          const waveForm = Array.from(dataArrayRef.current);
-          updateWaveFormData(waveForm);
-          requestAnimationFrame(getFrequencyData);
-        }
-    };
-  
-    getFrequencyData();
+    getAPIData(); // run the first call
+  };
 
   //stops the recording instance
   const stopRecording = () => {
@@ -100,25 +110,15 @@ const AudioRecorder = ({
     else stopRecording();
   }, [state.playing]);
 
+  useEffect(() => {
+    if (state.playing) setTimeout(getAPIData, UPDATE_INTERVAL);
+  }, [state.timestamp])
+
   return (
     <div
       style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
     >
       <h1>Audio Recorder</h1>
-      {audio ? (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-          }}
-        >
-          <audio src={audio} controls></audio>
-          <a download href={audio}>
-            Download Recording
-          </a>
-        </div>
-      ) : null}
     </div>
   );
 };
