@@ -21,13 +21,13 @@ WIN_LENGTH = 4096  # Samples per window for score follower
 HOP_LENGTH = 4096  # Samples per hop for score follower. This should be the same as WIN_LENGTH for now. Can add support for different values in the future
 C = 50  # Search width for score follower. Higher values are more computationally expensive
 MAX_RUN_COUNT = 3  # Slope constraint for score follower. 1 / MAX_RUN_COUNT <= slope <= MAX_RUN_COUNT
-DIAG_WEIGHT = 0.75  # Weight for the diagonal in the cost matrix for score follower. Values less than 2 bias toward diagonal steps
+DIAG_WEIGHT = 0.5  # Weight for the diagonal in the cost matrix for score follower. Values less than 2 bias toward diagonal steps
 MAX_DURATION = 600  # Maximum duration of audio buffer in seconds
 
 
-STATED_TEMPO = 220  # Tempo at which the user plans to play in BPM
+STATED_TEMPO = 180  # Tempo at which the user plans to play in BPM
 SOURCE_TEMPO = 200  # Tempo at which the user actually plays in BPM
-PIECE_NAME = 'greensleeves'  # Name of piece
+PIECE_NAME = 'pirates_of_the_aegean'  # Name of piece
 PROGAM_NUMBER = 0  # Program number for accompaniment instrument
 SOLO_VOLUME_MULTIPLIER = 1
 
@@ -40,6 +40,7 @@ generator.generate_audio(output_dir=os.path.join(OUTPUT_DIR, f'{SOURCE_TEMPO}bpm
 
 reference = os.path.join('data', 'audio', PIECE_NAME, f'{STATED_TEMPO}bpm', 'instrument_0.wav')  # Path to reference audio file
 source = os.path.join('data', 'audio', PIECE_NAME, f'{SOURCE_TEMPO}bpm', 'instrument_0.wav')  # Path to soloist audio file (can optionally replace mic input)
+# source = os.path.join('data', 'audio', PIECE_NAME, 'ode_to_joy_live.wav')
 
 source_audio, _ = librosa.load(source, sr=SAMPLE_RATE)  # load soloist audio
 source_audio = source_audio.reshape((CHANNELS, -1))  # reshape soloist audio to 2D array
@@ -85,6 +86,8 @@ def callback(in_data, frame_count, time_info, status):
     # The MidiPerformance instance will play the most recently passed note in the accompaniment.
     performance.update_score_position(position)
     sleep(0.01)  # update roughly every 10ms
+    if (not performance.is_active()):
+        return (data, pyaudio.paComplete)  # Stop the stream if the performance is done
     return (SOLO_VOLUME_MULTIPLIER * data, pyaudio.paContinue)  # Output the solo to the speakers. The accompaniment is already being played by the MidiPerformance instance.
 
 # PyAudio

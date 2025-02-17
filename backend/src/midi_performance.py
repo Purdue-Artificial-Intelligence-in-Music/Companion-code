@@ -257,6 +257,17 @@ class MidiPerformance:
         self.fs.delete()
         print("Performance stopped.")
 
+    def is_active(self) -> bool:
+        """
+        Check if the performance is currently active.
+
+        Returns
+        -------
+        bool
+            True if the performance is active, False otherwise.
+        """
+        return self._performance_thread is not None and self._performance_thread.is_alive()
+
 
 # =============================================================================
 # Example usage of the MidiPerformance class (polyphonic).
