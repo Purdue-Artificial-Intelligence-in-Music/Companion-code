@@ -57,6 +57,7 @@ class MidiPerformance:
         self.instrument_index = instrument_index
         self.score_position = 0.0  # in beats
         self._next_note_index = 0
+        self.last_beat = 0
 
         # Initialize FluidSynth.
         self.fs = fluidsynth.Synth(samplerate=44100)
@@ -161,6 +162,7 @@ class MidiPerformance:
             Current position in beats (quarter-note units).
         """
         self.score_position = position
+        self._next_note_index = 0
 
     def _note_worker(self, midi_note: int, duration_sec: float):
         """
@@ -215,11 +217,13 @@ class MidiPerformance:
             while (self._next_note_index < len(self.notes) and
                    self.score_position >= self.notes[self._next_note_index][2]):
                 frequency, quarter_duration, quarter_offset = self.notes[self._next_note_index]
-                print(
-                    f"Playing note at beat {quarter_offset}: {frequency:.2f} Hz, "
-                    f"duration {quarter_duration} beats"
-                )
-                self._play_note(frequency, quarter_duration)
+                if (self.score_position - quarter_offset < .1 and self.last_beat is not quarter_offset):
+                    print(
+                        f"Playing note at beat {quarter_offset}: {frequency:.2f} Hz, "
+                        f"duration {quarter_duration} beats"
+                    )
+                    self._play_note(frequency, quarter_duration)
+                    self.last_beat = quarter_offset
                 self._next_note_index += 1
             sleep(0.005)
         print("Performance loop ended.")
@@ -278,10 +282,11 @@ if __name__ == "__main__":
 
     # Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
     performance = MidiPerformance(
-        midi_file_path=r"data/midi/house_of_the_rising_sun.mid", tempo=100, instrument_index=1, program_number=25
+        midi_file_path=r"data/midi/twinkle_twinkle.mid", tempo=180, instrument_index=0, program_number=25
     )
 
     # Start the performance.
+    sleep(2)
     performance.start()
 
     # Simulate score follower updates.
@@ -294,6 +299,8 @@ if __name__ == "__main__":
             elapsed_time = current_time - prev_time
             position += elapsed_time * performance.current_tempo / 60  # in beats
             prev_time = current_time
+            if position > 5 and position < 6:
+                position += 10
             sleep(0.01)
             performance.update_score_position(position)
 
