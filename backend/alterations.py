@@ -2,7 +2,7 @@ import pretty_midi
 import numpy as np
 import subprocess
 import os
-from typing import Tuple, List
+from typing import List
 
 def midi_pitch_to_frequency(pitch: int) -> float:
     """Convert a MIDI pitch number to frequency (Hz)."""
@@ -13,11 +13,7 @@ def generate_breakdown(baseline_notes: List[pretty_midi.Note],
                        output_filename: str) -> None:
     """
     Generates a CSV file comparing baseline and variant note data.
-    Each row contains:
-      baseline_timestamp, baseline_frequency, baseline_duration,
-      variant_timestamp, variant_frequency, variant_duration
     """
-    # sort both lists by note start time
     baseline_sorted = sorted(baseline_notes, key=lambda n: n.start)
     variant_sorted = sorted(variant_notes, key=lambda n: n.start)
     count = min(len(baseline_sorted), len(variant_sorted))
@@ -52,7 +48,9 @@ class MIDIProcessor:
 
     def create_pauses(self, pause_duration: float = 0.75) -> None:
         modified = pretty_midi.PrettyMIDI(initial_tempo=self.solo_midi.estimate_tempo())
-        modified.instruments = [pretty_midi.Instrument(0)]
+
+        original_instrument = self.solo_midi.instruments[0].program
+        modified.instruments = [pretty_midi.Instrument(original_instrument)]
 
         tempo = self.solo_midi.estimate_tempo()
         beats_per_measure = 3
@@ -86,15 +84,21 @@ class MIDIProcessor:
 
     def create_rubato(self, variation_pct: float = 15.0) -> None:
         modified = pretty_midi.PrettyMIDI(initial_tempo=self.solo_midi.estimate_tempo())
-        modified.instruments = [pretty_midi.Instrument(0)]
+
+        # Preserve the original instrument program
+        original_instrument = self.solo_midi.instruments[0].program
+        modified.instruments = [pretty_midi.Instrument(original_instrument)]
+
         time_groups = {}
 
+        # Group notes by their start times
         for note in self.solo_midi.instruments[0].notes:
             start_time = round(note.start, 3)
             if start_time not in time_groups:
                 time_groups[start_time] = []
             time_groups[start_time].append(note)
 
+        # Apply timing variations
         for start_time, notes in sorted(time_groups.items()):
             variation = 1.0 + (np.random.rand() * 2 - 1) * (variation_pct / 100.0)
             for note in notes:
@@ -110,36 +114,6 @@ class MIDIProcessor:
         self._convert_to_wav('solo_rubato.mid', 'solo_rubato.wav')
         print("Created solo rubato version")
 
-    def create_gradual_shifts(self, max_tempo_change: float = 1.3, 
-                              min_tempo_change: float = 0.7, 
-                              shift_rate: float = 0.01) -> None:
-        modified = pretty_midi.PrettyMIDI()
-        modified.instruments = [pretty_midi.Instrument(0)]
-        tempo_factor = 1.0
-        increasing = True
-
-        for note in self.solo_midi.instruments[0].notes:
-            new_note = pretty_midi.Note(
-                velocity=note.velocity,
-                pitch=note.pitch,
-                start=note.start * tempo_factor,
-                end=note.end * tempo_factor
-            )
-            modified.instruments[0].notes.append(new_note)
-
-            if increasing:
-                tempo_factor += shift_rate
-                if tempo_factor >= max_tempo_change:
-                    increasing = False
-            else:
-                tempo_factor -= shift_rate
-                if tempo_factor <= min_tempo_change:
-                    increasing = True
-
-        modified.write('solo_gradual_shifts.mid')
-        self._convert_to_wav('solo_gradual_shifts.mid', 'solo_gradual_shifts.wav')
-        print("Created solo gradual shifts version")
-
     def create_smooth_temp_shifts(self, max_tempo_change: float = 1.1, 
                                   min_tempo_change: float = 0.9, 
                                   shift_rate: float = 0.001) -> None:
@@ -147,7 +121,9 @@ class MIDIProcessor:
         Applies very slight, gradual tempo changes (up and down) within a tight range.
         """
         modified = pretty_midi.PrettyMIDI(initial_tempo=self.solo_midi.estimate_tempo())
-        modified.instruments = [pretty_midi.Instrument(0)]
+        original_instrument = self.solo_midi.instruments[0].program
+        modified.instruments = [pretty_midi.Instrument(original_instrument)]
+
         tempo_factor = 1.0
         increasing = True
 
@@ -197,14 +173,10 @@ class MIDIProcessor:
         self.create_pauses()
         print("Creating rubato version...")
         self.create_rubato()
-        print("Creating gradual shifts version...")
-        self.create_gradual_shifts()
         print("Creating smooth tempo shifts version...")
         self.create_smooth_temp_shifts()
         print("All variations created successfully!")
 
-        
-       
         baseline_pm = pretty_midi.PrettyMIDI('solo_baseline.mid')
         baseline_notes = baseline_pm.instruments[0].notes
 
@@ -216,9 +188,10 @@ class MIDIProcessor:
         generate_breakdown(baseline_notes, rubato_pm.instruments[0].notes, 
                            "baseline_rubato_breakdown.csv")
         
-        gradual_pm = pretty_midi.PrettyMIDI('solo_gradual_shifts.mid')
-        generate_breakdown(baseline_notes, gradual_pm.instruments[0].notes, 
-                           "baseline_gradual_shifts_breakdown.csv")
+        smooth_pm = pretty_midi.PrettyMIDI('solo_smooth_temp_shifts.mid')
+        generate_breakdown(baseline_notes, smooth_pm.instruments[0].notes, 
+                           "baseline_smooth_temp_shifts_breakdown.csv")
+        
         print("Generated breakdown CSV files.")
 
 def main():
