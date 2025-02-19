@@ -2,11 +2,36 @@ import unittest
 import numpy as np
 import os
 import librosa
+import pretty_midi
 from src.score_follower import ScoreFollower
+from src.audio_generator import AudioGenerator
+
+CHROMA_LABEL = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+TEMPO = 80
+PROGRAM = 0
+PITCH = 97
+NOTE = 'C#'
+
 
 class TestScoreFollower(unittest.TestCase):
     def test_get_chroma(self):
-        ref_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'data', 'test', 'bach_prelude.wav')
+
+        # Initialize prettyMIDI objects and add note with pitch PITCH
+        # Write to note_test.mid
+        pm = pretty_midi.PrettyMIDI(initial_tempo=TEMPO)
+        instrument = pretty_midi.Instrument(program=PROGRAM, is_drum=False, name='inst')
+        note = pretty_midi.Note(velocity=100, pitch=PITCH, start=0, end=5)
+        instrument.notes.append(note)
+        pm.instruments.append(instrument)
+        pm.write(os.path.join(os.path.dirname(__file__), 'note_test.mid'))
+
+        # Synthesize audio from note_test.mid
+        midi_path = os.path.join(os.path.dirname(__file__), 'note_test.mid')
+        generator = AudioGenerator(score_path=midi_path)
+        generator.generate_audio(output_dir=os.path.join(os.path.dirname(__file__)))
+        ref_path = os.path.join(os.path.dirname(__file__), 'instrument_0.wav')
+        
 
         score_follower = ScoreFollower(reference=ref_path,
                                    c=10,
@@ -14,16 +39,36 @@ class TestScoreFollower(unittest.TestCase):
                                    diag_weight=0.5,
                                    sample_rate=44100,
                                    win_length=8192)
-        sample_frames = np.zeros((1,2))
-        chroma = score_follower._get_chroma(sample_frames)
+        
+        source_audio = librosa.load(ref_path, sr=44100)
+        source_audio = source_audio[0].reshape((1, -1))
+        frames = source_audio[:,:8192]
+
+        # Get chroma vector of the given frames
+        chroma = score_follower._get_chroma(frames)
+
         for i in chroma:
             print(i)
 
+        # Check chroma vector length
         self.assertTrue(len(chroma) == 12)
 
+        # Check chroma detects the given note
+        note_index = np.argmax(chroma)
+        self.assertEqual(CHROMA_LABEL[note_index], NOTE)
+
+        os.remove(os.path.join(os.path.dirname(__file__), 'instrument_0.wav'))
+        os.remove(os.path.join(os.path.dirname(__file__), 'note_test.mid'))
+
+
     def test_step(self):
-        ref_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'data', 'test', 'bach_prelude.wav')
-        source = os.path.join(os.path.dirname(__file__), '..', 'data', 'data', 'test', 'bach_prelude.wav')
+        midi_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'midi', 'ode_to_joy.mid')
+        generator = AudioGenerator(score_path=midi_path)
+        generator.generate_audio(output_dir=os.path.join(os.path.dirname(__file__)))
+
+
+        ref_path = os.path.join(os.path.dirname(__file__), 'instrument_0.wav')
+        source = os.path.join(os.path.dirname(__file__), 'instrument_0.wav')
 
         sample_rate = 44100
         win_length = 8192
@@ -44,8 +89,10 @@ class TestScoreFollower(unittest.TestCase):
         for i in range(0, source_audio.shape[-1], 8192):
             frames = source_audio[:, i:i+8192]
             estimated_time = score_follower.step(frames)
-            print(f'Estimated: {estimated_time} Increase: {estimated_time - prev_time} Change: {change}')
+            print(f'Estimated: {estimated_time} Increase: {estimated_time - prev_time} Expected: {change}')
+            self.assertAlmostEqual(estimated_time - prev_time, change, delta=0.2)
 
             prev_time = estimated_time
-            # print(
-            #    f'Live index: {score_follower.otw.live_index}, Ref index: {score_follower.otw.ref_index}')
+
+        os.remove(os.path.join(os.path.dirname(__file__), 'instrument_0.wav'))
+        os.remove(os.path.join(os.path.dirname(__file__), 'instrument_1.wav'))
