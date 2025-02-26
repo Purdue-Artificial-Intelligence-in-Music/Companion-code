@@ -217,13 +217,13 @@ class MidiPerformance:
             while (self._next_note_index < len(self.notes) and
                    self.score_position >= self.notes[self._next_note_index][2]):
                 frequency, quarter_duration, quarter_offset = self.notes[self._next_note_index]
-                if (self.score_position - quarter_offset < .1 and self.last_beat is not quarter_offset):
+                if (self.score_position - quarter_offset < .1 and (self.last_beat < self._next_note_index)):
                     print(
                         f"Playing note at beat {quarter_offset}: {frequency:.2f} Hz, "
                         f"duration {quarter_duration} beats"
                     )
                     self._play_note(frequency, quarter_duration)
-                    self.last_beat = quarter_offset
+                    self.last_beat = self._next_note_index
                 self._next_note_index += 1
             sleep(0.005)
         print("Performance loop ended.")
@@ -288,8 +288,6 @@ if __name__ == "__main__":
             elapsed_time = current_time - prev_time
             position += elapsed_time * performance.current_tempo / 60  # in beats
             prev_time = current_time
-            if position > 5 and position < 6:
-                position += 10
             sleep(0.01)
             performance.update_score_position(position)
 
