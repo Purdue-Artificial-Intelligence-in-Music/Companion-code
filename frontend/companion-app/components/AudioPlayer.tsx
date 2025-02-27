@@ -26,8 +26,6 @@ export function AudioPlayer({
 
   useEffect(() => {
     const updateWhetherPlaying = async () => {
-      console.log("Playing:", state.playing);
-      console.log("Sound:", state.accompanimentSound);
       if (state.accompanimentSound) {
         if (state.playing) {
           await state.accompanimentSound.playAsync();

@@ -131,13 +131,8 @@ export default function ScoreDisplay({
           state.synth_tempo,
       });
     }
-  }, [
-    dispatch,
-    state.cursorTimestamp,
-    state.synth_tempo,
-    state.time_signature.Denominator,
-    state.timestamp,
-  ]);
+  },
+[state.timestamp]);
 
   return (
     <div style={styles.scrollContainer}>
@@ -151,7 +146,7 @@ export default function ScoreDisplay({
 const styles = StyleSheet.create({
   scrollContainer: {
     width: "100%", // Make the scroll container fill the width of the parent
-    height: "80%", // Set a specific height for scrolling (adjust as needed)
+    height: "100%", // Set a specific height for scrolling (adjust as needed)
     overflow: "scroll", // Enable vertical scrolling
     borderWidth: 1, // Add border to the container
     borderColor: "black", // Set border color to black
