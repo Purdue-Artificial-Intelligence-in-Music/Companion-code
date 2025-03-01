@@ -37,23 +37,26 @@ export function MeasureSetBox({
 
 const styles = StyleSheet.create({
     measure_button_shape: {
-        width: "40%",
-        marginRight: "10%",
-        height: "50%"
+        // width: "40%",
+        // marginRight: "10%",
+        // height: "50%"
     },
     measure_input_shape: {
-      width: "40%",
-      marginRight: "10%",
-      height: "50%",
+      flex: 1,
+      // width: "40%",
+      // marginRight: "10%",
+      // height: "50%",
       borderRadius: 15,
-      backgroundColor: "white"
+      backgroundColor: "white",
+      padding: 6
     },
     flexing_box: {
-        width: "37.5%",
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "center",
-        alignContent: "center",
-        alignItems: "center"
+      marginVertical: 12
+        // width: "37.5%",
+        // display: "flex",
+        // flexDirection: "row",
+        // justifyContent: "center",
+        // alignContent: "center",
+        // alignItems: "center"
     }
 })

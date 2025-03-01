@@ -56,13 +56,20 @@ export function AudioPlayer({
 }
 
 const styles = StyleSheet.create({
+
+  // footer container styles
   container: {
+    backgroundColor: "#2C3E50",
     flexDirection: "row",
     justifyContent: "space-evenly",
     marginTop: 10,
-    width: "60%",
+    padding: 10,
+    width: "100%",
   },
+  // text styles for text in footer content
   text: {
     textAlign: "center",
+    color: "#ffffff",
+    fontWeight: "bold"
   },
 });

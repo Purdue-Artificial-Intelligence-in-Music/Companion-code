@@ -153,7 +153,6 @@ const styles = StyleSheet.create({
   },
   osmContainer: {
     width: "100%", // Make the sheet music container fill the width of the parent
-    minHeight: "150%", // Set a minimum height to ensure scrolling is possible
     borderWidth: 1, // Add border to the sheet music container
     borderColor: "black", // Set border color to black
     overflow: "hidden", // Ensure content doesn't overflow outside this container

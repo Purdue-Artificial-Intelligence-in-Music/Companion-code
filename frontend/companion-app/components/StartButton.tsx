@@ -55,14 +55,10 @@ export function Start_Stop_Button({
 
 const styles = StyleSheet.create({
     button_shape: {
-      width: "75%",
-      height: "75%"
+      // paddingHorizontal: 24,
+      // paddingVertical: 12
     },
     flexing_box: {
-      width: "25%",
-      height: "100%",
-      justifyContent: "center",
-      alignContent: "center",
-      alignItems: "center"
+
     }
 })

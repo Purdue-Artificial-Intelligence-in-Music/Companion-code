@@ -184,89 +184,149 @@ export default function App() {
   ////////////////////////////////////////////////////////////////////////////////
   return (
     <SafeAreaView style={styles.container}>
-      {/* Provides safe area insets for mobile devices */}
-      <View style={styles.menu_bar}>
-        <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
-        <Return_Button
-          state={state}
-          dispatch={dispatch}
-          button_format={styles.button_format}
-          text_style={styles.button_text}
-        />
-        <Start_Stop_Button
-          state={state}
-          dispatch={dispatch}
-          button_format={styles.button_format}
-          text_style={styles.button_text}
-        />
-        {
-          state.inPlayMode ?
-          <MeasureSetBox
-            state={state}
-            dispatch={dispatch}
-            button_style={styles.button_format}
-            button_text_style={styles.button_text}
-          />
-          :
-          <TempoBox
-            state={state}
-            dispatch={dispatch}
-            label_text_style={styles.button_text}
-          />
-        }
-      </View>
-      <View style={styles.main_area}>
-        { // List of scores, show when not in play mode
-        state.inPlayMode || <Score_Select state={state} dispatch={dispatch} /> }
-        <ScoreDisplay state={state} dispatch={dispatch} />
-      </View>
-      <StatusBar style="auto" />
-      {/* Automatically adjusts the status bar style */}
-      <AudioPlayer state={state} />
+        {/* Provides safe area insets for mobile devices */}
+
+        {/* Header with image */}
+        <View style={styles.menu_bar}>
+          <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
+        </View>
+
+        {/* Container used for 1:3 ratio display */}
+        <View style={styles.contentWrapper}>
+
+          {/* Sidebar for inputs and buttons (takes up little width) */}
+          <View style={styles.sidebar}>
+            { // List of scores, show when not in play mode
+            state.inPlayMode || <Score_Select state={state} dispatch={dispatch} /> }
+            <Return_Button
+              state={state}
+              dispatch={dispatch}
+              button_format={styles.button}
+              text_style={styles.button_text}
+            />
+            
+            {
+              state.inPlayMode ?
+              <MeasureSetBox
+                state={state}
+                dispatch={dispatch}
+                button_style={styles.button}
+                button_text_style={styles.button_text}
+              />
+              :
+              <TempoBox
+                state={state}
+                dispatch={dispatch}
+                label_text_style={styles.button_text}
+              />
+            }
+            <Start_Stop_Button
+              state={state}
+              dispatch={dispatch}
+              button_format={styles.button}
+              text_style={styles.button_text}
+            />
+          </View>
+
+          {/* Actual content display (takes up remaining width after sidebar) */}
+          <View style={styles.mainContent}>
+            <ScoreDisplay state={state} dispatch={dispatch} />
+          </View>
+
+        </View>
+          
+        {/* Footer display for status */}
+        <StatusBar style="auto" />
+        {/* Automatically adjusts the status bar style */}
+        <AudioPlayer state={state} />
     </SafeAreaView>
   );
 }
 
 // Define styles for the components using StyleSheet
 const styles = StyleSheet.create({
+
+  // Main container for entire content
   container: {
-    flex: 1, // Make the container fill the available space
-    backgroundColor: "#fff", // Set background color to white
-    alignItems: "center", // Center children horizontally
-    justifyContent: "center", // Center children vertically
-    padding: 16, // Add padding around the container
-  },
-  button_format: {
-    borderColor: "black",
-    borderRadius: 15,
-    backgroundColor: "lightblue",
-    justifyContent: "center"
-  },
-  button_text: {
-    fontSize: 24,
-    textAlign: "center",
-  },
-  menu_bar: {
-    flex: 0,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: "lightgray",
-    width: "100%",
-    minHeight: 100,
-  },
-  main_area: {
     flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: "white",
-    width: "100%",
-    height: "80%",
+    backgroundColor: "#F5F5F5",
   },
+  // Header container 
+  menu_bar: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#2C3E50",
+    padding: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: "#1A252F",
+    height: 80, 
+  },
+  // Image for header
   logo: {
-    backgroundColor: "white",
-    flex: 0.25,
+    height: 200,
+    width: 200,
+    resizeMode: "contain",
+  },
+
+  // Container displaying sidebar and main content (row form)
+  contentWrapper: {
+    flexDirection: "row",
+    flex: 1,
+    padding: 10,
+  },
+
+  // Side bar container for buttons and inputs (column display)
+  sidebar: {
     width: "25%",
-    height: "100%",
-    resizeMode: 'contain'
+    backgroundColor: "#ECF0F1",
+    padding: 25,
+    borderRadius: 10,
+    gap: 6,
+    // Shadow style found online
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity:  0.17,
+    shadowRadius: 3.05,
+    elevation: 4,
+  },
+
+  // Container displaying score sheet 
+  mainContent: {
+    flex: 1,
+    marginLeft: 15,
+    backgroundColor: "#FFFFFF",
+    padding: 15,
+    borderRadius: 10,
+    // Shadow style found online
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity:  0.17,
+    shadowRadius: 3.05,
+    elevation: 4,
+  },
+
+  // Primary button styles
+  button: {
+    backgroundColor: "#2C3E50",
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+    marginVertical: 5,
+
+  },
+
+  // Primary button text
+  button_text: {
+    textAlign: "center",
+    fontSize: 14,
+    color: "#FFFFFF",
+    fontWeight: "bold",
   },
 });

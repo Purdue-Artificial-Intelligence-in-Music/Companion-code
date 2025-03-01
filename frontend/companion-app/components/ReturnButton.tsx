@@ -1,4 +1,5 @@
 import { StyleSheet, View, Text, TextStyle, ViewStyle, Pressable } from "react-native";
+import Icon from "react-native-vector-icons/FontAwesome"; // Font Awesome import for icons
 
 export function Return_Button({
     state,
@@ -17,7 +18,10 @@ export function Return_Button({
                 style={{...styles.button_shape, ...button_format, ...{display: state.inPlayMode ? "flex": "none"}}}
                 onPress={() => { dispatch({ type: "swap_mode" }); }}
             >
-                <Text style={text_style}>{"↩️"}</Text>
+                {/* Font Awesome Return Arrow Icon */}
+                <Icon name="arrow-left" size={14} color="#FFF" style={styles.icon}/> 
+
+
             </Pressable>
         </View>
     );
@@ -25,14 +29,17 @@ export function Return_Button({
 
 const styles = StyleSheet.create({
     button_shape: {
-        width: "50%",
-        height: "50%"
+        // width: "50%",
+        // height: "50%"
     },
     flexing_box: {
-        width: "12.5%",
-        height: "100%",
-        justifyContent: "center",
-        alignContent: "center",
-        alignItems: "center"
+        // width: "12.5%",
+        // height: "100%",
+        // justifyContent: "center",
+        // alignContent: "center",
+        // alignItems: "center"
+    },
+    icon: {
+        textAlign: "center"
     }
 })

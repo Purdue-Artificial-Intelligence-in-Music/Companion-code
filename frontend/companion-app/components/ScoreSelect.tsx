@@ -54,44 +54,60 @@ export function Score_Select({
   };
 
   return (
-    <View style={styles.flexing_box}>
-      <Text>Select a score:</Text>
-      <RNPickerSelect
-        key={state.scores.length} //RNPicker is a new instance depending on the length of score. So, it will rerender if updated
-        onValueChange={(value) => {
-          console.log("The dispatch function is being sent.");
-          dispatch({ type: "change_score", score: value });
-        }}
-        items={state.scores.map((score) => ({
-          label: score,
-          value: score,
-        }))}
-        placeholder={{
-          label: "Select a score",
-          value: "air_on_the_g_string.musicxml",
-        }}
-      />
-      <Text>Or upload a new score:</Text>
-      <input type="file" accept=".musicxml" onChange={noteFileUpload} />
+    <View >
+      <Text style={styles.text}>Select a score:</Text>
+      <View style={styles.input}>
+        <RNPickerSelect
+          key={state.scores.length} //RNPicker is a new instance depending on the length of score. So, it will rerender if updated
+          onValueChange={(value) => {
+            console.log("The dispatch function is being sent.");
+            dispatch({ type: "change_score", score: value });
+          }}
+          items={state.scores.map((score) => ({
+            label: score,
+            value: score,
+          }))}
+          placeholder={{
+            label: "Select a score",
+            value: "air_on_the_g_string.musicxml",
+          }}
+        />
+      </View>
+      <Text style={styles.text}>Or upload a new score:</Text>
+      <View style={[styles.input, { borderBottomWidth: 2, borderBottomColor: "#2C3E50", paddingBottom: 24 }]}>
+        <input type="file" accept=".musicxml" onChange={noteFileUpload}/>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-    tempo_text_shape: {
-        width: "30%",
-        height: "100%"
+
+    // Main text styles (text labels)
+    text : {
+      color: "#2C3E50",
+      fontSize: 24,
+      fontWeight: "bold"
     },
-    tempo_input_shape: {
-      width: "40%",
-      height: "100%",
-      backgroundColor: "white"
+    // Styles added to View component that wraps the inputs (used for spacing purposes)
+    input: {
+      paddingVertical: 12
     },
-    flexing_box: {
-        width: "25%",
-        height: "100%",
-        display: "flex",
-        padding: "2%",
-        backgroundColor: "lightgray"
-    }
+
+    // tempo_text_shape: {
+    //     width: "30%",
+    //     height: "100%"
+    // },
+    // tempo_input_shape: {
+    //   width: "40%",
+    //   height: "100%",
+    //   backgroundColor: "white"
+    // },
+    // flexing_box: {
+    //     width: "25%",
+    //     height: "100%",
+    //     display: "flex",
+    //     padding: "2%",
+    //     backgroundColor: "lightgray"
+    // }
 })
