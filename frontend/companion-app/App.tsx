@@ -1,6 +1,6 @@
 // Import necessary modules and components from the Expo and React Native libraries
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View, Image, SafeAreaView } from "react-native";
+import { StyleSheet, Text, View, Image, SafeAreaView, TouchableOpacity } from "react-native";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { startSession, synchronize } from "./components/Utils";
 import { Score_Select } from "./components/ScoreSelect";
@@ -14,6 +14,7 @@ import { AudioPlayer } from "./components/AudioPlayer";
 import reducer_function from "./Dispatch";
 import ScoreDisplay from "./components/ScoreDisplay";
 import { SynthesizeButton } from "./components/SynthesizeButton";
+import Icon from 'react-native-vector-icons/Feather';
 
 // Define the main application component
 export default function App() {
@@ -45,6 +46,13 @@ export default function App() {
       scores: [] // the list of scores to choose from
     },
   );
+  // state to conditionally render the style type of the components
+  const [theme, setTheme] = useState("light")
+
+  // helper function for switching between light and dark state mode
+  const toggleTheme = () => {
+    setTheme(theme === 'light' ? 'dark' : 'light');
+  }
 
   // Sync sessionToken with useReducer state
   // Fetch the session token and dispatch it to the reducer
@@ -183,21 +191,25 @@ export default function App() {
   // Render the component's UI
   ////////////////////////////////////////////////////////////////////////////////
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, themeStyles[theme].container]}>
         {/* Provides safe area insets for mobile devices */}
 
         {/* Header with image */}
-        <View style={styles.menu_bar}>
+        <View style={[styles.menu_bar, themeStyles[theme].menu_bar]}>
           <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
+          
+          <TouchableOpacity onPress={toggleTheme}>
+            <Icon name={theme === 'light' ? 'sun' : 'moon'} size={30} color="white" />
+          </TouchableOpacity>
         </View>
 
         {/* Container used for 1:3 ratio display */}
         <View style={styles.contentWrapper}>
 
           {/* Sidebar for inputs and buttons (takes up little width) */}
-          <View style={styles.sidebar}>
+          <View style={[styles.sidebar, themeStyles[theme].sidebar]}>
             { // List of scores, show when not in play mode
-            state.inPlayMode || <Score_Select state={state} dispatch={dispatch} /> }
+            state.inPlayMode || <Score_Select state={state} dispatch={dispatch} textStyle={themeStyles[theme].text} /> }
             <Return_Button
               state={state}
               dispatch={dispatch}
@@ -218,18 +230,20 @@ export default function App() {
                 state={state}
                 dispatch={dispatch}
                 label_text_style={styles.button_text}
+                textStyle={themeStyles[theme].text}
               />
             }
             <Start_Stop_Button
               state={state}
               dispatch={dispatch}
               button_format={styles.button}
-              text_style={styles.button_text}
+              text_style={themeStyles[theme == "light"? "dark": "light"].text}
+              buttonStyle = {themeStyles[theme].button}
             />
           </View>
 
           {/* Actual content display (takes up remaining width after sidebar) */}
-          <View style={styles.mainContent}>
+          <View style={[styles.mainContent, themeStyles[theme].mainContent]}>
             <ScoreDisplay state={state} dispatch={dispatch} />
           </View>
 
@@ -238,10 +252,31 @@ export default function App() {
         {/* Footer display for status */}
         <StatusBar style="auto" />
         {/* Automatically adjusts the status bar style */}
-        <AudioPlayer state={state} />
+        <AudioPlayer state={state} menuStyle={themeStyles[theme].menu_bar}/>
     </SafeAreaView>
   );
 }
+
+// Theme-based styles
+const themeStyles = {
+  light: {
+    container: { backgroundColor: '#F5F5F5' },
+    menu_bar: { backgroundColor: '#2C3E50' },
+    sidebar: { backgroundColor: '#ECF0F1' },
+    mainContent: { backgroundColor: '#FFFFFF' },
+    text: { color: "#2C3E50",fontWeight: "bold"},
+    button: {  backgroundColor: "#2C3E50"}
+  },
+  dark: {
+    container: { backgroundColor: '#0F0F0F' },
+    menu_bar: { backgroundColor: '#1A252F' },
+    sidebar: { backgroundColor: '#2C3E50' },
+    mainContent: { backgroundColor: '#2C3E50' },
+    text: { color: '#ffffff', fontWeight: "bold"},
+    button: {  backgroundColor: "#ffffff"}
+
+  },
+};
 
 // Define styles for the components using StyleSheet
 const styles = StyleSheet.create({
@@ -254,7 +289,7 @@ const styles = StyleSheet.create({
   // Header container 
   menu_bar: {
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#2C3E50",
     padding: 10,
@@ -273,7 +308,7 @@ const styles = StyleSheet.create({
   contentWrapper: {
     flexDirection: "row",
     flex: 1,
-    padding: 10,
+    padding: 20,
   },
 
   // Side bar container for buttons and inputs (column display)
@@ -314,7 +349,6 @@ const styles = StyleSheet.create({
 
   // Primary button styles
   button: {
-    backgroundColor: "#2C3E50",
     padding: 10,
     borderRadius: 8,
     alignItems: "center",

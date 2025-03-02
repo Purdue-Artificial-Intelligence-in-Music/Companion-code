@@ -5,14 +5,16 @@ export function TempoBox({
   state,
   dispatch,
   label_text_style,
+  textStyle
 }: {
   state: { tempo: number };
   dispatch: Function;
   label_text_style: TextStyle;
+  textStyle: object;
 }) {
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Tempo (BPM):</Text>
+      <Text style={textStyle}>Tempo (BPM):</Text>
       <TextInput
         onChangeText={(text) =>
           dispatch({ type: "change_tempo", tempo: text as unknown as number })
@@ -32,7 +34,6 @@ const styles = StyleSheet.create({
     container: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: "#ECF0F1", // Light gray background
     },
     // Text label styles
     label: {

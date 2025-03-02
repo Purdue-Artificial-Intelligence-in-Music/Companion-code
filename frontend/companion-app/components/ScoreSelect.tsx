@@ -5,9 +5,11 @@ import React, { useEffect } from "react";
 export function Score_Select({
   state,
   dispatch,
+  textStyle
 }: {
   state: { score: string; scores: string[] };
   dispatch: Function;
+  textStyle: object;
 }) {
   // Fetch scores from the backend
   useEffect(() => {
@@ -55,7 +57,7 @@ export function Score_Select({
 
   return (
     <View >
-      <Text style={styles.text}>Select a score:</Text>
+      <Text style={[textStyle, styles.text]}>Select a score:</Text>
       <View style={styles.input}>
         <RNPickerSelect
           key={state.scores.length} //RNPicker is a new instance depending on the length of score. So, it will rerender if updated
@@ -73,9 +75,9 @@ export function Score_Select({
           }}
         />
       </View>
-      <Text style={styles.text}>Or upload a new score:</Text>
-      <View style={[styles.input, { borderBottomWidth: 2, borderBottomColor: "#2C3E50", paddingBottom: 24 }]}>
-        <input type="file" accept=".musicxml" onChange={noteFileUpload}/>
+      <Text style={[styles.text, textStyle]}>Or upload a new score:</Text>
+      <View style={[styles.input, { borderBottomWidth: 2, borderBottomColor: textStyle.color, paddingBottom: 24 }]}>
+        <input type="file" accept=".musicxml" onChange={noteFileUpload} style={textStyle}/>
       </View>
     </View>
   );
@@ -85,7 +87,6 @@ const styles = StyleSheet.create({
 
     // Main text styles (text labels)
     text : {
-      color: "#2C3E50",
       fontSize: 24,
       fontWeight: "bold"
     },

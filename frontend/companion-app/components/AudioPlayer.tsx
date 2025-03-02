@@ -4,6 +4,7 @@ import { Audio } from "expo-av";
 
 export function AudioPlayer({
   state,
+  menuStyle
 }: {
   state: {
     playRate: number;
@@ -11,6 +12,7 @@ export function AudioPlayer({
     accompanimentSound: Audio.Sound | null;
     playing: boolean;
   };
+  menuStyle: object;
 }) {
   ///////////////////////////////////////////////////////////////////////////////////////
   // Two useEffects that tie the sound playback to the state
@@ -42,7 +44,7 @@ export function AudioPlayer({
   // any particular state change
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, menuStyle]}>
       <Text style={styles.text}>
         Current rate: {state.playRate.toFixed(2)}x
       </Text>
@@ -59,7 +61,6 @@ const styles = StyleSheet.create({
 
   // footer container styles
   container: {
-    backgroundColor: "#2C3E50",
     flexDirection: "row",
     justifyContent: "space-evenly",
     marginTop: 10,
