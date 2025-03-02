@@ -14,7 +14,7 @@ export function TempoBox({
 }) {
   return (
     <View style={styles.container}>
-      <Text style={textStyle}>Tempo (BPM):</Text>
+      <Text style={textStyle}>Tempo (BPM): </Text>
       <TextInput
         onChangeText={(text) =>
           dispatch({ type: "change_tempo", tempo: text as unknown as number })

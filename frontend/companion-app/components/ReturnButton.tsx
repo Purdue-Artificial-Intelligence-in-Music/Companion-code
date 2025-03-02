@@ -9,17 +9,17 @@ export function Return_Button({
   }: {
     state: { inPlayMode: boolean };
     dispatch: Function;
-    button_format: ViewStyle;
+    button_format: ViewStyle[];
     text_style: TextStyle;
   }) {
     return (
         <View style={styles.flexing_box}>
             <Pressable
-                style={{...styles.button_shape, ...button_format, ...{display: state.inPlayMode ? "flex": "none"}}}
+                style={[...button_format, {...styles.button_shape, ...{display: state.inPlayMode ? "flex": "none"}}]}
                 onPress={() => { dispatch({ type: "swap_mode" }); }}
             >
                 {/* Font Awesome Return Arrow Icon */}
-                <Icon name="arrow-left" size={14} color="#FFF" style={styles.icon}/> 
+                <Icon name="arrow-left" size={14} style={[text_style, styles.icon]}/> 
 
 
             </Pressable>

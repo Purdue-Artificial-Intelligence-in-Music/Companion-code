@@ -1,6 +1,6 @@
 // Import necessary modules and components from the Expo and React Native libraries
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View, Image, SafeAreaView, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, View, Image, SafeAreaView, TouchableOpacity, useWindowDimensions, ScrollView, TextStyle } from "react-native";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { startSession, synchronize } from "./components/Utils";
 import { Score_Select } from "./components/ScoreSelect";
@@ -46,13 +46,18 @@ export default function App() {
       scores: [] // the list of scores to choose from
     },
   );
-  // state to conditionally render the style type of the components
-  const [theme, setTheme] = useState("light")
+  // State to conditionally render the style type of the components (can only be "light" or "dark")
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
-  // helper function for switching between light and dark state mode
+  // Helper function for switching between light and dark state mode
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
   }
+
+  // Get device's width 
+  const { width } = useWindowDimensions()
+  // Boolean used for dynmaic display (row or column)
+  const isSmallScreen = width < 768;
 
   // Sync sessionToken with useReducer state
   // Fetch the session token and dispatch it to the reducer
@@ -193,7 +198,9 @@ export default function App() {
   return (
     <SafeAreaView style={[styles.container, themeStyles[theme].container]}>
         {/* Provides safe area insets for mobile devices */}
-
+        
+        {/* Scroll View used for device scroll for content going over the frame */}
+        <ScrollView contentContainerStyle={isSmallScreen ? { flexGrow: 1 } : {height: "100%"}}>
         {/* Header with image */}
         <View style={[styles.menu_bar, themeStyles[theme].menu_bar]}>
           <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
@@ -204,17 +211,17 @@ export default function App() {
         </View>
 
         {/* Container used for 1:3 ratio display */}
-        <View style={styles.contentWrapper}>
+        <View style={[styles.contentWrapper, isSmallScreen ? styles.contentWrapperColumn : styles.contentWrapperRow]}>
 
           {/* Sidebar for inputs and buttons (takes up little width) */}
-          <View style={[styles.sidebar, themeStyles[theme].sidebar]}>
+          <View style={[styles.sidebar, themeStyles[theme].sidebar, isSmallScreen ? styles.sidebarColumn : {}]}>
             { // List of scores, show when not in play mode
             state.inPlayMode || <Score_Select state={state} dispatch={dispatch} textStyle={themeStyles[theme].text} /> }
             <Return_Button
               state={state}
               dispatch={dispatch}
-              button_format={styles.button}
-              text_style={styles.button_text}
+              button_format={[styles.button, themeStyles[theme].button]}
+              text_style={themeStyles[theme == "light"? "dark": "light"].text}
             />
             
             {
@@ -222,8 +229,8 @@ export default function App() {
               <MeasureSetBox
                 state={state}
                 dispatch={dispatch}
-                button_style={styles.button}
-                button_text_style={styles.button_text}
+                button_style={[styles.button,themeStyles[theme].button]}
+                button_text_style={themeStyles[theme == "light"? "dark": "light"].text}
               />
               :
               <TempoBox
@@ -236,14 +243,13 @@ export default function App() {
             <Start_Stop_Button
               state={state}
               dispatch={dispatch}
-              button_format={styles.button}
+              button_format={[styles.button, themeStyles[theme].button]}
               text_style={themeStyles[theme == "light"? "dark": "light"].text}
-              buttonStyle = {themeStyles[theme].button}
             />
           </View>
 
           {/* Actual content display (takes up remaining width after sidebar) */}
-          <View style={[styles.mainContent, themeStyles[theme].mainContent]}>
+          <View style={[styles.mainContent, themeStyles[theme].mainContent, isSmallScreen ? styles.mainContentColumn : {}]}>
             <ScoreDisplay state={state} dispatch={dispatch} />
           </View>
 
@@ -253,6 +259,7 @@ export default function App() {
         <StatusBar style="auto" />
         {/* Automatically adjusts the status bar style */}
         <AudioPlayer state={state} menuStyle={themeStyles[theme].menu_bar}/>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -264,15 +271,15 @@ const themeStyles = {
     menu_bar: { backgroundColor: '#2C3E50' },
     sidebar: { backgroundColor: '#ECF0F1' },
     mainContent: { backgroundColor: '#FFFFFF' },
-    text: { color: "#2C3E50",fontWeight: "bold"},
+    text: { color: "#2C3E50", fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
     button: {  backgroundColor: "#2C3E50"}
   },
   dark: {
     container: { backgroundColor: '#0F0F0F' },
     menu_bar: { backgroundColor: '#1A252F' },
-    sidebar: { backgroundColor: '#2C3E50' },
-    mainContent: { backgroundColor: '#2C3E50' },
-    text: { color: '#ffffff', fontWeight: "bold"},
+    sidebar: { backgroundColor: '#4A627A' },
+    mainContent: { backgroundColor: '#6B87A3' },
+    text: { color: '#ffffff', fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
     button: {  backgroundColor: "#ffffff"}
 
   },
@@ -307,10 +314,17 @@ const styles = StyleSheet.create({
   // Container displaying sidebar and main content (row form)
   contentWrapper: {
     flexDirection: "row",
+    gap: 10,
     flex: 1,
     padding: 20,
   },
-
+  // Container displaying sidebar and main content (row form)
+  contentWrapperRow: {
+    flexDirection: "row",
+  },
+  contentWrapperColumn: {
+    flexDirection: "column",
+  },
   // Side bar container for buttons and inputs (column display)
   sidebar: {
     width: "25%",
@@ -329,10 +343,13 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 
+  sidebarColumn: {
+    width: "100%", // Full width on smaller screens
+  },
+
   // Container displaying score sheet 
   mainContent: {
     flex: 1,
-    marginLeft: 15,
     backgroundColor: "#FFFFFF",
     padding: 15,
     borderRadius: 10,
@@ -345,6 +362,11 @@ const styles = StyleSheet.create({
     shadowOpacity:  0.17,
     shadowRadius: 3.05,
     elevation: 4,
+  },
+  mainContentColumn: {
+    width: "100%", // Full width on smaller screens
+
+
   },
 
   // Primary button styles

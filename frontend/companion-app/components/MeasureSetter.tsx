@@ -5,11 +5,11 @@ export function MeasureSetBox({
   state,
   dispatch,
   button_style,
-  button_text_style
+  button_text_style,
 }: {
   state: { resetMeasure: number };
   dispatch: Function;
-  button_style: ViewStyle;
+  button_style: ViewStyle[];
   button_text_style: TextStyle;
 }) {
   return (
@@ -24,7 +24,7 @@ export function MeasureSetBox({
         style={styles.measure_input_shape}
       />
       <Pressable
-        style={{...button_style, ...styles.measure_button_shape}}
+        style={[...button_style, styles.measure_button_shape]}
         onPress={() => {
           dispatch({ type: "reset" });
         }}

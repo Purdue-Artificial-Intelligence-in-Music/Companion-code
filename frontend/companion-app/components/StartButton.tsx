@@ -7,13 +7,11 @@ export function Start_Stop_Button({
   dispatch,
   button_format,
   text_style,
-  buttonStyle
 }: {
   state: { playing: boolean, inPlayMode: boolean, sessionToken: string, score: string, tempo: number };
   dispatch: Function;
-  button_format: ViewStyle;
+  button_format: ViewStyle[];
   text_style: TextStyle;
-  buttonStyle: object
 }) {
 
   // Copied from SynthesizeButton.tsx
@@ -40,7 +38,7 @@ export function Start_Stop_Button({
   return (
     <View style={styles.flexing_box}>
       <Pressable
-        style={[buttonStyle, button_format]}
+        style={[...button_format]}
         onPress={() => {
           if (state.inPlayMode) dispatch({ type: "start/stop" });
           else {
