@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { useRef, useEffect } from "react";
 import { Cursor, OpenSheetMusicDisplay, Fraction } from "opensheetmusicdisplay";
 
@@ -135,10 +135,11 @@ export default function ScoreDisplay({
 [state.timestamp]);
 
   return (
-    <div style={styles.scrollContainer}>
-      <div ref={osmContainerRef} style={styles.osmContainer}></div> Reference to
-      the SVG container for sheet music
-    </div>
+    <ScrollView indicatorStyle="white" contentContainerStyle={{flexGrow: 1}}>
+        <div ref={osmContainerRef} style={styles.osmContainer}></div> Reference to
+        the SVG container for sheet music
+    </ScrollView>
+    
   );
 }
 
