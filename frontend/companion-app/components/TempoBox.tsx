@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text } from "react-native";
+import { StyleSheet, View, Text, Animated } from "react-native";
 import { TextInput, TextStyle, ViewStyle } from "react-native";
 
 export function TempoBox({
@@ -10,11 +10,11 @@ export function TempoBox({
   state: { tempo: number };
   dispatch: Function;
   label_text_style: TextStyle;
-  textStyle: object;
+  textStyle: Animated.AnimatedInterpolation<string | number>;
 }) {
   return (
     <View style={styles.container}>
-      <Text style={textStyle}>Tempo (BPM): </Text>
+      <Animated.Text style={[styles.text, {color: textStyle}]}>Tempo (BPM): </Animated.Text>
       <TextInput
         onChangeText={(text) =>
           dispatch({ type: "change_tempo", tempo: text as unknown as number })
@@ -55,5 +55,8 @@ const styles = StyleSheet.create({
       color: "#2C3E50",
       textAlign: "center",
     },
+    text: {
+      fontWeight: "bold",
+    }
    
 })

@@ -1,6 +1,7 @@
-import { ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet, Text } from "react-native";
 import { useRef, useEffect } from "react";
 import { Cursor, OpenSheetMusicDisplay, Fraction } from "opensheetmusicdisplay";
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 export default function ScoreDisplay({
   state,
@@ -136,8 +137,11 @@ export default function ScoreDisplay({
 
   return (
     <ScrollView indicatorStyle="white" contentContainerStyle={{flexGrow: 1}}>
-        <div ref={osmContainerRef} style={styles.osmContainer}></div> Reference to
-        the SVG container for sheet music
+        <div ref={osmContainerRef} style={styles.osmContainer}></div> 
+        <Text style={styles.text}>
+          <Icon name="music" size={20} color="#2C3E50" /> Reference to the SVG container for sheet music <Icon name="music" size={20} color="#2C3E50" />
+        </Text>
+        
     </ScrollView>
     
   );
@@ -158,4 +162,9 @@ const styles = StyleSheet.create({
     borderColor: "black", // Set border color to black
     overflow: "hidden", // Ensure content doesn't overflow outside this container
   },
+  text: {
+    fontSize: 20,
+    textAlign: "center",
+    color: "#2C3E50"
+  }
 });

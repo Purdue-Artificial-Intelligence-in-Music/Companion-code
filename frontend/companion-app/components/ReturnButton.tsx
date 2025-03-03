@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TextStyle, ViewStyle, Pressable } from "react-native";
+import { StyleSheet, View, Text, TextStyle, ViewStyle, Pressable, Animated } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome"; // Font Awesome import for icons
 
 export function Return_Button({
@@ -9,21 +9,23 @@ export function Return_Button({
   }: {
     state: { inPlayMode: boolean };
     dispatch: Function;
-    button_format: ViewStyle[];
-    text_style: TextStyle;
+    button_format: object[];
+    text_style: Animated.AnimatedInterpolation<string | number>;
   }) {
     return (
-        <View style={styles.flexing_box}>
+        <Animated.View style={state.inPlayMode? [...button_format]: {}}>
             <Pressable
-                style={[...button_format, {...styles.button_shape, ...{display: state.inPlayMode ? "flex": "none"}}]}
+                style={[{...styles.button_shape, ...{display: state.inPlayMode ? "flex": "none"}}]}
                 onPress={() => { dispatch({ type: "swap_mode" }); }}
             >
                 {/* Font Awesome Return Arrow Icon */}
-                <Icon name="arrow-left" size={14} style={[text_style, styles.icon]}/> 
+                <Animated.Text style={[{color: text_style, textAlign: "center"}]}>
+                    <Icon name="arrow-left" size={14} /> 
+                </Animated.Text>
 
 
             </Pressable>
-        </View>
+        </Animated.View>
     );
   }
 
@@ -39,7 +41,5 @@ const styles = StyleSheet.create({
         // alignContent: "center",
         // alignItems: "center"
     },
-    icon: {
-        textAlign: "center"
-    }
+
 })

@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text } from "react-native";
+import { StyleSheet, View, Text, Animated } from "react-native";
 import { Pressable, TextInput, TextStyle, ViewStyle } from "react-native";
 
 export function MeasureSetBox({
@@ -9,8 +9,8 @@ export function MeasureSetBox({
 }: {
   state: { resetMeasure: number };
   dispatch: Function;
-  button_style: ViewStyle[];
-  button_text_style: TextStyle;
+  button_style: object[];
+  button_text_style: Animated.AnimatedInterpolation<string | number>;
 }) {
   return (
     <View style={styles.flexing_box}>
@@ -23,14 +23,17 @@ export function MeasureSetBox({
         inputMode="numeric"
         style={styles.measure_input_shape}
       />
-      <Pressable
-        style={[...button_style, styles.measure_button_shape]}
-        onPress={() => {
-          dispatch({ type: "reset" });
-        }}
-      >
-        <Text style={button_text_style}>RESET</Text>
-      </Pressable>
+      <Animated.View style={[...button_style]}>
+        <Pressable
+          style={styles.measure_button_shape}
+          onPress={() => {
+            dispatch({ type: "reset" });
+          }}
+          >
+          <Animated.Text style={{color: button_text_style, fontWeight: "bold"}}>RESET</Animated.Text>
+        </Pressable>
+      </Animated.View>
+
     </View>
   );
 }

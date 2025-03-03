@@ -1,15 +1,17 @@
-import { StyleSheet, View, Text } from "react-native";
+import { StyleSheet, View, Text, TextStyle, Animated } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 import React, { useEffect } from "react";
 
 export function Score_Select({
   state,
   dispatch,
-  textStyle
+  textStyle,
+  borderStyle
 }: {
   state: { score: string; scores: string[] };
   dispatch: Function;
-  textStyle: object;
+  textStyle: Animated.AnimatedInterpolation<string | number>;
+  borderStyle: Animated.AnimatedInterpolation<string | number>
 }) {
   // Fetch scores from the backend
   useEffect(() => {
@@ -57,7 +59,7 @@ export function Score_Select({
 
   return (
     <View >
-      <Text style={[textStyle, styles.text]}>Select a score:</Text>
+      <Animated.Text style={[{color: textStyle}, styles.text]}>Select a score:</Animated.Text>
       <View style={styles.input}>
         <RNPickerSelect
           key={state.scores.length} //RNPicker is a new instance depending on the length of score. So, it will rerender if updated
@@ -75,10 +77,10 @@ export function Score_Select({
           }}
         />
       </View>
-      <Text style={[styles.text, textStyle]}>Or upload a new score:</Text>
-      <View style={[styles.input, { borderBottomWidth: 2, borderBottomColor: textStyle.color, paddingBottom: 24 }]}>
-        <input type="file" accept=".musicxml" onChange={noteFileUpload} style={textStyle}/>
-      </View>
+      <Animated.Text style={[styles.text, {color: textStyle}]}>Or upload a new score:</Animated.Text>
+      <Animated.View style={[styles.input, { borderBottomWidth: 2, borderBottomColor: borderStyle, paddingBottom: 24 }]}>
+        <input type="file" accept=".musicxml" onChange={noteFileUpload} style={{color: "#000"}}/>
+      </Animated.View>
     </View>
   );
 }

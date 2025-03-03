@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Animated } from "react-native";
 import { useEffect } from "react";
 import { Audio } from "expo-av";
 
@@ -44,7 +44,7 @@ export function AudioPlayer({
   // any particular state change
 
   return (
-    <View style={[styles.container, menuStyle]}>
+    <Animated.View style={[styles.container, menuStyle]}>
       <Text style={styles.text}>
         Current rate: {state.playRate.toFixed(2)}x
       </Text>
@@ -53,7 +53,7 @@ export function AudioPlayer({
         Audio Status:{" "}
         {state.accompanimentSound ? "Audio Loaded" : "Audio Unavailable"}
       </Text>
-    </View>
+    </Animated.View>
   );
 }
 
