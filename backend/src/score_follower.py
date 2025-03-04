@@ -104,7 +104,7 @@ class ScoreFollower:
         self.path.append((ref_index, self.otw.live_index))
 
         # Return timestamp in the reference audio in seconds
-        return ref_index * self.win_length / self.sample_rate
+        return (ref_index+1) * self.win_length / self.sample_rate 
 
     def get_backwards_path(self, b):
         cost_matrix = self.otw.accumulated_cost
@@ -140,24 +140,26 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import os
     import librosa
-    reference = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
-    source = os.path.join('data', 'audio', 'bach', 'synthesized', 'solo.wav')
+    reference = os.path.join('data', 'audio', 'twinkle_twinkle', '200bpm', 'instrument_0.wav')
+    source = os.path.join('data', 'audio', 'twinkle_twinkle', '200bpm', 'instrument_0.wav')
 
     source_audio = librosa.load(source, sr=44100)
     source_audio = source_audio[0].reshape((1, -1))
 
     score_follower = ScoreFollower(reference=reference,
-                                   c=10,
+                                   c=50,
                                    max_run_count=3,
                                    diag_weight=0.5,
                                    sample_rate=44100,
-                                   win_length=8192)
+                                   win_length=4096)
 
-    for i in range(0, source_audio.shape[-1], 8192):
-        frames = source_audio[:, i:i+8192]
+    for i in range(0, source_audio.shape[-1], 4096):
+        frames = source_audio[:, i:i+4096]
         estimated_time = score_follower.step(frames)
+        # print(
+        #     f'Live index: {score_follower.otw.live_index}, Ref index: {score_follower.otw.ref_index}')
         print(
-            f'Live index: {score_follower.otw.live_index}, Ref index: {score_follower.otw.ref_index}')
+            f'Estimated time: {estimated_time}, Ref index: {score_follower.otw.ref_index * score_follower.win_length / score_follower.sample_rate}')
 
 
     print(score_follower.path)
