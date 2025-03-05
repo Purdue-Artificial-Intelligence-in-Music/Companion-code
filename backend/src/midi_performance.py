@@ -162,7 +162,7 @@ class MidiPerformance:
             Current position in beats (quarter-note units).
         """
         self.score_position = position
-        self._next_note_index = 0
+        # self._next_note_index = 0
 
     def _note_worker(self, midi_note: int, duration_sec: float):
         """
@@ -217,7 +217,7 @@ class MidiPerformance:
             while (self._next_note_index < len(self.notes) and
                    self.score_position >= self.notes[self._next_note_index][2]):
                 frequency, quarter_duration, quarter_offset = self.notes[self._next_note_index]
-                if (self.score_position - quarter_offset < .1 and self.last_beat is not quarter_offset):
+                if (self.score_position - quarter_offset < 1 and self.last_beat is not quarter_offset):
                     print(
                         f"Playing note at beat {quarter_offset}: {frequency:.2f} Hz, "
                         f"duration {quarter_duration} beats"

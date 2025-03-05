@@ -25,11 +25,11 @@ DIAG_WEIGHT = 0.75  # Weight for the diagonal in the cost matrix for score follo
 MAX_DURATION = 600  # Maximum duration of audio buffer in seconds
 
 
-STATED_TEMPO = 220  # Tempo at which the user plans to play in BPM
-SOURCE_TEMPO = 200  # Tempo at which the user actually plays in BPM
-PIECE_NAME = 'greensleeves'  # Name of piece
-PROGAM_NUMBER = 0  # Program number for accompaniment instrument
-SOLO_VOLUME_MULTIPLIER = 1
+STATED_TEMPO = 100  # Tempo at which the user plans to play in BPM
+SOURCE_TEMPO = 110  # Tempo at which the user actually plays in BPM
+PIECE_NAME = 'air_on_the_g_string'  # Name of piece
+PROGAM_NUMBER = 42  # Program number for accompaniment instrument
+SOLO_VOLUME_MULTIPLIER = 0.75
 
 MIDI_SCORE = os.path.join('data', 'midi', PIECE_NAME + '.mid')  # Path to MIDI file
 OUTPUT_DIR = os.path.join('data', 'audio', PIECE_NAME)  # Directory where synthesized audio will be saved
