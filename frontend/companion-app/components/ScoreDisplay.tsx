@@ -136,7 +136,7 @@ export default function ScoreDisplay({
 [state.timestamp]);
 
   return (
-    <ScrollView indicatorStyle="white" contentContainerStyle={{flexGrow: 1}}>
+    <ScrollView indicatorStyle="white" contentContainerStyle={{flexGrow: 1}} showsVerticalScrollIndicator={false}>
         <div ref={osmContainerRef} style={styles.osmContainer}></div> 
         <Text style={styles.text}>
           <Icon name="music" size={20} color="#2C3E50" /> Reference to the SVG container for sheet music <Icon name="music" size={20} color="#2C3E50" />

@@ -324,11 +324,19 @@ export default function App() {
                 text_style={invertTextColor}
               />
             </Animated.View>
-
-            {/* Actual content display (takes up remaining width after sidebar) */}
-            <Animated.View style={[styles.mainContent, themeStyles[theme].mainContent, {backgroundColor: mainContentBackgroundColor}, isSmallScreen ? styles.mainContentColumn : {}]}>
-              <ScoreDisplay state={state} dispatch={dispatch} />
-            </Animated.View>
+            
+            {/* Scroll View used for horizontal scolling */}
+            <ScrollView
+              horizontal={true} 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={{ flexGrow: 1 }} // Ensure the content fills the container
+            >
+              {/* Actual content display (takes up remaining width after sidebar) */}
+              <Animated.View style={[styles.mainContent, themeStyles[theme].mainContent, {backgroundColor: mainContentBackgroundColor}, isSmallScreen ? styles.mainContentColumn : {}]}>
+                <ScoreDisplay state={state} dispatch={dispatch} />
+              </Animated.View>
+            </ScrollView>
+            
 
           </View>
             
