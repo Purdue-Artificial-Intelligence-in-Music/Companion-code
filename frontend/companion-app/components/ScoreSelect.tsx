@@ -90,7 +90,11 @@ const styles = StyleSheet.create({
     // Main text styles (text labels)
     text : {
       fontSize: 24,
-      fontWeight: "bold"
+      fontWeight: "bold",
+      // Text shadow properties
+      textShadowColor: 'rgba(0, 0, 0, 0.3)', // Shadow color with transparency
+      textShadowOffset: { width: 1, height: 1 }, // Slight offset
+      textShadowRadius: 4,
     },
     // Styles added to View component that wraps the inputs (used for spacing purposes)
     input: {

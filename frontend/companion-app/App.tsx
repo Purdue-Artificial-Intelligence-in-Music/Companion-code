@@ -53,7 +53,7 @@ export default function App() {
   const backgroundColorAnim = useRef(new Animated.Value(0)).current; 
   const textColorAnim = useRef(new Animated.Value(0)).current; 
   const borderBottomAnim = useRef(new Animated.Value(0)).current;
-  const borderColorAnim = useRef(new Animated.Value(0)).current;
+  // const borderColorAnim = useRef(new Animated.Value(0)).current;
 
   // Interpolate background color based on light or dark mode
   const containerBackgroundColor = backgroundColorAnim.interpolate({
@@ -96,10 +96,10 @@ export default function App() {
     outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark transition
   });
   // Interpolate border bottom color based on light or dark mode
-  const borderColor = borderColorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#FFFFFF", "#2C3E50"], // Light to dark transition
-  })
+  // const borderColor = borderColorAnim.interpolate({
+  //   inputRange: [0, 1],
+  //   outputRange: ["#FFFFFF", "#2C3E50"], // Light to dark transition
+  // })
 
 
   // Toggles between light and dark mode by animating background, text, and border properties smoothly
@@ -121,11 +121,11 @@ export default function App() {
         duration: 500,
         useNativeDriver: false, // Can't use native driver for border properties
       }), 
-      Animated.timing(borderColorAnim, {
-        toValue,
-        duration: 500,
-        useNativeDriver: false, // Can't use native driver for border properties
-      }),
+      // Animated.timing(borderColorAnim, {
+      //   toValue,
+      //   duration: 500,
+      //   useNativeDriver: false, // Can't use native driver for border properties
+      // }),
     ]).start(() => {
       setTheme(theme === "light" ? "dark" : "light");
     });
@@ -297,7 +297,7 @@ export default function App() {
               <Return_Button
                 state={state}
                 dispatch={dispatch}
-                button_format={[styles.button, {backgroundColor:buttonBackgroundColor, borderColor: borderColor}]}
+                button_format={[styles.button, {backgroundColor:buttonBackgroundColor}]}
                 text_style={invertTextColor}
               />
               
@@ -306,7 +306,7 @@ export default function App() {
                 <MeasureSetBox
                   state={state}
                   dispatch={dispatch}
-                  button_style={[styles.button, {backgroundColor: buttonBackgroundColor, borderColor: borderColor}]}
+                  button_style={[styles.button, {backgroundColor: buttonBackgroundColor}]}
                   button_text_style={invertTextColor}
                 />
                 :
@@ -320,7 +320,7 @@ export default function App() {
               <Start_Stop_Button
                 state={state}
                 dispatch={dispatch}
-                button_format={[styles.button, {backgroundColor: buttonBackgroundColor, borderColor: borderColor}]}
+                button_format={[styles.button, {backgroundColor: buttonBackgroundColor}]}
                 text_style={invertTextColor}
               />
             </Animated.View>
@@ -447,7 +447,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     marginVertical: 5,
-    borderWidth: 3, 
+    // Shadow style found online
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity:  0.17,
+    shadowRadius: 3.05,
+    elevation: 4,
   },
   // Primary button text
   button_text: {
