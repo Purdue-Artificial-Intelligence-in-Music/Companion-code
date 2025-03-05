@@ -66,6 +66,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
     padding: 10,
     width: "100%",
+    backgroundColor: "#2C3E50", 
+    position: "absolute", // make footer stick on bottom even after scroll
+    bottom: 0,
   },
   // text styles for text in footer content
   text: {

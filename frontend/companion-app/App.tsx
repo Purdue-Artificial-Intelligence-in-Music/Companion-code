@@ -273,19 +273,21 @@ export default function App() {
   ////////////////////////////////////////////////////////////////////////////////
   return (
     <SafeAreaView style={[styles.container, themeStyles[theme].container]}>
+      {/* Header with image */}
+      <Animated.View style={[styles.menu_bar, themeStyles[theme].menu_bar, {backgroundColor: menubarBackgroundColor}]}>
+        <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
+        <TouchableOpacity onPress={toggleTheme}>
+          <Icon name={theme === 'light' ? 'sun' : 'moon'} size={30} color="white" />
+        </TouchableOpacity>
+
+      </Animated.View>
+
         {/* Provides safe area insets for mobile devices */}
         <Animated.View style={[styles.container, { backgroundColor: containerBackgroundColor }]}>
 
           {/* Scroll View used for device scroll for content going over the frame */}
           <ScrollView contentContainerStyle={isSmallScreen ? { flexGrow: 1 } : {height: "100%"}}>
-          {/* Header with image */}
-          <Animated.View style={[styles.menu_bar, themeStyles[theme].menu_bar, {backgroundColor: menubarBackgroundColor}]}>
-            <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
-            
-            <TouchableOpacity onPress={toggleTheme}>
-              <Icon name={theme === 'light' ? 'sun' : 'moon'} size={30} color="white" />
-            </TouchableOpacity>
-          </Animated.View>
+
 
           {/* Container used for 1:3 ratio display */}
           <View style={[styles.contentWrapper, isSmallScreen ? styles.contentWrapperColumn : styles.contentWrapperRow]}>
@@ -343,9 +345,10 @@ export default function App() {
           {/* Footer display for status */}
           <StatusBar style="auto" />
           {/* Automatically adjusts the status bar style */}
-          <AudioPlayer state={state}  menuStyle={{ backgroundColor: menubarBackgroundColor }}/>
         </ScrollView>
       </Animated.View>
+      <AudioPlayer state={state}  menuStyle={{ backgroundColor: menubarBackgroundColor }}/>
+
     </SafeAreaView>
   );
 }
@@ -389,6 +392,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "#1A252F",
     height: 80, 
+    position: "absolute", // make header stick on top even after scroll
+    top: 0,
+    width: "100%",
+    zIndex: 99
   },
   // Image for header
   logo: {
@@ -402,6 +409,7 @@ const styles = StyleSheet.create({
     gap: 10,
     flex: 1,
     padding: 20,
+    marginTop: 80 // account for fixed header
   },
   // Container displaying sidebar and main content (row form)
   contentWrapperRow: {
