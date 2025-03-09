@@ -33,7 +33,6 @@ export function MeasureSetBox({
           <Animated.Text style={{color: button_text_style, fontWeight: "bold"}}>RESET</Animated.Text>
         </Pressable>
       </Animated.View>
-
     </View>
   );
 }

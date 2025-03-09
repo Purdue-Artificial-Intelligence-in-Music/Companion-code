@@ -46,95 +46,7 @@ export default function App() {
       scores: [] // the list of scores to choose from
     },
   );
-  // State to conditionally render the style type of the components (can only be "light" or "dark")
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  // Creating animated values using useRef for UI animation
-  const backgroundColorAnim = useRef(new Animated.Value(0)).current; 
-  const textColorAnim = useRef(new Animated.Value(0)).current; 
-  const borderBottomAnim = useRef(new Animated.Value(0)).current;
-  // const borderColorAnim = useRef(new Animated.Value(0)).current;
-
-  // Interpolate background color based on light or dark mode
-  const containerBackgroundColor = backgroundColorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#F5F5F5", "#1A1A1A"], // Light to dark
-  });
-  // Interpolate text color based on light or dark mode
-  const textColor = textColorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark
-  });
-  // Interpolate text color based on light or dark mode
-  const invertTextColor = textColorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#FFFFFF", "#2C3E50"], // Light to dark
-  });
-  // Interpolate sidebar bg color based on light or dark mode
-  const sidebarBackgroundColor = backgroundColorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#ECF0F1", "#4A627A"], // Light to dark
-  });
-  // Interpolate mainContent container bg color based on light or dark mode
-  const mainContentBackgroundColor = backgroundColorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#FFFFFF", "#A3B9D3"], // Light to dark
-  });
-  // Interpolate button bg color based on light or dark mode
-  const buttonBackgroundColor = backgroundColorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark
-  });
-  // Interpolate header and footer container color based on light or dark mode
-  const menubarBackgroundColor =  backgroundColorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#2C3E50", "#1A252F"], // Light to dark
-  });
-  // Interpolate border bottom color based on light or dark mode
-  const borderBottomColor = borderBottomAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark transition
-  });
-  // Interpolate border bottom color based on light or dark mode
-  // const borderColor = borderColorAnim.interpolate({
-  //   inputRange: [0, 1],
-  //   outputRange: ["#FFFFFF", "#2C3E50"], // Light to dark transition
-  // })
-
-
-  // Toggles between light and dark mode by animating background, text, and border properties smoothly
-  const toggleTheme = () => {
-    const toValue = theme === "light" ? 1 : 0;
-    Animated.parallel([
-      Animated.timing(backgroundColorAnim, {
-        toValue,
-        duration: 500, 
-        useNativeDriver: false, // `backgroundColor` is not supported by native driver
-      }),
-      Animated.timing(textColorAnim, {
-        toValue,
-        duration: 500,
-        useNativeDriver: false, // `color` is not supported by native driver
-      }),
-      Animated.timing(borderBottomAnim, {
-        toValue,
-        duration: 500,
-        useNativeDriver: false, // Can't use native driver for border properties
-      }), 
-      // Animated.timing(borderColorAnim, {
-      //   toValue,
-      //   duration: 500,
-      //   useNativeDriver: false, // Can't use native driver for border properties
-      // }),
-    ]).start(() => {
-      setTheme(theme === "light" ? "dark" : "light");
-    });
-  };
-  // Get device's width 
-  const { width } = useWindowDimensions()
-  // Boolean used for dynmaic display (row or column)
-  const isSmallScreen = width < 768;
-
+  
   // Sync sessionToken with useReducer state
   // Fetch the session token and dispatch it to the reducer
   useEffect(() => {
@@ -268,13 +180,103 @@ export default function App() {
     if (state.playing) setTimeout(getAPIData, UPDATE_INTERVAL);
   }, [state.timestamp])
 
+  // State to conditionally render the style type of the components (can only be "light" or "dark")
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  // Creating animated values using useRef for UI animation
+  const backgroundColorAnim = useRef(new Animated.Value(0)).current; 
+  const textColorAnim = useRef(new Animated.Value(0)).current; 
+  const borderBottomAnim = useRef(new Animated.Value(0)).current;
+  // const borderColorAnim = useRef(new Animated.Value(0)).current;
+
+  // Interpolate background color based on light or dark mode
+  const containerBackgroundColor = backgroundColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#F5F5F5", "#1A1A1A"], // Light to dark
+  });
+  // Interpolate text color based on light or dark mode
+  const textColor = textColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark
+  });
+  // Interpolate text color based on light or dark mode
+  const invertTextColor = textColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#FFFFFF", "#2C3E50"], // Light to dark
+  });
+  // Interpolate sidebar bg color based on light or dark mode
+  const sidebarBackgroundColor = backgroundColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#ECF0F1", "#4A627A"], // Light to dark
+  });
+  // Interpolate mainContent container bg color based on light or dark mode
+  const mainContentBackgroundColor = backgroundColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#FFFFFF", "#A3B9D3"], // Light to dark
+  });
+  // Interpolate button bg color based on light or dark mode
+  const buttonBackgroundColor = backgroundColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark
+  });
+  // Interpolate header and footer container color based on light or dark mode
+  const menubarBackgroundColor =  backgroundColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#2C3E50", "#1A252F"], // Light to dark
+  });
+  // Interpolate border bottom color based on light or dark mode
+  const borderBottomColor = borderBottomAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark transition
+  });
+  // Interpolate border bottom color based on light or dark mode
+  // const borderColor = borderColorAnim.interpolate({
+  //   inputRange: [0, 1],
+  //   outputRange: ["#FFFFFF", "#2C3E50"], // Light to dark transition
+  // })
+
+
+  // Toggles between light and dark mode by animating background, text, and border properties smoothly
+  const toggleTheme = () => {
+    const toValue = theme === "light" ? 1 : 0;
+    Animated.parallel([
+      Animated.timing(backgroundColorAnim, {
+        toValue,
+        duration: 500, 
+        useNativeDriver: false, // `backgroundColor` is not supported by native driver
+      }),
+      Animated.timing(textColorAnim, {
+        toValue,
+        duration: 500,
+        useNativeDriver: false, // `color` is not supported by native driver
+      }),
+      Animated.timing(borderBottomAnim, {
+        toValue,
+        duration: 500,
+        useNativeDriver: false, // Can't use native driver for border properties
+      }), 
+      // Animated.timing(borderColorAnim, {
+      //   toValue,
+      //   duration: 500,
+      //   useNativeDriver: false, // Can't use native driver for border properties
+      // }),
+    ]).start(() => {
+      setTheme(theme === "light" ? "dark" : "light");
+    });
+  };
+  // Get device's width 
+  const { width } = useWindowDimensions()
+  // Boolean used for dynmaic display (row or column)
+  const isSmallScreen = width < 768;
+
+
   ////////////////////////////////////////////////////////////////////////////////
   // Render the component's UI
   ////////////////////////////////////////////////////////////////////////////////
   return (
-    <SafeAreaView style={[styles.container, themeStyles[theme].container]}>
+    <SafeAreaView style={[styles.container]}>
       {/* Header with image */}
-      <Animated.View style={[styles.menu_bar, themeStyles[theme].menu_bar, {backgroundColor: menubarBackgroundColor}]}>
+      <Animated.View style={[styles.menu_bar, {backgroundColor: menubarBackgroundColor}]}>
         <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
         <TouchableOpacity onPress={toggleTheme}>
           <Icon name={theme === 'light' ? 'sun' : 'moon'} size={30} color="white" />
@@ -293,7 +295,7 @@ export default function App() {
           <View style={[styles.contentWrapper, isSmallScreen ? styles.contentWrapperColumn : styles.contentWrapperRow]}>
 
             {/* Sidebar for inputs and buttons (takes up little width) */}
-            <Animated.View style={[styles.sidebar,  themeStyles[theme].sidebar, { backgroundColor: sidebarBackgroundColor }, isSmallScreen ? styles.sidebarColumn : {}]}>
+            <Animated.View style={[styles.sidebar, { backgroundColor: sidebarBackgroundColor }, isSmallScreen ? styles.sidebarColumn : {}]}>
               { // List of scores, show when not in play mode
               state.inPlayMode || <Score_Select state={state} dispatch={dispatch} textStyle={textColor} borderStyle={borderBottomColor}/> }
               <Return_Button
@@ -334,7 +336,7 @@ export default function App() {
               contentContainerStyle={{ flexGrow: 1 }} // Ensure the content fills the container
             >
               {/* Actual content display (takes up remaining width after sidebar) */}
-              <Animated.View style={[styles.mainContent, themeStyles[theme].mainContent, {backgroundColor: mainContentBackgroundColor}, isSmallScreen ? styles.mainContentColumn : {}]}>
+              <Animated.View style={[styles.mainContent, {backgroundColor: mainContentBackgroundColor}, isSmallScreen ? styles.mainContentColumn : {}]}>
                 <ScoreDisplay state={state} dispatch={dispatch} />
               </Animated.View>
             </ScrollView>
@@ -353,26 +355,25 @@ export default function App() {
   );
 }
 
-// Theme-based styles
-const themeStyles = {
-  light: {
-    container: { backgroundColor: '#F5F5F5' },
-    menu_bar: { backgroundColor: '#2C3E50' },
-    sidebar: { backgroundColor: '#ECF0F1' },
-    mainContent: { backgroundColor: '#FFFFFF' },
-    text: { color: "#2C3E50", fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
-    button: {  backgroundColor: "#2C3E50"}
-  },
-  dark: {
-    container: { backgroundColor: '#0F0F0F' },
-    menu_bar: { backgroundColor: '#1A252F' },
-    sidebar: { backgroundColor: '#4A627A' },
-    mainContent: { backgroundColor: '#6B87A3' },
-    text: { color: '#ffffff', fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
-    button: {  backgroundColor: "#ffffff"}
-
-  },
-};
+// Theme-based styles (not needed since we have animated API to do light and dark transitions smoother)
+// const themeStyles = {
+//   light: {
+//     container: { backgroundColor: '#F5F5F5' },
+//     menu_bar: { backgroundColor: '#2C3E50' },
+//     sidebar: { backgroundColor: '#ECF0F1' },
+//     mainContent: { backgroundColor: '#FFFFFF' },
+//     text: { color: "#2C3E50", fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
+//     button: {  backgroundColor: "#2C3E50"}
+//   },
+//   dark: {
+//     container: { backgroundColor: '#0F0F0F' },
+//     menu_bar: { backgroundColor: '#1A252F' },
+//     sidebar: { backgroundColor: '#4A627A' },
+//     mainContent: { backgroundColor: '#6B87A3' },
+//     text: { color: '#ffffff', fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
+//     button: {  backgroundColor: "#ffffff"}
+//   },
+// };
 
 // Define styles for the components using StyleSheet
 const styles = StyleSheet.create({

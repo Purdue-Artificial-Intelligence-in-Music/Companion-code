@@ -74,6 +74,7 @@ const styles = StyleSheet.create({
   text: {
     textAlign: "center",
     color: "#ffffff",
-    fontWeight: "bold"
+    fontWeight: "bold",
+    fontSize: 10
   },
 });

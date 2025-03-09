@@ -141,7 +141,6 @@ export default function ScoreDisplay({
         <Text style={styles.text}>
           <Icon name="music" size={20} color="#2C3E50" /> Reference to the SVG container for sheet music <Icon name="music" size={20} color="#2C3E50" />
         </Text>
-        
     </ScrollView>
     
   );

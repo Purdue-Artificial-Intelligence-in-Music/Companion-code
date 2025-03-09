@@ -22,13 +22,10 @@ export function Return_Button({
                 <Animated.Text style={[{color: text_style, textAlign: "center"}]}>
                     <Icon name="arrow-left" size={14} /> 
                 </Animated.Text>
-
-
             </Pressable>
         </Animated.View>
     );
   }
-
 const styles = StyleSheet.create({
     button_shape: {
         // width: "50%",
@@ -41,5 +38,4 @@ const styles = StyleSheet.create({
         // alignContent: "center",
         // alignItems: "center"
     },
-
 })

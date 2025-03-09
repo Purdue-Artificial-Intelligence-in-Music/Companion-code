@@ -60,8 +60,7 @@ def get_score(filename):
 def synthesize_audio(filename, tempo):
     # Get the session token from the request headers
     print("synthesize start")
-    sys.stderr.write("synthesize start\n")
-    sys.stderr.flush()
+
     session_token = request.headers.get('session-token')
     if not session_token or session_token not in SESSIONS:
         return 'Missing or invalid session token', 401
