@@ -49,20 +49,35 @@ export default function App() {
   
   // Sync sessionToken with useReducer state
   // Fetch the session token and dispatch it to the reducer
-  useEffect(() => {
-    const fetchSessionToken = async () => {
-      try {
-        const data = await startSession();
-        const token = data.session_token;
-        console.log("Fetched session token:", token);
-        dispatch({ type: "new_session", token: token });
-      } catch (error) {
-        console.error("Error fetching session token:", error);
-      }
-    };
+  // useEffect(() => {
+  //   const fetchSessionToken = async () => {
+  //     try {
+  //       const data = await startSession();
+  //       const token = data.session_token;
+  //       console.log("Fetched session token:", token);
+  //       dispatch({ type: "new_session", token: token });
+  //     } catch (error) {
+  //       console.error("Error fetching session token:", error);
+  //     }
+  //   };
 
-    fetchSessionToken();
+  //   fetchSessionToken();
+  // }, []);
+
+  // State used to store session token
+  const [sessionToken, setSessionToken] = useState<string>("")
+
+  // Function used to generate session token using crypto API 
+  const generateSecureSessionToken = (): string => {
+    return window.crypto.randomUUID();
+  };
+  
+  // On load, call generateSecureSessionToken function to generate and store new session token
+  useEffect(() => {
+    const newToken: string = generateSecureSessionToken();
+    setSessionToken(newToken)
   }, []);
+  console.log("new session token:", sessionToken)
 
   ////////////////////////////////////////////////////////////////////////////////
   // The lines below were modified, copied and pasted out of the audio recorder object
