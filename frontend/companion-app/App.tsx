@@ -267,7 +267,7 @@ export default function App() {
   // Get device's width 
   const { width } = useWindowDimensions()
   // Boolean used for dynmaic display (row or column)
-  const isSmallScreen = width < 768;
+  const isSmallScreen = width < 960;
 
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -276,10 +276,10 @@ export default function App() {
   return (
     <SafeAreaView style={[styles.container]}>
       {/* Header with image */}
-      <Animated.View style={[styles.menu_bar, {backgroundColor: menubarBackgroundColor}]}>
-        <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
+      <Animated.View style={[styles.menu_bar, {backgroundColor: menubarBackgroundColor, height: isSmallScreen? 40: 80}]}>
+        <Image source={require('./assets/companion.png')} style={[styles.logo, {height: isSmallScreen? 30: 100, width: isSmallScreen? 100: 200}]}/>
         <TouchableOpacity onPress={toggleTheme}>
-          <Icon name={theme === 'light' ? 'sun' : 'moon'} size={30} color="white" />
+          <Icon name={theme === 'light' ? 'sun' : 'moon'} size={isSmallScreen? 15: 30} color="white" />
         </TouchableOpacity>
 
       </Animated.View>
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderBottomWidth: 2,
     borderBottomColor: "#1A252F",
-    height: 80, 
+    height: 80,
     position: "absolute", // make header stick on top even after scroll
     top: 0,
     width: "100%",
@@ -400,7 +400,6 @@ const styles = StyleSheet.create({
   },
   // Image for header
   logo: {
-    height: 200,
     width: 200,
     resizeMode: "contain",
   },
