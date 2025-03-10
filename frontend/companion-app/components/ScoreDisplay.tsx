@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, Text } from "react-native";
 import { useRef, useEffect } from "react";
 import { Cursor, OpenSheetMusicDisplay, Fraction } from "opensheetmusicdisplay";
 import Icon from 'react-native-vector-icons/FontAwesome';
+import scoresData from "../musicxml/scores"; // Local mapping of score filenames to XML content
 
 export default function ScoreDisplay({
   state,
@@ -42,26 +43,23 @@ export default function ScoreDisplay({
         );
 
         osdRef.current = osm;
+        // Retrieve the local XML content based on the selected score.
+        const xmlContent = scoresData[selectedScore];
+        // Error handling if no xml content for selected score is found
+        if (!xmlContent) {
+          console.error("Score content not found for:", selectedScore);
+          return;
+        }
 
-        // Fetch the MusicXML file from the backend
-        fetch(`http://127.0.0.1:5000/score/${state.score}`) // Replace with your actual API endpoint
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.text(); // Return the XML content as a string
-          })
-          .then((xmlContent) => {
-            // Load the fetched XML content into OpenSheetMusicDisplay
-            return osm.load(xmlContent);
-          })
+        // Load and render the XML content.
+        osm
+          .load(xmlContent)
           .then(() => {
             // Render the sheet music
             osm.render();
             console.log("Music XML loaded successfully");
-
             cursorRef.current = osm.cursor;
-            cursorRef.current.show(); // Ensure the cursor is visible
+            cursorRef.current.show();  // Ensure the cursor is visible
             cursorRef.current.CursorOptions = {
               ...cursorRef.current.CursorOptions,
               follow: true,
@@ -76,8 +74,44 @@ export default function ScoreDisplay({
           })
           .catch((error) => {
             // Handle errors in loading the music XML file
-            console.error("Error loading music XML:", error); // Log the error message
+            console.error("Error loading music XML:", error);
           });
+
+        // // Fetch the MusicXML file from the backend
+        // fetch(`http://127.0.0.1:5000/score/${state.score}`) // Replace with your actual API endpoint
+        //   .then((response) => {
+        //     if (!response.ok) {
+        //       throw new Error(`HTTP error! status: ${response.status}`);
+        //     }
+        //     return response.text(); // Return the XML content as a string
+        //   })
+        //   .then((xmlContent) => {
+        //     // Load the fetched XML content into OpenSheetMusicDisplay
+        //     return osm.load(xmlContent);
+        //   })
+        //   .then(() => {
+        //     // Render the sheet music
+        //     osm.render();
+        //     console.log("Music XML loaded successfully");
+
+        //     cursorRef.current = osm.cursor;
+        //     cursorRef.current.show(); // Ensure the cursor is visible
+        //     cursorRef.current.CursorOptions = {
+        //       ...cursorRef.current.CursorOptions,
+        //       follow: true,
+        //     };
+        //     // TODO!  Find the piece's tempo and send that instead of constant 100
+        //     dispatch({
+        //       type: "update_piece_info",
+        //       time_signature:
+        //         cursorRef.current.Iterator.CurrentMeasure.ActiveTimeSignature,
+        //       tempo: 100,
+        //     });
+        //   })
+        //   .catch((error) => {
+        //     // Handle errors in loading the music XML file
+        //     console.error("Error loading music XML:", error); // Log the error message
+        //   });
       }
     }
 
@@ -142,7 +176,6 @@ export default function ScoreDisplay({
           <Icon name="music" size={20} color="#2C3E50" /> Reference to the SVG container for sheet music <Icon name="music" size={20} color="#2C3E50" />
         </Text>
     </ScrollView>
-    
   );
 }
 

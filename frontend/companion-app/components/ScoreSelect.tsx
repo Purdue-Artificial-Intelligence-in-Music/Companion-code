@@ -1,6 +1,7 @@
 import { StyleSheet, View, Text, TextStyle, Animated } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 import React, { useEffect } from "react";
+import musicxmlFiles from '../musicxml'; // File for displaying score select choices
 
 export function Score_Select({
   state,
@@ -14,25 +15,30 @@ export function Score_Select({
   borderStyle: Animated.AnimatedInterpolation<string | number>
 }) {
   // Fetch scores from the backend
-  useEffect(() => {
-    const fetchScores = async () => {
-      try {
-        const response = await fetch("http://127.0.0.1:5000/scores"); // Replace with your backend endpoint
-        console.log("Response is: ", response);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        const scores = data.files;
-        console.log("Scores are: ", scores);
-        dispatch({ type: "new_scores_from_backend", scores });
-      } catch (error) {
-        console.error("Failed to fetch scores:", error);
-      }
-    };
+  // useEffect(() => {
+  //   const fetchScores = async () => {
+  //     try {
+  //       const response = await fetch("http://127.0.0.1:5000/scores"); // Replace with your backend endpoint
+  //       console.log("Response is: ", response);
+  //       if (!response.ok) {
+  //         throw new Error(`HTTP error! status: ${response.status}`);
+  //       }
+  //       const data = await response.json();
+  //       const scores = data.files;
+  //       console.log("Scores are: ", scores);
+  //       dispatch({ type: "new_scores_from_backend", scores });
+  //     } catch (error) {
+  //       console.error("Failed to fetch scores:", error);
+  //     }
+  //   };
 
-    fetchScores();
-  }, [dispatch]);
+  //   fetchScores();
+  // }, [dispatch]);
+
+  useEffect(()=> {
+    console.log("Local scores: ", musicxmlFiles);
+    dispatch({ type: "new_scores_from_backend", scores: musicxmlFiles }); // pass in defined array of musicxml files from frontend
+  }, [dispatch])
 
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
@@ -65,6 +71,7 @@ export function Score_Select({
           key={state.scores.length} //RNPicker is a new instance depending on the length of score. So, it will rerender if updated
           onValueChange={(value) => {
             console.log("The dispatch function is being sent.");
+            console.log("val: ", value)
             dispatch({ type: "change_score", score: value });
           }}
           items={state.scores.map((score) => ({
