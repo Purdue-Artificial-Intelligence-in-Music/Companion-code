@@ -1,5 +1,5 @@
-import { ScrollView, StyleSheet, Text } from "react-native";
-import { useRef, useEffect } from "react";
+import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput} from "react-native";
+import { useRef, useEffect, useState } from "react";
 import { Cursor, OpenSheetMusicDisplay, Fraction } from "opensheetmusicdisplay";
 import Icon from 'react-native-vector-icons/FontAwesome';
 import scoresData from "../musicxml/scores"; // Local mapping of score filenames to XML content
@@ -17,9 +17,55 @@ export default function ScoreDisplay({
   const cursorRef = useRef<Cursor | null>(null);
   const osdRef = useRef<OpenSheetMusicDisplay | null>(null);
 
+
+  const scrollViewRef = useRef<ScrollView>(null); // reference to scroll view component
+  const scrollPositionRef = useRef<number>(0); // state to keep track of current y position of scroll view
+  const [steps, setSteps] = useState<string | null>(""); // state for declaring num of intended cursor iterations
+  const [speed, setSpeed] = useState<string | null>(""); // state for speed of cursor update
+
+
   // useEffect hook to handle side effects (like loading music) after the component mounts
   // and when a piece is selected
-  useEffect(() => {
+
+
+  const moveCursorAhead = () => {
+    
+    // Check if cursor is referenced
+    if (!cursorRef.current) {
+      console.error("Cursor not initialized.");
+      return;
+    }
+    scrollPositionRef.current = 0; 
+
+    // Function to move the cursor given the number of steps
+    const moveCursorStep = (step: number) => {
+
+      if (step >= parseInt(steps)) {
+        // Stop cursor after exceeding a certain number of steps
+        return;
+      }
+      if (cursorRef.current) {
+        // Move the cursor to the next note
+        cursorRef.current.next()
+      }
+
+      if (osdRef.current) {
+        // Update sheet visually to see updated cursor placement
+        osdRef.current.render();
+      }
+
+      scrollUp(scrollPositionRef.current);
+
+      // Schedule the next step after a delay
+      setTimeout(() => {
+        moveCursorStep(step + 1);
+      }, parseInt(speed)); 
+    };
+
+    moveCursorStep(0);
+  };
+
+  useEffect(()=> {
     // Remove any previously-loaded music
     if (osmContainerRef.current) {
       while (osmContainerRef.current.children[0]) {
@@ -64,6 +110,7 @@ export default function ScoreDisplay({
               ...cursorRef.current.CursorOptions,
               follow: true,
             };
+              
             // TODO!  Find the piece's tempo and send that instead of constant 100
             dispatch({
               type: "update_piece_info",
@@ -113,69 +160,111 @@ export default function ScoreDisplay({
         //     console.error("Error loading music XML:", error); // Log the error message
         //   });
       }
-    }
+    
 
     // Cleanup function to dispose of the OpenSheetMusicDisplay instance if needed
-    return () => {};
-  }, [dispatch, state.score, state.scores]); // Dependency array means this effect runs once when the component mounts and again when a new score is selected
-
+    //return () => {};
+  }; // Dependency array means this effect runs once when the component mounts and again when a new score is selected
+  }, [dispatch, state.score, state.scores])
+  
   /////////////////////////////////////////////////////////////////////////////////
   // useEffect to tie the cursor position to the state
   /////////////////////////////////////////////////////////////////////////////////
-  useEffect(() => {
-    let ct = state.cursorTimestamp; // current timestamp of cursor's note(s) in seconds
-    var dt = new Fraction();
-    console.log("ct:", ct);
-    if (cursorRef.current?.Iterator.CurrentSourceTimestamp !== undefined) {
-      var ts_meas = Fraction.createFromFraction(
-        cursorRef.current?.Iterator.CurrentSourceTimestamp,
-      ); // current timestamp of iterator as a fraction
-      console.log("ts_meas:", ts_meas.RealValue);
-      if (ct > state.timestamp) {
-        // If timestamp is older, go back to beginning, b/c probably reset
-        console.log("Moving ct back to beginning.");
-        ct = 0;
-        cursorRef.current?.reset();
-        ts_meas = new Fraction();
-      }
+//   useEffect(() => {
+//     let ct = state.cursorTimestamp; // current timestamp of cursor's note(s) in seconds
+//     var dt = new Fraction();
+//     console.log("ct:", ct);
+//     if (cursorRef.current?.Iterator.CurrentSourceTimestamp !== undefined) {
+//       var ts_meas = Fraction.createFromFraction(
+//         cursorRef.current?.Iterator.CurrentSourceTimestamp,
+//       ); // current timestamp of iterator as a fraction
+//       console.log("ts_meas:", ts_meas.RealValue);
+//       if (ct > state.timestamp) {
+//         // If timestamp is older, go back to beginning, b/c probably reset
+//         console.log("Moving ct back to beginning.");
+//         ct = 0;
+//         cursorRef.current?.reset();
+//         ts_meas = new Fraction();
+//       }
 
-      // while timestamp is less than desired, update it
-      while (ct <= state.timestamp) {
-        cursorRef.current?.Iterator.moveToNextVisibleVoiceEntry(false);
-        dt = Fraction.minus(
-          cursorRef.current?.Iterator.CurrentSourceTimestamp,
-          ts_meas,
-        );
-        // dt is a fraction indicating how much - in whole notes - the iterator moved
+//       // while timestamp is less than desired, update it
+//       while (ct <= state.timestamp) {
+//         cursorRef.current?.Iterator.moveToNextVisibleVoiceEntry(false);
+//         dt = Fraction.minus(
+//           cursorRef.current?.Iterator.CurrentSourceTimestamp,
+//           ts_meas,
+//         );
+//         // dt is a fraction indicating how much - in whole notes - the iterator moved
 
-        ct +=
-          (60 * dt.RealValue * state.time_signature.Denominator) /
-          state.synth_tempo;
-        console.log("ct:", ct);
-        ts_meas = Fraction.plus(ts_meas, dt);
-      }
-      cursorRef.current?.Iterator.moveToPreviousVisibleVoiceEntry(false);
-      console.log("Cursor should be updating");
-      cursorRef.current?.update();
-      dispatch({
-        type: "cursor_update",
-        time:
-          (60 *
-            cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue *
-            state.time_signature.Denominator) /
-          state.synth_tempo,
-      });
+//         ct +=
+//           (60 * dt.RealValue * state.time_signature.Denominator) /
+//           state.synth_tempo;
+//         console.log("ct:", ct);
+//         ts_meas = Fraction.plus(ts_meas, dt);
+//       }
+//       cursorRef.current?.Iterator.moveToPreviousVisibleVoiceEntry(false);
+//       console.log("Cursor should be updating");
+//       cursorRef.current?.update();
+//       dispatch({
+//         type: "cursor_update",
+//         time:
+//           (60 *
+//             cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue *
+//             state.time_signature.Denominator) /
+//           state.synth_tempo,
+//       });
+//     }
+//   },
+// [state.timestamp]);
+
+  const scrollUp = (amount: number) => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: amount, animated: false });
     }
-  },
-[state.timestamp]);
+  };
 
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const yOffset = event.nativeEvent.contentOffset.y;
+    // console.log('Current Scroll Position (Y):', yOffset);
+    scrollPositionRef.current = yOffset; // update ref immediately
+  };
+  
   return (
-    <ScrollView indicatorStyle="white" contentContainerStyle={{flexGrow: 1}} showsVerticalScrollIndicator={false}>
+    <>
+
+      <TextInput
+        value={steps !== null ? steps.toString() : ""}
+        onChangeText={(text) => {
+          setSteps(text);
+        }}
+        keyboardType="numeric"
+        placeholder="Type Number Of Steps"
+
+      />
+
+      <TextInput
+        value={speed !== null ? speed.toString() : ""}
+        onChangeText={(text) => {
+          setSpeed(text);
+        }}
+        keyboardType="numeric"
+        placeholder="Type Cursor Update Speed (ms)"
+      />
+
+      <TouchableOpacity
+        onPress={moveCursorAhead}
+      >
+        <Text>Start</Text>
+      </TouchableOpacity>
+
+        <ScrollView indicatorStyle="white" contentContainerStyle={{flexGrow: 1}} showsVerticalScrollIndicator={true} ref={scrollViewRef} onScroll={handleScroll} scrollEventThrottle={16}>
         <div ref={osmContainerRef} style={styles.osmContainer}></div> 
         <Text style={styles.text}>
           <Icon name="music" size={20} color="#2C3E50" /> Reference to the SVG container for sheet music <Icon name="music" size={20} color="#2C3E50" />
         </Text>
     </ScrollView>
+    </>
+
   );
 }
 

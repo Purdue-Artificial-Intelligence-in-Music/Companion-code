@@ -270,11 +270,6 @@ export default function App() {
         duration: 500,
         useNativeDriver: false, // Can't use native driver for border properties
       }), 
-      // Animated.timing(borderColorAnim, {
-      //   toValue,
-      //   duration: 500,
-      //   useNativeDriver: false, // Can't use native driver for border properties
-      // }),
     ]).start(() => {
       setTheme(theme === "light" ? "dark" : "light");
     });

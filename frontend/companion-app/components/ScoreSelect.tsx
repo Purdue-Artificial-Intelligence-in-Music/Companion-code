@@ -1,7 +1,6 @@
 import { StyleSheet, View, Text, TextStyle, Animated } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 import React, { useEffect } from "react";
-import musicxmlFiles from '../musicxml'; // File for displaying score select choices
 
 export function Score_Select({
   state,
@@ -34,6 +33,13 @@ export function Score_Select({
 
   //   fetchScores();
   // }, [dispatch]);
+
+  // Array of score names used to render score display options
+  const musicxmlFiles: string[] = [
+    'air_on_the_g_string.musicxml',
+    'twelve_duets.musicxml',
+  ];
+
 
   useEffect(()=> {
     console.log("Local scores: ", musicxmlFiles);
@@ -107,21 +113,4 @@ const styles = StyleSheet.create({
     input: {
       paddingVertical: 12
     },
-
-    // tempo_text_shape: {
-    //     width: "30%",
-    //     height: "100%"
-    // },
-    // tempo_input_shape: {
-    //   width: "40%",
-    //   height: "100%",
-    //   backgroundColor: "white"
-    // },
-    // flexing_box: {
-    //     width: "25%",
-    //     height: "100%",
-    //     display: "flex",
-    //     padding: "2%",
-    //     backgroundColor: "lightgray"
-    // }
 })
