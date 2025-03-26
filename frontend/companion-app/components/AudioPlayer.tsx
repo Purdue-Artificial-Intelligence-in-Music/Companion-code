@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Animated } from "react-native";
 import { useEffect } from "react";
 import { Audio } from "expo-av";
 
 export function AudioPlayer({
   state,
+  menuStyle
 }: {
   state: {
     playRate: number;
@@ -11,6 +12,7 @@ export function AudioPlayer({
     accompanimentSound: Audio.Sound | null;
     playing: boolean;
   };
+  menuStyle: object;
 }) {
   ///////////////////////////////////////////////////////////////////////////////////////
   // Two useEffects that tie the sound playback to the state
@@ -42,7 +44,7 @@ export function AudioPlayer({
   // any particular state change
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, menuStyle]}>
       <Text style={styles.text}>
         Current rate: {state.playRate.toFixed(2)}x
       </Text>
@@ -51,18 +53,28 @@ export function AudioPlayer({
         Audio Status:{" "}
         {state.accompanimentSound ? "Audio Loaded" : "Audio Unavailable"}
       </Text>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+
+  // footer container styles
   container: {
     flexDirection: "row",
     justifyContent: "space-evenly",
     marginTop: 10,
-    width: "60%",
+    padding: 10,
+    width: "100%",
+    backgroundColor: "#2C3E50", 
+    position: "absolute", // make footer stick on bottom even after scroll
+    bottom: 0,
   },
+  // text styles for text in footer content
   text: {
     textAlign: "center",
+    color: "#ffffff",
+    fontWeight: "bold",
+    fontSize: 10
   },
 });

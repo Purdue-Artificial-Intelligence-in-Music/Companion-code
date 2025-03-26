@@ -1,6 +1,6 @@
 // Import necessary modules and components from the Expo and React Native libraries
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View, Image, SafeAreaView } from "react-native";
+import { StyleSheet, Text, View, Image, SafeAreaView, TouchableOpacity, useWindowDimensions, ScrollView, TextStyle, Animated } from "react-native";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { startSession, synchronize } from "./components/Utils";
 import { Score_Select } from "./components/ScoreSelect";
@@ -14,6 +14,7 @@ import { AudioPlayer } from "./components/AudioPlayer";
 import reducer_function from "./Dispatch";
 import ScoreDisplay from "./components/ScoreDisplay";
 import { SynthesizeButton } from "./components/SynthesizeButton";
+import Icon from 'react-native-vector-icons/Feather';
 
 // Define the main application component
 export default function App() {
@@ -45,7 +46,7 @@ export default function App() {
       scores: [] // the list of scores to choose from
     },
   );
-
+  
   // Sync sessionToken with useReducer state
   // Fetch the session token and dispatch it to the reducer
   useEffect(() => {
@@ -179,94 +180,305 @@ export default function App() {
     if (state.playing) setTimeout(getAPIData, UPDATE_INTERVAL);
   }, [state.timestamp])
 
+  // State to conditionally render the style type of the components (can only be "light" or "dark")
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  // Creating animated values using useRef for UI animation
+  const backgroundColorAnim = useRef(new Animated.Value(0)).current; 
+  const textColorAnim = useRef(new Animated.Value(0)).current; 
+  const borderBottomAnim = useRef(new Animated.Value(0)).current;
+  // const borderColorAnim = useRef(new Animated.Value(0)).current;
+
+  // Interpolate background color based on light or dark mode
+  const containerBackgroundColor = backgroundColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#F5F5F5", "#1A1A1A"], // Light to dark
+  });
+  // Interpolate text color based on light or dark mode
+  const textColor = textColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark
+  });
+  // Interpolate text color based on light or dark mode
+  const invertTextColor = textColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#FFFFFF", "#2C3E50"], // Light to dark
+  });
+  // Interpolate sidebar bg color based on light or dark mode
+  const sidebarBackgroundColor = backgroundColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#ECF0F1", "#4A627A"], // Light to dark
+  });
+  // Interpolate mainContent container bg color based on light or dark mode
+  const mainContentBackgroundColor = backgroundColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#FFFFFF", "#A3B9D3"], // Light to dark
+  });
+  // Interpolate button bg color based on light or dark mode
+  const buttonBackgroundColor = backgroundColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark
+  });
+  // Interpolate header and footer container color based on light or dark mode
+  const menubarBackgroundColor =  backgroundColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#2C3E50", "#1A252F"], // Light to dark
+  });
+  // Interpolate border bottom color based on light or dark mode
+  const borderBottomColor = borderBottomAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark transition
+  });
+  // Interpolate border bottom color based on light or dark mode
+  // const borderColor = borderColorAnim.interpolate({
+  //   inputRange: [0, 1],
+  //   outputRange: ["#FFFFFF", "#2C3E50"], // Light to dark transition
+  // })
+
+
+  // Toggles between light and dark mode by animating background, text, and border properties smoothly
+  const toggleTheme = () => {
+    const toValue = theme === "light" ? 1 : 0;
+    Animated.parallel([
+      Animated.timing(backgroundColorAnim, {
+        toValue,
+        duration: 500, 
+        useNativeDriver: false, // `backgroundColor` is not supported by native driver
+      }),
+      Animated.timing(textColorAnim, {
+        toValue,
+        duration: 500,
+        useNativeDriver: false, // `color` is not supported by native driver
+      }),
+      Animated.timing(borderBottomAnim, {
+        toValue,
+        duration: 500,
+        useNativeDriver: false, // Can't use native driver for border properties
+      }), 
+      // Animated.timing(borderColorAnim, {
+      //   toValue,
+      //   duration: 500,
+      //   useNativeDriver: false, // Can't use native driver for border properties
+      // }),
+    ]).start(() => {
+      setTheme(theme === "light" ? "dark" : "light");
+    });
+  };
+  // Get device's width 
+  const { width } = useWindowDimensions()
+  // Boolean used for dynmaic display (row or column)
+  const isSmallScreen = width < 768;
+
+
   ////////////////////////////////////////////////////////////////////////////////
   // Render the component's UI
   ////////////////////////////////////////////////////////////////////////////////
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Provides safe area insets for mobile devices */}
-      <View style={styles.menu_bar}>
+    <SafeAreaView style={[styles.container]}>
+      {/* Header with image */}
+      <Animated.View style={[styles.menu_bar, {backgroundColor: menubarBackgroundColor}]}>
         <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
-        <Return_Button
-          state={state}
-          dispatch={dispatch}
-          button_format={styles.button_format}
-          text_style={styles.button_text}
-        />
-        <Start_Stop_Button
-          state={state}
-          dispatch={dispatch}
-          button_format={styles.button_format}
-          text_style={styles.button_text}
-        />
-        {
-          state.inPlayMode ?
-          <MeasureSetBox
-            state={state}
-            dispatch={dispatch}
-            button_style={styles.button_format}
-            button_text_style={styles.button_text}
-          />
-          :
-          <TempoBox
-            state={state}
-            dispatch={dispatch}
-            label_text_style={styles.button_text}
-          />
-        }
-      </View>
-      <View style={styles.main_area}>
-        { // List of scores, show when not in play mode
-        state.inPlayMode || <Score_Select state={state} dispatch={dispatch} /> }
-        <ScoreDisplay state={state} dispatch={dispatch} />
-      </View>
-      <StatusBar style="auto" />
-      {/* Automatically adjusts the status bar style */}
-      <AudioPlayer state={state} />
+        <TouchableOpacity onPress={toggleTheme}>
+          <Icon name={theme === 'light' ? 'sun' : 'moon'} size={30} color="white" />
+        </TouchableOpacity>
+
+      </Animated.View>
+
+        {/* Provides safe area insets for mobile devices */}
+        <Animated.View style={[styles.container, { backgroundColor: containerBackgroundColor }]}>
+
+          {/* Scroll View used for device scroll for content going over the frame */}
+          <ScrollView contentContainerStyle={isSmallScreen ? { flexGrow: 1 } : {height: "100%"}}>
+
+
+          {/* Container used for 1:3 ratio display */}
+          <View style={[styles.contentWrapper, isSmallScreen ? styles.contentWrapperColumn : styles.contentWrapperRow]}>
+
+            {/* Sidebar for inputs and buttons (takes up little width) */}
+            <Animated.View style={[styles.sidebar, { backgroundColor: sidebarBackgroundColor }, isSmallScreen ? styles.sidebarColumn : {}]}>
+              { // List of scores, show when not in play mode
+              state.inPlayMode || <Score_Select state={state} dispatch={dispatch} textStyle={textColor} borderStyle={borderBottomColor}/> }
+              <Return_Button
+                state={state}
+                dispatch={dispatch}
+                button_format={[styles.button, {backgroundColor:buttonBackgroundColor}]}
+                text_style={invertTextColor}
+              />
+              
+              {
+                state.inPlayMode ?
+                <MeasureSetBox
+                  state={state}
+                  dispatch={dispatch}
+                  button_style={[styles.button, {backgroundColor: buttonBackgroundColor}]}
+                  button_text_style={invertTextColor}
+                />
+                :
+                <TempoBox
+                  state={state}
+                  dispatch={dispatch}
+                  label_text_style={styles.button_text}
+                  textStyle={textColor}
+                />
+              }
+              <Start_Stop_Button
+                state={state}
+                dispatch={dispatch}
+                button_format={[styles.button, {backgroundColor: buttonBackgroundColor}]}
+                text_style={invertTextColor}
+              />
+            </Animated.View>
+            
+            {/* Scroll View used for horizontal scolling */}
+            <ScrollView
+              horizontal={true} 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={{ flexGrow: 1 }} // Ensure the content fills the container
+            >
+              {/* Actual content display (takes up remaining width after sidebar) */}
+              <Animated.View style={[styles.mainContent, {backgroundColor: mainContentBackgroundColor}, isSmallScreen ? styles.mainContentColumn : {}]}>
+                <ScoreDisplay state={state} dispatch={dispatch} />
+              </Animated.View>
+            </ScrollView>
+            
+
+          </View>
+            
+          {/* Footer display for status */}
+          <StatusBar style="auto" />
+          {/* Automatically adjusts the status bar style */}
+        </ScrollView>
+      </Animated.View>
+      <AudioPlayer state={state}  menuStyle={{ backgroundColor: menubarBackgroundColor }}/>
+
     </SafeAreaView>
   );
 }
 
+// Theme-based styles (not needed since we have animated API to do light and dark transitions smoother)
+// const themeStyles = {
+//   light: {
+//     container: { backgroundColor: '#F5F5F5' },
+//     menu_bar: { backgroundColor: '#2C3E50' },
+//     sidebar: { backgroundColor: '#ECF0F1' },
+//     mainContent: { backgroundColor: '#FFFFFF' },
+//     text: { color: "#2C3E50", fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
+//     button: {  backgroundColor: "#2C3E50"}
+//   },
+//   dark: {
+//     container: { backgroundColor: '#0F0F0F' },
+//     menu_bar: { backgroundColor: '#1A252F' },
+//     sidebar: { backgroundColor: '#4A627A' },
+//     mainContent: { backgroundColor: '#6B87A3' },
+//     text: { color: '#ffffff', fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
+//     button: {  backgroundColor: "#ffffff"}
+//   },
+// };
+
 // Define styles for the components using StyleSheet
 const styles = StyleSheet.create({
+
+  // Main container for entire content
   container: {
-    flex: 1, // Make the container fill the available space
-    backgroundColor: "#fff", // Set background color to white
-    alignItems: "center", // Center children horizontally
-    justifyContent: "center", // Center children vertically
-    padding: 16, // Add padding around the container
-  },
-  button_format: {
-    borderColor: "black",
-    borderRadius: 15,
-    backgroundColor: "lightblue",
-    justifyContent: "center"
-  },
-  button_text: {
-    fontSize: 24,
-    textAlign: "center",
-  },
-  menu_bar: {
-    flex: 0,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: "lightgray",
-    width: "100%",
-    minHeight: 100,
-  },
-  main_area: {
     flex: 1,
+    backgroundColor: "#F5F5F5",
+  },
+  // Header container 
+  menu_bar: {
     flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor: "white",
+    alignItems: "center",
+    backgroundColor: "#2C3E50",
+    padding: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: "#1A252F",
+    height: 80, 
+    position: "absolute", // make header stick on top even after scroll
+    top: 0,
     width: "100%",
-    height: "80%",
+    zIndex: 99
   },
+  // Image for header
   logo: {
-    backgroundColor: "white",
-    flex: 0.25,
+    height: 200,
+    width: 200,
+    resizeMode: "contain",
+  },
+  // Container displaying sidebar and main content (row form)
+  contentWrapper: {
+    flexDirection: "row",
+    gap: 10,
+    flex: 1,
+    padding: 20,
+    marginTop: 80 // account for fixed header
+  },
+  // Container displaying sidebar and main content (row form)
+  contentWrapperRow: {
+    flexDirection: "row",
+  },
+  contentWrapperColumn: {
+    flexDirection: "column",
+  },
+  // Side bar container for buttons and inputs (column display)
+  sidebar: {
     width: "25%",
-    height: "100%",
-    resizeMode: 'contain'
+    backgroundColor: "#ECF0F1",
+    padding: 25,
+    borderRadius: 10,
+    gap: 6,
+    // Shadow style found online
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity:  0.17,
+    shadowRadius: 3.05,
+    elevation: 4,
+  },
+  sidebarColumn: {
+    width: "100%", // Full width on smaller screens
+  },
+  // Container displaying score sheet 
+  mainContent: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    padding: 15,
+    borderRadius: 10,
+    // Shadow style found online
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity:  0.17,
+    shadowRadius: 3.05,
+    elevation: 4,
+  },
+  mainContentColumn: {
+    width: "100%", // Full width on smaller screens
+  },
+  // Primary button styles
+  button: {
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+    marginVertical: 5,
+    // Shadow style found online
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity:  0.17,
+    shadowRadius: 3.05,
+    elevation: 4,
+  },
+  // Primary button text
+  button_text: {
+    textAlign: "center",
+    fontSize: 14,
+    color: "#FFFFFF",
+    fontWeight: "bold",
   },
 });

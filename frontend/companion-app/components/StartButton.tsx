@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TextStyle, ViewStyle, Pressable, View } from "react-native";
+import { StyleSheet, Text, TextStyle, ViewStyle, Pressable, View, Animated } from "react-native";
 import { synthesizeAudio } from "./Utils";
 import { Audio } from "expo-av";
 
@@ -10,8 +10,9 @@ export function Start_Stop_Button({
 }: {
   state: { playing: boolean, inPlayMode: boolean, sessionToken: string, score: string, tempo: number };
   dispatch: Function;
-  button_format: ViewStyle;
-  text_style: TextStyle;
+  button_format: object[];
+  text_style: Animated.AnimatedInterpolation<string | number>;
+
 }) {
 
   // Copied from SynthesizeButton.tsx
@@ -36,9 +37,8 @@ export function Start_Stop_Button({
     };
 
   return (
-    <View style={styles.flexing_box}>
-      <Pressable
-        style={{...styles.button_shape, ...button_format}}
+    <Animated.View style={[...button_format ]}>
+      <Pressable 
         onPress={() => {
           if (state.inPlayMode) dispatch({ type: "start/stop" });
           else {
@@ -47,22 +47,22 @@ export function Start_Stop_Button({
           }
         }}
       >
-        <Text style={text_style}>{state.inPlayMode? state.playing ? "STOP" : "PLAY" : "SELECT" }</Text>
+        <Animated.Text style={[styles.buttonText, { color: text_style }]}>{state.inPlayMode? state.playing ? "STOP" : "PLAY" : "SELECT" }</Animated.Text>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
     button_shape: {
-      width: "75%",
-      height: "75%"
+      // paddingHorizontal: 24,
+      // paddingVertical: 12
     },
     flexing_box: {
-      width: "25%",
-      height: "100%",
-      justifyContent: "center",
-      alignContent: "center",
-      alignItems: "center"
+
+    },
+    buttonText: {
+      fontWeight: "bold",
+      fontSize: 14,
     }
 })

@@ -1,20 +1,20 @@
-import { StyleSheet, View, Text } from "react-native";
+import { StyleSheet, View, Text, Animated } from "react-native";
 import { TextInput, TextStyle, ViewStyle } from "react-native";
 
 export function TempoBox({
   state,
   dispatch,
   label_text_style,
+  textStyle
 }: {
   state: { tempo: number };
   dispatch: Function;
   label_text_style: TextStyle;
+  textStyle: Animated.AnimatedInterpolation<string | number>;
 }) {
   return (
-    <View style={styles.flexing_box}>
-      <View style={styles.tempo_text_shape}>
-        <Text style={label_text_style}>Tempo:</Text>
-      </View>
+    <View style={styles.container}>
+      <Animated.Text style={[styles.text, {color: textStyle}]}>Tempo (BPM): </Animated.Text>
       <TextInput
         onChangeText={(text) =>
           dispatch({ type: "change_tempo", tempo: text as unknown as number })
@@ -22,33 +22,41 @@ export function TempoBox({
         value={String(state.tempo)}
         placeholder="Enter tempo"
         inputMode="numeric"
-        style={styles.tempo_input_shape}
+        style={styles.input}
       />
-      <View style={styles.tempo_text_shape}>
-        <Text style={label_text_style}>BPM</Text>
-      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-    tempo_text_shape: {
-        width: "30%",
-        padding: "10%",
-        justifyContent: "center"
+
+    // Container for display both text and input on same line 
+    container: {
+      flexDirection: "row",
+      alignItems: "center",
     },
-    tempo_input_shape: {
-      width: "40%",
-      height: "50%",
-      borderRadius: 15,
-      backgroundColor: "white"
+    // Text label styles
+    label: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: "#2C3E50", // Dark gray for readability
+      marginHorizontal: 5,
     },
-    flexing_box: {
-        width: "37.5%",
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "center",
-        alignContent: "center",
-        alignItems: "center"
+    // Input for label styles
+    input: {
+      flex: 1,
+      backgroundColor: "#FFFFFF",
+      borderWidth: 1,
+      borderColor: "#BDC3C7",
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      fontSize: 16,
+      color: "#2C3E50",
+      textAlign: "center",
+    },
+    text: {
+      fontWeight: "bold",
     }
+   
 })

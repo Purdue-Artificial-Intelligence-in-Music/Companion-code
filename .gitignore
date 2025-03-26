@@ -166,3 +166,4 @@ cython_debug/
 .vscode/*
 
 fluidsynth/
+node_modules/
