@@ -1,5 +1,5 @@
-// External file used to display the mapped score's content visually
-// key (string) = score name
+// External file used in ScoreDisplay.tsx to display the mapped score's content visually
+// key (string) = score's name
 // value (string) = score's XML file 
 const scoresData: Record<string, string> = {
     "air_on_the_g_string.musicxml": `<?xml version="1.0" encoding="UTF-8"?>

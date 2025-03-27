@@ -17,51 +17,49 @@ export default function ScoreDisplay({
   const cursorRef = useRef<Cursor | null>(null);
   const osdRef = useRef<OpenSheetMusicDisplay | null>(null);
 
-
   const scrollViewRef = useRef<ScrollView>(null); // reference to scroll view component
-  const scrollPositionRef = useRef<number>(0); // state to keep track of current y position of scroll view
-  const [steps, setSteps] = useState<string | null>(""); // state for declaring num of intended cursor iterations
+  const scrollPositionRef = useRef<number>(0); // ref to keep track of current y position of scroll view (used ref instead of state to prevent rerender when scroll)
+  const [steps, setSteps] = useState<string | null>(""); // state for declaring number of intended cursor iterations
   const [speed, setSpeed] = useState<string | null>(""); // state for speed of cursor update
 
-
-  // useEffect hook to handle side effects (like loading music) after the component mounts
-  // and when a piece is selected
-
-
+  // Function that is used to move cursor x amount of steps, updating the cursor y milleconds
   const moveCursorAhead = () => {
-    
     // Check if cursor is referenced
     if (!cursorRef.current) {
       console.error("Cursor not initialized.");
       return;
     }
-    scrollPositionRef.current = 0; 
+    // Make sure Y position is always 0 when starting the cursor 
+    scrollPositionRef.current = 0;  
 
     // Function to move the cursor given the number of steps
     const moveCursorStep = (step: number) => {
-
+        
+      // Stop cursor after exceeding a certain number of steps
       if (step >= parseInt(steps)) {
-        // Stop cursor after exceeding a certain number of steps
         return;
       }
+
+      // Move the cursor to the next note
       if (cursorRef.current) {
-        // Move the cursor to the next note
         cursorRef.current.next()
       }
 
+      // Update sheet visually to see updated cursor placement
       if (osdRef.current) {
-        // Update sheet visually to see updated cursor placement
         osdRef.current.render();
       }
-
+      
+      // Scroll to saved position after rerendering the OSM container
       scrollUp(scrollPositionRef.current);
 
-      // Schedule the next step after a delay
+      // Schedule the next step after a delay (speed state decides how fast cursor should update)
       setTimeout(() => {
         moveCursorStep(step + 1);
       }, parseInt(speed)); 
     };
 
+    // run move cursor function given an intial starting step number
     moveCursorStep(0);
   };
 
@@ -166,6 +164,20 @@ export default function ScoreDisplay({
     //return () => {};
   }; // Dependency array means this effect runs once when the component mounts and again when a new score is selected
   }, [dispatch, state.score, state.scores])
+
+  // Function used for scrolling vertically through the OSM Container based on passed in value
+  const scrollUp = (amount: number) => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: amount, animated: false });
+    }
+  };
+
+  // Function used to listen to scroll on OSM container and saves current Y position
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const yOffset = event.nativeEvent.contentOffset.y;
+    // console.log('Current Scroll Position (Y):', yOffset);
+    scrollPositionRef.current = yOffset; // update ref immediately
+  };
   
   /////////////////////////////////////////////////////////////////////////////////
   // useEffect to tie the cursor position to the state
@@ -217,21 +229,9 @@ export default function ScoreDisplay({
 //   },
 // [state.timestamp]);
 
-  const scrollUp = (amount: number) => {
-    if (scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ y: amount, animated: false });
-    }
-  };
-
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const yOffset = event.nativeEvent.contentOffset.y;
-    // console.log('Current Scroll Position (Y):', yOffset);
-    scrollPositionRef.current = yOffset; // update ref immediately
-  };
-  
   return (
     <>
-
+      {/* Temporary inputs for testing cursor movement */}
       <TextInput
         value={steps !== null ? steps.toString() : ""}
         onChangeText={(text) => {
@@ -241,7 +241,6 @@ export default function ScoreDisplay({
         placeholder="Type Number Of Steps"
 
       />
-
       <TextInput
         value={speed !== null ? speed.toString() : ""}
         onChangeText={(text) => {
@@ -256,7 +255,8 @@ export default function ScoreDisplay({
       >
         <Text>Start</Text>
       </TouchableOpacity>
-
+        
+        {/* Reference ScrollView Component for controlling scroll */}
         <ScrollView indicatorStyle="white" contentContainerStyle={{flexGrow: 1}} showsVerticalScrollIndicator={true} ref={scrollViewRef} onScroll={handleScroll} scrollEventThrottle={16}>
         <div ref={osmContainerRef} style={styles.osmContainer}></div> 
         <Text style={styles.text}>

@@ -46,23 +46,6 @@ export default function App() {
       scores: [] // the list of scores to choose from
     },
   );
-  
-  // Sync sessionToken with useReducer state
-  // Fetch the session token and dispatch it to the reducer
-  // useEffect(() => {
-  //   const fetchSessionToken = async () => {
-  //     try {
-  //       const data = await startSession();
-  //       const token = data.session_token;
-  //       console.log("Fetched session token:", token);
-  //       dispatch({ type: "new_session", token: token });
-  //     } catch (error) {
-  //       console.error("Error fetching session token:", error);
-  //     }
-  //   };
-
-  //   fetchSessionToken();
-  // }, []);
 
   // State used to store session token
   const [sessionToken, setSessionToken] = useState<string>("")
@@ -77,7 +60,6 @@ export default function App() {
     const newToken: string = generateSecureSessionToken();
     setSessionToken(newToken)
   }, []);
-  console.log("new session token:", sessionToken)
 
   ////////////////////////////////////////////////////////////////////////////////
   // The lines below were modified, copied and pasted out of the audio recorder object
@@ -244,12 +226,6 @@ export default function App() {
     inputRange: [0, 1],
     outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark transition
   });
-  // Interpolate border bottom color based on light or dark mode
-  // const borderColor = borderColorAnim.interpolate({
-  //   inputRange: [0, 1],
-  //   outputRange: ["#FFFFFF", "#2C3E50"], // Light to dark transition
-  // })
-
 
   // Toggles between light and dark mode by animating background, text, and border properties smoothly
   const toggleTheme = () => {
@@ -364,26 +340,6 @@ export default function App() {
     </SafeAreaView>
   );
 }
-
-// Theme-based styles (not needed since we have animated API to do light and dark transitions smoother)
-// const themeStyles = {
-//   light: {
-//     container: { backgroundColor: '#F5F5F5' },
-//     menu_bar: { backgroundColor: '#2C3E50' },
-//     sidebar: { backgroundColor: '#ECF0F1' },
-//     mainContent: { backgroundColor: '#FFFFFF' },
-//     text: { color: "#2C3E50", fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
-//     button: {  backgroundColor: "#2C3E50"}
-//   },
-//   dark: {
-//     container: { backgroundColor: '#0F0F0F' },
-//     menu_bar: { backgroundColor: '#1A252F' },
-//     sidebar: { backgroundColor: '#4A627A' },
-//     mainContent: { backgroundColor: '#6B87A3' },
-//     text: { color: '#ffffff', fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
-//     button: {  backgroundColor: "#ffffff"}
-//   },
-// };
 
 // Define styles for the components using StyleSheet
 const styles = StyleSheet.create({

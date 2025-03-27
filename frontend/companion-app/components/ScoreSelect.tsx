@@ -43,7 +43,7 @@ export function Score_Select({
 
   useEffect(()=> {
     console.log("Local scores: ", musicxmlFiles);
-    dispatch({ type: "new_scores_from_backend", scores: musicxmlFiles }); // pass in defined array of musicxml files from frontend
+    dispatch({ type: "new_scores_from_backend", scores: musicxmlFiles }); // pass in defined array of musicxml files
   }, [dispatch])
 
   const handleFileUpload = (file: File) => {
