@@ -187,9 +187,9 @@ if __name__ == '__main__':
     # Example usage:
     base_dir = Path(__file__).parent
     score = os.path.join('data', 'midi', 'twinkle_twinkle.mid')
-    output_dir = os.path.join('data', 'audio', 'twinkle_twinkle', '200bpm')
+    output_dir = os.path.join('data', 'audio', 'twinkle_twinkle', '100bpm')
     SAMPLE_RATE = 44100
-    TEMPO = 200
+    TEMPO = 100
 
     try:
         generator = AudioGenerator(score_path=score)

@@ -341,6 +341,26 @@ export default function App() {
   );
 }
 
+// Theme-based styles (not needed since we have animated API to do light and dark transitions smoother)
+// const themeStyles = {
+//   light: {
+//     container: { backgroundColor: '#F5F5F5' },
+//     menu_bar: { backgroundColor: '#2C3E50' },
+//     sidebar: { backgroundColor: '#ECF0F1' },
+//     mainContent: { backgroundColor: '#FFFFFF' },
+//     text: { color: "#2C3E50", fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
+//     button: {  backgroundColor: "#2C3E50"}
+//   },
+//   dark: {
+//     container: { backgroundColor: '#0F0F0F' },
+//     menu_bar: { backgroundColor: '#1A252F' },
+//     sidebar: { backgroundColor: '#4A627A' },
+//     mainContent: { backgroundColor: '#6B87A3' },
+//     text: { color: '#ffffff', fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
+//     button: {  backgroundColor: "#ffffff"}
+//   },
+// };
+
 // Define styles for the components using StyleSheet
 const styles = StyleSheet.create({
 
