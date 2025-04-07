@@ -325,17 +325,17 @@ if __name__ == "__main__":
         agent_location, score_window, spectrogram_window = obs["agent"][0], obs["score"], obs["spectrogram"]
 
         # plot the score window and spectrogram window
-        # plt.subplot(2, 1, 1)
-        # plt.imshow(score_window[50:75], aspect='auto', origin='lower')
-        # # plt.title("Score Window")
-        # plt.subplot(2, 1, 2)
-        # plt.imshow(spectrogram_window, aspect='auto', origin='lower')
-        # # plt.title("Spectrogram Window")
-        # filename = f"frames/frame_{i:03d}.png"
+        plt.subplot(2, 1, 1)
+        plt.imshow(score_window[50:75], aspect='auto', origin='lower')
+        # plt.title("Score Window")
+        plt.subplot(2, 1, 2)
+        plt.imshow(spectrogram_window, aspect='auto', origin='lower')
+        # plt.title("Spectrogram Window")
+        filename = f"frames/frame_{i:03d}.png"
         i += 1
-        # plt.savefig(filename)
-        # plt.close()
-        # filenames.append(filename)
+        plt.savefig(filename)
+        plt.close()
+        filenames.append(filename)
 
         # Print the agent's location and reward
         print(f"Step {i}: Agent location: {agent_location}, Reward: {reward}, Info: {info}")
