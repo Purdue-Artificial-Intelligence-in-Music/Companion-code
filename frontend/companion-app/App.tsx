@@ -46,22 +46,19 @@ export default function App() {
       scores: [] // the list of scores to choose from
     },
   );
-  
-  // Sync sessionToken with useReducer state
-  // Fetch the session token and dispatch it to the reducer
-  useEffect(() => {
-    const fetchSessionToken = async () => {
-      try {
-        const data = await startSession();
-        const token = data.session_token;
-        console.log("Fetched session token:", token);
-        dispatch({ type: "new_session", token: token });
-      } catch (error) {
-        console.error("Error fetching session token:", error);
-      }
-    };
 
-    fetchSessionToken();
+  // State used to store session token
+  const [sessionToken, setSessionToken] = useState<string>("")
+
+  // Function used to generate session token using crypto API 
+  const generateSecureSessionToken = (): string => {
+    return window.crypto.randomUUID();
+  };
+  
+  // On load, call generateSecureSessionToken function to generate and store new session token
+  useEffect(() => {
+    const newToken: string = generateSecureSessionToken();
+    setSessionToken(newToken)
   }, []);
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -229,12 +226,6 @@ export default function App() {
     inputRange: [0, 1],
     outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark transition
   });
-  // Interpolate border bottom color based on light or dark mode
-  // const borderColor = borderColorAnim.interpolate({
-  //   inputRange: [0, 1],
-  //   outputRange: ["#FFFFFF", "#2C3E50"], // Light to dark transition
-  // })
-
 
   // Toggles between light and dark mode by animating background, text, and border properties smoothly
   const toggleTheme = () => {
@@ -255,11 +246,6 @@ export default function App() {
         duration: 500,
         useNativeDriver: false, // Can't use native driver for border properties
       }), 
-      // Animated.timing(borderColorAnim, {
-      //   toValue,
-      //   duration: 500,
-      //   useNativeDriver: false, // Can't use native driver for border properties
-      // }),
     ]).start(() => {
       setTheme(theme === "light" ? "dark" : "light");
     });
@@ -267,7 +253,7 @@ export default function App() {
   // Get device's width 
   const { width } = useWindowDimensions()
   // Boolean used for dynmaic display (row or column)
-  const isSmallScreen = width < 768;
+  const isSmallScreen = width < 960;
 
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -276,10 +262,10 @@ export default function App() {
   return (
     <SafeAreaView style={[styles.container]}>
       {/* Header with image */}
-      <Animated.View style={[styles.menu_bar, {backgroundColor: menubarBackgroundColor}]}>
-        <Image source={{ uri: './assets/companion.png' }} style={styles.logo}/>
+      <Animated.View style={[styles.menu_bar, {backgroundColor: menubarBackgroundColor, height: isSmallScreen? 40: 80}]}>
+        <Image source={require('./assets/companion.png')} style={[styles.logo, {height: isSmallScreen? 30: 100, width: isSmallScreen? 100: 200}]}/>
         <TouchableOpacity onPress={toggleTheme}>
-          <Icon name={theme === 'light' ? 'sun' : 'moon'} size={30} color="white" />
+          <Icon name={theme === 'light' ? 'sun' : 'moon'} size={isSmallScreen? 15: 30} color="white" />
         </TouchableOpacity>
 
       </Animated.View>
@@ -392,7 +378,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderBottomWidth: 2,
     borderBottomColor: "#1A252F",
-    height: 80, 
+    height: 80,
     position: "absolute", // make header stick on top even after scroll
     top: 0,
     width: "100%",
@@ -400,7 +386,6 @@ const styles = StyleSheet.create({
   },
   // Image for header
   logo: {
-    height: 200,
     width: 200,
     resizeMode: "contain",
   },
