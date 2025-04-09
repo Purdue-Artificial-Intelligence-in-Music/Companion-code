@@ -24,7 +24,7 @@ vec_env = make_vec_env(
 model = PPO("MultiInputPolicy", vec_env, verbose=1)
 
 # Train the model for a specified number of timesteps.
-model.learn(total_timesteps=1_000_000, progress_bar=tqdm)
+model.learn(total_timesteps=100_000, progress_bar=tqdm)
 
 # Save the trained model.
 model.save("ppo_score_following")
