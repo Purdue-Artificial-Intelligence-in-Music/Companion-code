@@ -167,3 +167,7 @@ cython_debug/
 
 fluidsynth/
 node_modules/
+
+*.zip
+*.mp4
+reinforcement_learning/frames/

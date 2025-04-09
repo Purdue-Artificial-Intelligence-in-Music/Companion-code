@@ -1,10 +1,8 @@
 import numpy as np
 from stable_baselines3 import PPO
-from stable_baselines3.common.evaluation import evaluate_policy
 from gymnasium_env.envs.score_following_env import ScoreFollowingEnv
 from stable_baselines3.common.env_util import make_vec_env
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 
 
 beats = np.arange(0, 64)

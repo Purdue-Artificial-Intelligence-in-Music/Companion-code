@@ -131,8 +131,6 @@ class ScoreFollowingEnv(gym.Env):
         pygame.init()
 
         # Set screen dimensions
-        # screen_width, screen_height = (8 * self.spectrogram_window.shape[0],
-        #                                8 * self.spectrogram_window.shape[1])
         screen_width, screen_height = (800, 600)
         self.screen = pygame.display.set_mode((screen_width, screen_height))
         pygame.display.set_caption("Changing Numpy Array Display")
