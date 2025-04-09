@@ -14,25 +14,37 @@ export function Score_Select({
   borderStyle: Animated.AnimatedInterpolation<string | number>
 }) {
   // Fetch scores from the backend
-  useEffect(() => {
-    const fetchScores = async () => {
-      try {
-        const response = await fetch("http://127.0.0.1:5000/scores"); // Replace with your backend endpoint
-        console.log("Response is: ", response);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        const scores = data.files;
-        console.log("Scores are: ", scores);
-        dispatch({ type: "new_scores_from_backend", scores });
-      } catch (error) {
-        console.error("Failed to fetch scores:", error);
-      }
-    };
+  // useEffect(() => {
+  //   const fetchScores = async () => {
+  //     try {
+  //       const response = await fetch("http://127.0.0.1:5000/scores"); // Replace with your backend endpoint
+  //       console.log("Response is: ", response);
+  //       if (!response.ok) {
+  //         throw new Error(`HTTP error! status: ${response.status}`);
+  //       }
+  //       const data = await response.json();
+  //       const scores = data.files;
+  //       console.log("Scores are: ", scores);
+  //       dispatch({ type: "new_scores_from_backend", scores });
+  //     } catch (error) {
+  //       console.error("Failed to fetch scores:", error);
+  //     }
+  //   };
 
-    fetchScores();
-  }, [dispatch]);
+  //   fetchScores();
+  // }, [dispatch]);
+
+  // Array of score names used to render score display options
+  const musicxmlFiles: string[] = [
+    'air_on_the_g_string.musicxml',
+    'twelve_duets.musicxml',
+  ];
+
+
+  useEffect(()=> {
+    console.log("Local scores: ", musicxmlFiles);
+    dispatch({ type: "new_scores_from_backend", scores: musicxmlFiles }); // pass in defined array of musicxml files
+  }, [dispatch])
 
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
@@ -65,6 +77,7 @@ export function Score_Select({
           key={state.scores.length} //RNPicker is a new instance depending on the length of score. So, it will rerender if updated
           onValueChange={(value) => {
             console.log("The dispatch function is being sent.");
+            console.log("val: ", value)
             dispatch({ type: "change_score", score: value });
           }}
           items={state.scores.map((score) => ({
@@ -100,21 +113,4 @@ const styles = StyleSheet.create({
     input: {
       paddingVertical: 12
     },
-
-    // tempo_text_shape: {
-    //     width: "30%",
-    //     height: "100%"
-    // },
-    // tempo_input_shape: {
-    //   width: "40%",
-    //   height: "100%",
-    //   backgroundColor: "white"
-    // },
-    // flexing_box: {
-    //     width: "25%",
-    //     height: "100%",
-    //     display: "flex",
-    //     padding: "2%",
-    //     backgroundColor: "lightgray"
-    // }
 })
