@@ -55,11 +55,11 @@ def midi_to_piano_roll(midi_path: str, fps: int = 20) -> np.ndarray:
 
 
 class ScoreFollowingEnv(gym.Env):
-    def __init__(self, midi_path: str, audio_path: str, bpm: int, alignment: np.ndarray):
+    def __init__(self, midi_path: str, audio_path: str, bpm: int, alignment: np.ndarray, training=False):
         super(ScoreFollowingEnv, self).__init__()
 
         self.alignment = alignment
-
+        self.training = training
         # Define audio processing parameters
         sr = 22050                   # Sample rate in Hz
         n_fft = 2048                 # FFT window size
@@ -98,7 +98,8 @@ class ScoreFollowingEnv(gym.Env):
         self.piano_roll = midi_to_piano_roll(midi_path, fps=score_fps)
         self.size = self.piano_roll.shape[1]
 
-        self.tracking_window = 5  # max distance from target to agent before termination
+        self.tracking_window = self.tracking_window = 15 if self.training else 5
+        # max distance from target to agent before termination
 
         # Define dimensions for our fixed-size representations
         # Score window length is a fixed number of beats
@@ -229,6 +230,17 @@ class ScoreFollowingEnv(gym.Env):
         return {"distance": abs(self._agent_location - self._target_location)}
     
     def reset(self, seed=None):
+        super().reset(seed=seed)
+
+        # Trying to change starting position during training because otherwise agent never moved.
+        # if self.training:
+        #     self._agent_location = int(self.np_random.integers(0, self.size))#0
+        #     self._target_location = self._agent_location
+        #     while self._target_location == self._agent_location:
+        #         self._target_location = int(self.np_random.integers(0, self.size))
+        #     self.num_steps = int(self._agent_location)
+
+        # else:
         self._agent_location = 0
         self._target_location = 0
         self.num_steps = 0
@@ -243,18 +255,25 @@ class ScoreFollowingEnv(gym.Env):
             self._agent_location -= 1
         elif action == 1:
             self._agent_location += 1
-
+        
         # Clip the agent's location to be within the valid range
         self._agent_location = np.clip(self._agent_location, 0, self.size - 1)
 
-        offtrack = abs(self._agent_location - self._target_location) > self.tracking_window
+        offtrack = abs(self._agent_location - self._target_location) > self.tracking_window #
         end_of_score = self._agent_location >= self.size
         end_of_spectrogram = self.num_steps >= self.spectrogram.shape[1]
-        terminated = offtrack or end_of_score or end_of_spectrogram
+        terminated = end_of_score or end_of_spectrogram or offtrack
 
         truncated = False
         tracking_error = self._agent_location - self._target_location
+        
         reward = 1 - abs(tracking_error) / self.tracking_window  # Compute reward based on tracking error
+        # reward = np.exp(-0.5 * (tracking_error / self.tracking_window)**2) # Gaussian curve
+
+        if action == 2 and tracking_error > 0:
+            # reward -= (abs(tracking_error) / self.tracking_window) * 0.5
+            reward -= 0.5 #try to discourage staying still
+
         self.num_steps += 1  # Increment the number of steps
         self.update_target_location()
         observation = self._get_obs()

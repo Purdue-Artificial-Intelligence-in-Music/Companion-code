@@ -17,6 +17,7 @@ vec_env = make_vec_env(
         "audio_path": "ode_beg.mp3",
         "bpm": 70,
         "alignment": alignment,
+        "training": True
     },
 )
 
@@ -27,4 +28,4 @@ model = PPO("MultiInputPolicy", vec_env, verbose=1)
 model.learn(total_timesteps=100_000, progress_bar=tqdm)
 
 # Save the trained model.
-model.save("ppo_score_following")
+model.save("ppo_score_following2")
