@@ -9,7 +9,6 @@ from src.midi_performance import MidiPerformance
 from src.audio_generator import AudioGenerator
 import soundfile as sf
 import pyaudio
-import pandas as pd
 from time import time, sleep
 
 def normalize_audio(audio: np.ndarray) -> np.ndarray:
@@ -28,7 +27,7 @@ MAX_DURATION = 600  # Maximum duration of audio buffer in seconds
 
 STATED_TEMPO = 100  # Tempo at which the user plans to play in BPM
 SOURCE_TEMPO = 110  # Tempo at which the user actually plays in BPM
-PIECE_NAME = 'rubato'  # Name of piece
+PIECE_NAME = 'air_on_the_g_string'  # Name of piece
 PROGAM_NUMBER = 42  # Program number for accompaniment instrument
 SOLO_VOLUME_MULTIPLIER = 0.75
 
@@ -77,13 +76,6 @@ def callback(in_data, frame_count, time_info, status):
     solo_buffer.write(data)  # write soloist audio to buffer so it can be saved to a WAV file later
 
     estimated_time = score_follower.step(data)  # get estimated time in soloist audio in seconds
-
-    ref_index, live_index = score_follower.path[-1]
-    ref_beat = ref_index * WIN_LENGTH / SAMPLE_RATE * STATED_TEMPO / 60
-    live_beat = live_index * WIN_LENGTH / SAMPLE_RATE * STATED_TEMPO / 60
-    print(f"Alignment path (beats): ({ref_beat:.2f}, {live_beat:.2f})")
-
-
     soloist_times.append(source_index / SAMPLE_RATE)  # log soloist time for error analysis
     estimated_times.append(estimated_time)  # log estimated time for error analysis
 
@@ -153,33 +145,3 @@ sf.write('solo.wav', solo_audio, SAMPLE_RATE)
 # df_accompaniment.to_csv(
 #     'output\\error_analysis_per_measure_constant.csv', index=False)
 # print(df_accompaniment)
-# Build the DataFrame
-df_alignment = pd.DataFrame({
-    'measure': list(range(len(soloist_times))),
-    'live': soloist_times,
-    'ref': estimated_times
-})
-
-warping_path = np.asarray(score_follower.path, dtype=np.float32)
-df_alignment = calculate_alignment_error(df_alignment, warping_path)
-
-# Convert to beats and round
-df_alignment['ref_beats'] = (df_alignment['ref'] * STATED_TEMPO / 60).round(2)
-df_alignment['live_beats'] = (df_alignment['live'] * STATED_TEMPO / 60).round(2)
-df_alignment['alignment_error'] = df_alignment['alignment_error'].round(2)
-
-# Clean column names for CSV
-df_alignment_final = df_alignment.rename(columns={
-    'ref_beats': 'Ref Audio (Beats)',
-    'live_beats': 'Live Audio (Beats)',
-    'alignment_error': 'Alignment Error (Seconds)'
-})[['measure', 'Ref Audio (Beats)', 'Live Audio (Beats)', 'Alignment Error (Seconds)']]
-
-# Print results to terminal
-print(f"{'Ref Audio (Beats)':>18} | {'Live Audio (Beats)':>18} | {'Alignment Error (Seconds)':>27}")
-print("-" * 70)
-for _, row in df_alignment_final.iterrows():
-    print(f"{row['Ref Audio (Beats)']:18.2f} | {row['Live Audio (Beats)']:18.2f} | {row['Alignment Error (Seconds)']:27.2f}")
-
-# Save to CSV
-# df_alignment_final.to_csv(r'C:\Users\ashwi\OneDrive\Documents\Companion-code\backend\alignment_error_results.csv', index=False)
