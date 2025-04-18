@@ -44,14 +44,19 @@ class TestScoreFollower(unittest.TestCase):
         source_audio = source_audio[0].reshape((1, -1))
         frames = source_audio[:,:8192]
 
+        empty_frames = np.zeros((1,2))
+
         # Get chroma vector of the given frames
         chroma = score_follower._get_chroma(frames)
+
+        empty_chroma = score_follower._get_chroma(empty_frames)
 
         for i in chroma:
             print(i)
 
         # Check chroma vector length
         self.assertTrue(len(chroma) == 12)
+        self.assertTrue(len(empty_chroma) == 12)
 
         # Check chroma detects the given note
         note_index = np.argmax(chroma)
