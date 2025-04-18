@@ -15,6 +15,8 @@ import reducer_function from "./Dispatch";
 import ScoreDisplay from "./components/ScoreDisplay";
 import { SynthesizeButton } from "./components/SynthesizeButton";
 import Icon from 'react-native-vector-icons/Feather';
+import { ChromaMaker } from "./utils/features";
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 // Define the main application component
 export default function App() {
@@ -61,6 +63,56 @@ export default function App() {
     setSessionToken(newToken)
   }, []);
 
+ // Initialize the chroma state as an array of 12 zeros (used to capture chroma vector at each chunk of audio).
+ const [chroma, setChroma] = useState<number[]>(new Array(12).fill(0));
+ const [started, setStarted] = useState(false); // state used to determine user selects live microphone option or not
+
+ useEffect(() => {
+   let audioCtx: AudioContext; // Declare a reference to the AudioContext, which manages all audio processing
+   let micStream: MediaStream; // Declare a reference to the MediaStream from the user's microphone
+
+   const initAudio = async () => {
+     try {
+       micStream = await navigator.mediaDevices.getUserMedia({ audio: true }); // Request access to user's microphone
+       audioCtx = new AudioContext(); // Create a new AudioContext for audio processing
+       await audioCtx.audioWorklet.addModule('../utils/mic-processor.js'); // Load the custom AudioWorkletProcessor
+       const source = audioCtx.createMediaStreamSource(micStream); // Create a source node from the microphone stream
+       const workletNode = new AudioWorkletNode(audioCtx, 'mic-processor');  // Create an AudioWorkletNode linked to our custom 'mic-processor'
+       source.connect(workletNode); // Connect the mic source to the worklet
+       workletNode.connect(audioCtx.destination); // connect worklet to output 
+
+      // Initialize the ChromaMaker for extracting chroma features
+       const n_fft = 4096;
+       const chromaMaker = new ChromaMaker(audioCtx.sampleRate, n_fft); 
+
+      // Handle incoming audio chunks from the worklet
+       workletNode.port.onmessage = (event) => {
+         const audioChunk = event.data as Float32Array;
+         try {
+            // Extract chroma features and update state
+           const chromaResult = chromaMaker.insert(audioChunk);
+           setChroma(chromaResult);
+         } catch (e) {
+           console.error('Chroma extraction error:', e);
+         }
+       };
+     } catch (err) {
+       console.error('Failed to initialize audio:', err);
+     }
+   };
+   // If "started" state is true, initialize audio processing
+   if (started) {
+     initAudio();
+   }
+   
+   // Cleanup: when the component unmounts or `started` becomes false, 
+   // stop the microphone stream and close the audio context to free up resources
+   return () => {
+     if (micStream) micStream.getTracks().forEach((track) => track.stop());
+     if (audioCtx) audioCtx.close();
+   };
+ }, [started]);
+
   ////////////////////////////////////////////////////////////////////////////////
   // The lines below were modified, copied and pasted out of the audio recorder object
   // (which never really needed a UI).
@@ -70,112 +122,112 @@ export default function App() {
 
   // Audio-related states and refs
   // State for whether we have microphone permissions - is set to true on first trip to playmode
-  const [permission, setPermission] = useState(false);
-  // Assorted audio-related objects in need of reference
-  // Tend to be re-created upon starting a recording
-  const mediaRecorder = useRef<MediaRecorder>(
-    new MediaRecorder(new MediaStream()),
-  );
-  const [stream, setStream] = useState<MediaStream>(new MediaStream());
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  // const [permission, setPermission] = useState(false);
+  // // Assorted audio-related objects in need of reference
+  // // Tend to be re-created upon starting a recording
+  // const mediaRecorder = useRef<MediaRecorder>(
+  //   new MediaRecorder(new MediaStream()),
+  // );
+  // const [stream, setStream] = useState<MediaStream>(new MediaStream());
+  // const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
 
-  const audioContextRef = useRef<any>(null);
-  const analyserRef = useRef<any>(null);
-  const dataArrayRef = useRef<any>(null);
-  const startTimeRef = useRef<any>(null);
+  // const audioContextRef = useRef<any>(null);
+  // const analyserRef = useRef<any>(null);
+  // const dataArrayRef = useRef<any>(null);
+  // const startTimeRef = useRef<any>(null);
   
-  // Audio-related functions
-  /////////////////////////////////////////////////////////
-  // This function sends a synchronization request and updates the state with the result
-  const UPDATE_INTERVAL = 100;
+  // // Audio-related functions
+  // /////////////////////////////////////////////////////////
+  // // This function sends a synchronization request and updates the state with the result
+  // const UPDATE_INTERVAL = 100;
 
-  const getAPIData = async () => {
-    analyserRef.current?.getByteTimeDomainData(dataArrayRef.current);
-    const {
-      playback_rate: newPlayRate,
-      estimated_position: estimated_position,
-    } = await synchronize(state.sessionToken, Array.from(dataArrayRef.current), state.timestamp);
+  // const getAPIData = async () => {
+  //   analyserRef.current?.getByteTimeDomainData(dataArrayRef.current);
+  //   const {
+  //     playback_rate: newPlayRate,
+  //     estimated_position: estimated_position,
+  //   } = await synchronize(state.sessionToken, Array.from(dataArrayRef.current), state.timestamp);
 
-    dispatch({
-      type: "increment",
-      time: estimated_position,
-      rate: newPlayRate,
-    });
-  }
+  //   dispatch({
+  //     type: "increment",
+  //     time: estimated_position,
+  //     rate: newPlayRate,
+  //   });
+  // }
   
-  // This function established new recording instances when re-entering play mode
-  const startRecording = async () => {
-    // It's possible some of these can be removed; not sure which relate to the 
-    // making of the recorded object we don't need and which relate to the
-    // buffer we send to the backend.
-    startTimeRef.current = Date.now();
-    //create new Media recorder instance using the stream
-    const media = new MediaRecorder(stream, { mimeType: "audio/webm" });
-    //set the MediaRecorder instance to the mediaRecorder ref
-    mediaRecorder.current = media;
-    //invokes the start method to start the recording process
-    mediaRecorder.current.start();
-    let localAudioChunks: Blob[] = [];
-    mediaRecorder.current.ondataavailable = (event) => {
-      if (typeof event.data === "undefined") return;
-      if (event.data.size === 0) return;
-      localAudioChunks.push(event.data);
-    };
-    setAudioChunks(localAudioChunks);
+  // // This function established new recording instances when re-entering play mode
+  // const startRecording = async () => {
+  //   // It's possible some of these can be removed; not sure which relate to the 
+  //   // making of the recorded object we don't need and which relate to the
+  //   // buffer we send to the backend.
+  //   startTimeRef.current = Date.now();
+  //   //create new Media recorder instance using the stream
+  //   const media = new MediaRecorder(stream, { mimeType: "audio/webm" });
+  //   //set the MediaRecorder instance to the mediaRecorder ref
+  //   mediaRecorder.current = media;
+  //   //invokes the start method to start the recording process
+  //   mediaRecorder.current.start();
+  //   let localAudioChunks: Blob[] = [];
+  //   mediaRecorder.current.ondataavailable = (event) => {
+  //     if (typeof event.data === "undefined") return;
+  //     if (event.data.size === 0) return;
+  //     localAudioChunks.push(event.data);
+  //   };
+  //   setAudioChunks(localAudioChunks);
 
-    audioContextRef.current = new window.AudioContext();
-    const source = audioContextRef.current.createMediaStreamSource(stream);
-    analyserRef.current = audioContextRef.current.createAnalyser();
-    analyserRef.current.fftSize = 2048;
-    source.connect(analyserRef.current);
+  //   audioContextRef.current = new window.AudioContext();
+  //   const source = audioContextRef.current.createMediaStreamSource(stream);
+  //   analyserRef.current = audioContextRef.current.createAnalyser();
+  //   analyserRef.current.fftSize = 2048;
+  //   source.connect(analyserRef.current);
 
-    const bufferLength = analyserRef.current.frequencyBinCount;
-    dataArrayRef.current = new Uint8Array(bufferLength);
+  //   const bufferLength = analyserRef.current.frequencyBinCount;
+  //   dataArrayRef.current = new Uint8Array(bufferLength);
 
-    getAPIData(); // run the first call
-  };
+  //   getAPIData(); // run the first call
+  // };
   
-  //stops the recording instance
-  const stopRecording = () => {
-    mediaRecorder.current.stop();
-    audioContextRef.current?.close();
-  };
+  // //stops the recording instance
+  // const stopRecording = () => {
+  //   mediaRecorder.current.stop();
+  //   audioContextRef.current?.close();
+  // };
   
-  // Function to get permission to use browser microphone
-  const getMicrophonePermission = async () => {
-    if ("MediaRecorder" in window) {
-      try {
-        const streamData = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: false,
-        });
-        setPermission(true);
-        setStream(streamData);
-      } catch (err) {
-        alert((err as Error).message);
-      }
-    } else {
-      alert("The MediaRecorder API is not supported in your browser.");
-    }
-  };
+  // // Function to get permission to use browser microphone
+  // const getMicrophonePermission = async () => {
+  //   if ("MediaRecorder" in window) {
+  //     try {
+  //       const streamData = await navigator.mediaDevices.getUserMedia({
+  //         audio: true,
+  //         video: false,
+  //       });
+  //       setPermission(true);
+  //       setStream(streamData);
+  //     } catch (err) {
+  //       alert((err as Error).message);
+  //     }
+  //   } else {
+  //     alert("The MediaRecorder API is not supported in your browser.");
+  //   }
+  // };
   
-  /////////////////////////////////////////////
-  // Audio-related effects
-  // Get microphone permission on first time entering play state
-  useEffect(() => {
-    if (!permission) getMicrophonePermission();
-  }, [state.inPlayMode]);
+  // /////////////////////////////////////////////
+  // // Audio-related effects
+  // // Get microphone permission on first time entering play state
+  // useEffect(() => {
+  //   if (!permission) getMicrophonePermission();
+  // }, [state.inPlayMode]);
   
-  // Start and stop recording when player is or isn't playing
-  useEffect(() => {
-    if (state.playing) startRecording();
-    else stopRecording();
-  }, [state.playing]);
+  // // Start and stop recording when player is or isn't playing
+  // useEffect(() => {
+  //   if (state.playing) startRecording();
+  //   else stopRecording();
+  // }, [state.playing]);
 
-  // Keep synchronizing while playing
-  useEffect(() => {
-    if (state.playing) setTimeout(getAPIData, UPDATE_INTERVAL);
-  }, [state.timestamp])
+  // // Keep synchronizing while playing
+  // useEffect(() => {
+  //   if (state.playing) setTimeout(getAPIData, UPDATE_INTERVAL);
+  // }, [state.timestamp])
 
   // State to conditionally render the style type of the components (can only be "light" or "dark")
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -255,7 +307,6 @@ export default function App() {
   // Boolean used for dynmaic display (row or column)
   const isSmallScreen = width < 960;
 
-
   ////////////////////////////////////////////////////////////////////////////////
   // Render the component's UI
   ////////////////////////////////////////////////////////////////////////////////
@@ -264,10 +315,20 @@ export default function App() {
       {/* Header with image */}
       <Animated.View style={[styles.menu_bar, {backgroundColor: menubarBackgroundColor, height: isSmallScreen? 40: 80}]}>
         <Image source={require('./assets/companion.png')} style={[styles.logo, {height: isSmallScreen? 30: 100, width: isSmallScreen? 100: 200}]}/>
-        <TouchableOpacity onPress={toggleTheme}>
-          <Icon name={theme === 'light' ? 'sun' : 'moon'} size={isSmallScreen? 15: 30} color="white" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity onPress={() => setStarted(!started)}>
+            <FontAwesome
+              name={started ? 'microphone' : 'microphone-slash'}
+              size={isSmallScreen ? 15 : 30}
+              color="white"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={toggleTheme}>
+            <Icon name={theme === 'light' ? 'sun' : 'moon'} size={isSmallScreen? 15: 30} color="white" />
+          </TouchableOpacity>
 
+        </View>
+        
       </Animated.View>
 
         {/* Provides safe area insets for mobile devices */}
@@ -326,40 +387,16 @@ export default function App() {
                 <ScoreDisplay state={state} dispatch={dispatch} />
               </Animated.View>
             </ScrollView>
-            
-
           </View>
-            
           {/* Footer display for status */}
           <StatusBar style="auto" />
           {/* Automatically adjusts the status bar style */}
         </ScrollView>
       </Animated.View>
       <AudioPlayer state={state}  menuStyle={{ backgroundColor: menubarBackgroundColor }}/>
-
     </SafeAreaView>
   );
 }
-
-// Theme-based styles (not needed since we have animated API to do light and dark transitions smoother)
-// const themeStyles = {
-//   light: {
-//     container: { backgroundColor: '#F5F5F5' },
-//     menu_bar: { backgroundColor: '#2C3E50' },
-//     sidebar: { backgroundColor: '#ECF0F1' },
-//     mainContent: { backgroundColor: '#FFFFFF' },
-//     text: { color: "#2C3E50", fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
-//     button: {  backgroundColor: "#2C3E50"}
-//   },
-//   dark: {
-//     container: { backgroundColor: '#0F0F0F' },
-//     menu_bar: { backgroundColor: '#1A252F' },
-//     sidebar: { backgroundColor: '#4A627A' },
-//     mainContent: { backgroundColor: '#6B87A3' },
-//     text: { color: '#ffffff', fontWeight: "bold"} as TextStyle, // use for typscirpt syntax 
-//     button: {  backgroundColor: "#ffffff"}
-//   },
-// };
 
 // Define styles for the components using StyleSheet
 const styles = StyleSheet.create({

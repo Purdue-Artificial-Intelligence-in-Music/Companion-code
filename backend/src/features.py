@@ -114,7 +114,6 @@ class ChromaMaker(object):
             chroma[:] = 1
             length = 12**(0.5)
         chroma = chroma / length
-
         return chroma
 
 
