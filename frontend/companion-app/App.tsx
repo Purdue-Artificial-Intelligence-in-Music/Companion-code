@@ -53,15 +53,15 @@ export default function App() {
   const [sessionToken, setSessionToken] = useState<string>("")
 
   // Function used to generate session token using crypto API 
-  const generateSecureSessionToken = (): string => {
-    return window.crypto.randomUUID();
-  };
+  // const generateSecureSessionToken = (): string => {
+  //   return window.crypto.randomUUID();
+  // };
   
-  // On load, call generateSecureSessionToken function to generate and store new session token
-  useEffect(() => {
-    const newToken: string = generateSecureSessionToken();
-    setSessionToken(newToken)
-  }, []);
+  // // On load, call generateSecureSessionToken function to generate and store new session token
+  // useEffect(() => {
+  //   const newToken: string = generateSecureSessionToken();
+  //   setSessionToken(newToken)
+  // }, []);
 
  // Initialize the chroma state as an array of 12 zeros (used to capture chroma vector at each chunk of audio).
  const [chroma, setChroma] = useState<number[]>(new Array(12).fill(0));
@@ -313,23 +313,27 @@ export default function App() {
   return (
     <SafeAreaView style={[styles.container]}>
       {/* Header with image */}
-      <Animated.View style={[styles.menu_bar, {backgroundColor: menubarBackgroundColor, height: isSmallScreen? 40: 80}]}>
-        <Image source={require('./assets/companion.png')} style={[styles.logo, {height: isSmallScreen? 30: 100, width: isSmallScreen? 100: 200}]}/>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <TouchableOpacity onPress={() => setStarted(!started)}>
-            <FontAwesome
-              name={started ? 'microphone' : 'microphone-slash'}
-              size={isSmallScreen ? 15 : 30}
-              color="white"
-            />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={toggleTheme}>
-            <Icon name={theme === 'light' ? 'sun' : 'moon'} size={isSmallScreen? 15: 30} color="white" />
-          </TouchableOpacity>
 
-        </View>
-        
-      </Animated.View>
+      <SafeAreaView style={{ backgroundColor: '#2C3E50' }}>
+
+        <Animated.View style={[styles.menu_bar, {backgroundColor: menubarBackgroundColor, height: isSmallScreen? 40: 80}, { position: 'relative', top: 0 }]}>
+          <Image source={require('./assets/companion.png')} style={[styles.logo, {height: isSmallScreen? 30: 100, width: isSmallScreen? 100: 200}]}/>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <TouchableOpacity onPress={() => setStarted(!started)}>
+              <FontAwesome
+                name={started ? 'microphone' : 'microphone-slash'}
+                size={isSmallScreen ? 15 : 30}
+                color="white"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={toggleTheme}>
+              <Icon name={theme === 'light' ? 'sun' : 'moon'} size={isSmallScreen? 15: 30} color="white" />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </SafeAreaView>
+
+
 
         {/* Provides safe area insets for mobile devices */}
         <Animated.View style={[styles.container, { backgroundColor: containerBackgroundColor }]}>
@@ -393,7 +397,10 @@ export default function App() {
           {/* Automatically adjusts the status bar style */}
         </ScrollView>
       </Animated.View>
-      <AudioPlayer state={state}  menuStyle={{ backgroundColor: menubarBackgroundColor }}/>
+      <SafeAreaView>
+
+        <AudioPlayer state={state}  menuStyle={{ backgroundColor: menubarBackgroundColor }}/>
+      </SafeAreaView>
     </SafeAreaView>
   );
 }
@@ -432,7 +439,7 @@ const styles = StyleSheet.create({
     gap: 10,
     flex: 1,
     padding: 20,
-    marginTop: 80 // account for fixed header
+    marginTop: 10 // account for fixed header
   },
   // Container displaying sidebar and main content (row form)
   contentWrapperRow: {
