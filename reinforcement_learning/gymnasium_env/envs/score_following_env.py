@@ -7,6 +7,7 @@ import os
 import imageio
 import pygame
 import matplotlib.pyplot as plt
+from music21 import *
 
 def calculate_piano_roll_fps(columns_per_beat: int, BPM: float) -> float:
     """
@@ -138,6 +139,75 @@ class ScoreFollowingEnv(gym.Env):
 
         self.cmap = plt.get_cmap('viridis')
 
+        # Set directory for pregenerated sheet music images
+        self.output_dir = "sheet_images"
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+        
+        env = environment.Environment()
+        env['musescoreDirectPNGPath'] = 'C:\\Program Files\\MuseScore 4\\bin\\MuseScore4.exe'
+        env['musicxmlPath'] = 'C:\\Program Files\\MuseScore 4\\bin\\MuseScore4.exe'
+
+        self.score = converter.parse(midi_path)
+        self.score.makeNotation(inPlace=True)
+        self.image_files = self._pre_render_score()
+        self.images = self._load_pre_rendered_images()
+
+
+    def _pre_render_score(self):
+        """Render the score to image files on disk"""
+        image_files = []
+        
+        # Clear existing files
+        for f in os.listdir(self.output_dir):
+            os.remove(os.path.join(self.output_dir, f))
+        
+        # Render each system separately
+        #part_count = len(self.score.parts)
+        for i, part in enumerate(self.score.parts):
+            temp_score = stream.Score()
+            temp_score.insert(0, part)
+            # Render 4 measures at a time (adjust as needed)
+
+            
+            for measure_start in range(1, len(part.measureOffsetMap()), 4):
+                measure_end = min(measure_start + 3, len(part.measureOffsetMap()))
+                chunk = part.measures(measure_start, measure_end)
+
+                #sys_score = stream.Score()
+                #sys_score.insert(0, chunk)
+                
+                output_path = os.path.join(
+                    self.output_dir,
+                    f"part{i}_measures{measure_start}-{measure_end}"
+                )
+                
+                try:
+                    chunk.write('musicxml.png', output_path + ".png")
+                    image_files.append(output_path + "-1.png")
+                except Exception as e:
+                    print(f"Error rendering measures {measure_start}-{measure_end}: {e}")
+            
+
+        
+        return sorted(image_files)
+
+    def _load_pre_rendered_images(self):
+        """
+        Loads pre-rendered images into PyGame
+        
+        """
+        pygame_images = []
+        for img_file in self.image_files:
+            try:
+                pygame_img = pygame.image.load(img_file)
+                
+                pygame_images.append(pygame_img)
+            except Exception as e:
+                print(f"Error loading {img_file}: {e}")
+        
+        return pygame_images
+
     def get_score_window(self):
         """
         Extract a score window centered around the agent's location.
@@ -263,15 +333,18 @@ class ScoreFollowingEnv(gym.Env):
     
     def render(self, mode="human"):
         if mode == "human":
-            # Convert the array to a pygame Surface.
-            spec_img = self.spectrogram_window
-            spec_img = (spec_img - np.min(spec_img)) / (np.max(spec_img) - np.min(spec_img))  # Normalize to [0, 1]
-            spec_img = self.cmap(spec_img)
-            spec_img = (spec_img[:, :, :3] * 255).astype(np.uint8)
-            spec_img = np.transpose(spec_img, (1, 0, 2))  # Transpose because pygame expects shape (width, height, channels)
-            spec_img = np.flip(spec_img, axis=1)  # Flip the image vertically
-            spec_surface = pygame.surfarray.make_surface(spec_img)
-            scaled_spec_surface = pygame.transform.scale(spec_surface, (800, 300))
+            x_pos = -(2511 * len(self.images) * (self._agent_location) / self.size)
+            
+            for img in self.images:
+                scaled_width = int(img.get_width() * 1)
+                scaled_height = int(img.get_height() * 1)
+                
+                # Only draw images that are visible in the viewport
+                if x_pos + scaled_width > 0 and x_pos < self.screen.get_size()[1]:
+                    scaled_img = pygame.transform.scale(img, (scaled_width, scaled_height))
+                    self.screen.blit(scaled_img, (x_pos, 246 - scaled_height)) # std height 246
+                
+                x_pos += scaled_width
 
             piano_img = self.score_window[50:75]
             piano_img = (piano_img - np.min(piano_img)) / (np.max(piano_img) - np.min(piano_img))  # Normalize to [0, 1]
@@ -281,9 +354,24 @@ class ScoreFollowingEnv(gym.Env):
             piano_img = np.flip(piano_img, axis=1)  # Flip the image vertically
             piano_img = pygame.surfarray.make_surface(piano_img)
             scaled_piano_surface = pygame.transform.scale(piano_img, (800, 300))
-
-            self.screen.blit(scaled_spec_surface, (0, 0))
             self.screen.blit(scaled_piano_surface, (0, 300))
+            # Convert the array to a pygame Surface.
+            
+
+            """
+            spec_img = self.spectrogram_window
+            spec_img = (spec_img - np.min(spec_img)) / (np.max(spec_img) - np.min(spec_img))  # Normalize to [0, 1]
+            spec_img = self.cmap(spec_img)
+            spec_img = (spec_img[:, :, :3] * 255).astype(np.uint8)
+            spec_img = np.transpose(spec_img, (1, 0, 2))  # Transpose because pygame expects shape (width, height, channels)
+            spec_img = np.flip(spec_img, axis=1)  # Flip the image vertically
+            spec_surface = pygame.surfarray.make_surface(spec_img)
+            scaled_spec_surface = pygame.transform.scale(spec_surface, (800, 300))
+            self.screen.blit(scaled_spec_surface, (0, 0))
+            
+            """
+            
+            
             pygame.display.flip()
             self.clock.tick(20)
         else:
@@ -295,7 +383,7 @@ if __name__ == "__main__":
     alignment = [(i, 6 / 7 * i) for i in range(0, 64)]
     alignment = np.array(alignment).T
     print(alignment.shape)
-    env = ScoreFollowingEnv(midi_path="ode_beg.mid", audio_path="ode_beg.mp3", bpm=70, alignment=alignment)
+    env = ScoreFollowingEnv(midi_path="../ode_beg.mid", audio_path="../ode_beg.mp3", bpm=70, alignment=alignment)
 
     # Reset the environment
     obs, info = env.reset()
