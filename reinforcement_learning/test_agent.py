@@ -27,7 +27,7 @@ while not terminated:
     env.render(mode="human")
 
     # Print the agent's location and reward
-    print(f"Step {i}: Agent location: {agent_location}, Reward: {reward}, Dist from real: {info['distance']}, Action taken: {action}")
+    print(f"Step {i}: Agent location: {agent_location}, Reward: {reward}, Dist from real: {info['distance']}, Target: {info['target']}, Action taken: {action}")
     i += 1
     total_reward += reward
 

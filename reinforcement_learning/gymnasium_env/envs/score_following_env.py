@@ -90,7 +90,8 @@ class ScoreFollowingEnv(gym.Env):
 
         # Define window sizes (in quarter notes)
         self.score_window_beats = 10  # Number of beats for score context
-        columns_per_beat = 1  # Number of columns per beat in the piano roll
+        self.columns_per_beat = 16  # Number of columns per beat in the piano roll
+        columns_per_beat = self.columns_per_beat
         score_fps = calculate_piano_roll_fps(columns_per_beat, bpm)  # Calculate fps based on BPM
 
         # Get the piano roll representation of the MIDI file
@@ -98,7 +99,8 @@ class ScoreFollowingEnv(gym.Env):
         self.piano_roll = midi_to_piano_roll(midi_path, fps=score_fps)
         self.size = self.piano_roll.shape[1]
 
-        self.tracking_window = self.tracking_window = 15 if self.training else 5
+        self.tracking_window = 10 if self.training else 5
+        self.tracking_window *= columns_per_beat # Extend leniency because we grow note sizes?
         # max distance from target to agent before termination
 
         # Define dimensions for our fixed-size representations
@@ -203,7 +205,7 @@ class ScoreFollowingEnv(gym.Env):
         target_index = np.where(note_onsets > live_time)[0]
         if target_index.size > 0:  # if there are note onsets after the current time
             target_index = target_index[0]  # get the first one
-            self._target_location = beats[target_index]  # get the corresponding beat
+            self._target_location = beats[target_index] * self.columns_per_beat  # get the corresponding beat
         else:
             # If no note onsets are found, set target_location to the end of the audio
             self._target_location = beats[-1]
@@ -227,7 +229,7 @@ class ScoreFollowingEnv(gym.Env):
         }
     
     def _get_info(self):
-        return {"distance": abs(self._agent_location - self._target_location)}
+        return {"distance": abs(self._agent_location - self._target_location), "target": self._target_location}
     
     def reset(self, seed=None):
         super().reset(seed=seed)
