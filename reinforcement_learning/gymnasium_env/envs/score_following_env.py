@@ -90,7 +90,7 @@ class ScoreFollowingEnv(gym.Env):
 
         # Define window sizes (in quarter notes)
         self.score_window_beats = 10  # Number of beats for score context
-        self.columns_per_beat = 16  # Number of columns per beat in the piano roll
+        self.columns_per_beat = 4  # Number of columns per beat in the piano roll
         columns_per_beat = self.columns_per_beat
         score_fps = calculate_piano_roll_fps(columns_per_beat, bpm)  # Calculate fps based on BPM
 
@@ -99,7 +99,7 @@ class ScoreFollowingEnv(gym.Env):
         self.piano_roll = midi_to_piano_roll(midi_path, fps=score_fps)
         self.size = self.piano_roll.shape[1]
 
-        self.tracking_window = 10 if self.training else 5
+        self.tracking_window = 15 if self.training else 5
         self.tracking_window *= columns_per_beat # Extend leniency because we grow note sizes?
         # max distance from target to agent before termination
 
