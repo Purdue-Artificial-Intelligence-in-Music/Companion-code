@@ -14,10 +14,10 @@ env_kwargs={
      "alignment": alignment,
  }
 vec_env = make_vec_env(lambda: ScoreFollowingEnv(**env_kwargs), n_envs=1)
-env = VecNormalize.load("ppo_score_following_env2", vec_env)
+env = VecNormalize.load("ppo_score_following_env4", vec_env)
 # env = ScoreFollowingEnv(midi_path="ode_beg.mid", audio_path="ode_beg.mp3", bpm=70, alignment=alignment, training=False)
 
-model = PPO.load("ppo_score_following2", env=env)
+model = PPO.load("ppo_score_following4", env=env)
 
 # Reset the environment
 obs = env.reset()

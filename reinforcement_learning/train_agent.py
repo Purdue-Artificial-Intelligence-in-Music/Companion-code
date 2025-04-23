@@ -31,6 +31,6 @@ model = PPO("MultiInputPolicy", vec_env, verbose=1)
 model.learn(total_timesteps=100_000, progress_bar=tqdm)
 
 # Save the trained model.
-model.save("ppo_score_following2")
-vec_env.save("ppo_score_following_env2")
+model.save("ppo_score_following4")
+vec_env.save("ppo_score_following_env4")
 vec_env.close()
