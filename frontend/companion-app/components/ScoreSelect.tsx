@@ -34,28 +34,34 @@ export function Score_Select({
   //   fetchScores();
   // }, [dispatch]);
 
-  // Array of score names used to render score display options
+  // Array of score names used to render score display options 
   const musicxmlFiles: string[] = [
     'air_on_the_g_string.musicxml',
     'twelve_duets.musicxml',
   ];
-
-
+  
   useEffect(()=> {
-    console.log("Local scores: ", musicxmlFiles);
     dispatch({ type: "new_scores_from_backend", scores: musicxmlFiles }); // pass in defined array of musicxml files
   }, [dispatch])
 
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      const xmlContent = e.target?.result as string;
-      const newScore = {
-        filename: file.name,
-        piece: file.name.replace(".musicxml", ""),
-        content: xmlContent,
-      };
-      dispatch({ type: "new_score_from_upload", score: newScore });
+      const xmlContent = e.target?.result as string; 
+      const fileName = file.name; // extract the file name 
+
+      if (!state.scores.includes(fileName)) { // only add new score if the new uploaded score's name isn't already stored within scores
+        const newScore = {
+          filename: file.name,
+          piece: file.name.replace(".musicxml", ""),
+          content: xmlContent,
+        };
+        dispatch({ type: "new_score_from_upload", score: newScore }); 
+      }
+    };
+
+    reader.onerror = (e) => {
+      console.error("Error reading file:", e);
     };
     reader.readAsText(file);
   };

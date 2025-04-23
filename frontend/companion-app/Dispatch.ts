@@ -100,15 +100,17 @@ const reducer_function = (state: any, action: any) => {
         },
       };
 
-    // Adds uploaded score's name to list
-    case "new_score_from_upload":
-      return {
-        ...state,
-        ...{
-          scores: [...state.scores, action.score],
-          score: action.score.filename,
-        },
-      };
+      case "new_score_from_upload":
+        return {
+          ...state, // Keep the existing state
+          scores: [...state.scores, action.score.filename], // Add the new score filename to the scores array
+          score: action.score.filename, // Set the current score to the newly uploaded filename
+          scoreContents: { 
+            ...state.scoreContents, // Keep existing score content
+            [action.score.filename]: action.score.content, // Add the new score content to the scoreContents object using the filename as the key
+          },
+        };
+        
     default: // If no valid type, return state, otherwise the function returns null and the state is gone.
       return state;
   }
