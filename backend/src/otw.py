@@ -115,7 +115,7 @@ class OnlineTimeWarping:
             if step == "live":
                 break  # Stop if the best step is to move in the live sequence
 
-            # Increment referene index, but keep it in bounds
+            # Increment reference index, but keep it in bounds
             self.ref_index = min(self.ref_index + 1, self.ref_len - 1)
 
             # calculate a new reference column
@@ -162,13 +162,16 @@ class OnlineTimeWarping:
         if self.accumulated_cost[best_j, self.live_index] < self.accumulated_cost[self.ref_index, best_t]:
             best_t = self.live_index
             step = "live"
-        elif self.accumulated_cost[best_j, self.live_index] > self.accumulated_cost[self.ref_index, best_t]:  # Otherwise, move in the reference sequence
+        else:
             best_j = self.ref_index
             step = "ref"
-        else:
-            best_t = self.live_index
-            best_j = self.ref_index
-            step = "both"
+        # elif self.accumulated_cost[best_j, self.live_index] > self.accumulated_cost[self.ref_index, best_t]:  # Otherwise, move in the reference sequence
+        #     best_j = self.ref_index
+        #     step = "ref"
+        # else:
+        #     best_t = self.live_index
+        #     best_j = self.ref_index
+        #     step = "both"
 
         # If the best step is to move in both sequences, choose the one with the lowest cost
         if best_t == self.live_index and best_j == self.ref_index:
@@ -237,3 +240,23 @@ class OnlineTimeWarping:
             steps.append(
                 self.accumulated_cost[ref_index, live_index - 1] + cost)
         self.accumulated_cost[ref_index, live_index] = min(steps)
+
+
+if __name__ == '__main__':
+    # Example usage
+    ref = np.random.rand(12, 20)  # Example reference sequence
+    # Normalize each column of the reference sequence
+    ref = ref / np.linalg.norm(ref, axis=0, keepdims=True)
+    params = {
+        "c": 5,
+        "max_run_count": 3,
+        "diag_weight": 2
+    }
+    otw = OnlineTimeWarping(ref, params)
+
+    live_input = ref  # Example live input
+    for col in range(ref.shape[1] - 2):
+        live_input = ref[:, col + 2]
+        estimated_position = otw.insert(live_input)
+        print(estimated_position, end=" ")
+    # print(f"Estimated position in reference sequence: {estimated_position}")

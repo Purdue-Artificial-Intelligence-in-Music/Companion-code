@@ -8,80 +8,19 @@ import imageio
 import pygame
 import matplotlib.pyplot as plt
 
-def calculate_piano_roll_fps(columns_per_beat: int, BPM: float) -> float:
-    """
-    Calculate frames per second (fps) for a piano roll given a resolution in columns per beat
-    and a tempo in beats per minute (BPM).
-
-    Parameters:
-        columns_per_beat (int): The number of columns per beat.
-        BPM (float): Tempo in beats per minute.
-
-    Returns:
-        float: Frames per second (columns per second) for the piano roll.
-    """
-    beats_per_second = BPM / 60.0
-    fps = columns_per_beat * beats_per_second
-    return fps
-
-def midi_to_piano_roll(midi_path: str, fps: int = 20) -> np.ndarray:
-    """
-    Convert a MIDI file into a piano roll representation.
-
-    Parameters
-    ----------
-    midi_path : str
-        Path to the MIDI file.
-    fps : int
-        Frames per second for the output piano roll.
-
-    Returns
-    -------
-    np.ndarray
-        A 2D numpy array representing the piano roll.
-    """
-    # Load the MIDI file
-    pm = pretty_midi.PrettyMIDI(midi_path)
-
-    # Get the solo instrument (first instrument in the MIDI file)
-    solo: pretty_midi.Instrument = pm.instruments[0]
-
-    # Get the piano roll representation
-    # The piano roll is a 2D array where rows correspond to MIDI pitches and columns to time frames
-    # The values in the array are the velocities of the notes at that time frame
-    piano_roll = solo.get_piano_roll(fs=fps)  # fs is the sampling rate (frames per second)
-
-    return piano_roll
-
 
 class ScoreFollowingEnv(gym.Env):
-    def __init__(self, midi_path: str, audio_path: str, bpm: int, alignment: np.ndarray):
+    def __init__(self, 
+                 piano_roll: np.ndarray, 
+                 spectrogram: np.ndarray, 
+                 alignment: np.ndarray, 
+                 bpm: int):
         super(ScoreFollowingEnv, self).__init__()
 
+        self.piano_roll = piano_roll
+        self.spectrogram = spectrogram
         self.alignment = alignment
-
-        # Define audio processing parameters
-        sr = 22050                   # Sample rate in Hz
-        n_fft = 2048                 # FFT window size
-        spec_fps = 20                     # Frames per second
-        self.hop_length = int(sr / spec_fps)   # Hop length; ~1102 samples per frame
-        n_mels = 78                  # Number of mel bins (log-frequency bands)
-        fmin = 60                    # Minimum frequency (Hz)
-        fmax = 6000                  # Maximum frequency (Hz)
-
-        # Load audio and compute its spectrogram
-        audio, self.sr = librosa.load(audio_path, sr=sr)
-        spec = librosa.feature.melspectrogram(
-                            y=audio,
-                            sr=sr,
-                            n_fft=n_fft,
-                            hop_length=self.hop_length,
-                            n_mels=n_mels,
-                            fmin=fmin,
-                            fmax=fmax
-                        )
-        # Convert the power spectrogram to a logarithmic (dB) scale
-        self.spectrogram = librosa.power_to_db(spec, ref=np.max)
+        self.bpm = bpm
 
         # Initial agent and target positions
         self._agent_location = 0
@@ -90,12 +29,10 @@ class ScoreFollowingEnv(gym.Env):
 
         # Define window sizes (in quarter notes)
         self.score_window_beats = 10  # Number of beats for score context
-        columns_per_beat = 1  # Number of columns per beat in the piano roll
-        score_fps = calculate_piano_roll_fps(columns_per_beat, bpm)  # Calculate fps based on BPM
+        columns_per_beat = 4  # Number of columns per beat in the piano roll
 
         # Get the piano roll representation of the MIDI file
         # This is the "world" the agent will be navigating
-        self.piano_roll = midi_to_piano_roll(midi_path, fps=score_fps)
         self.size = self.piano_roll.shape[1]
 
         self.tracking_window = 5  # max distance from target to agent before termination
@@ -111,6 +48,9 @@ class ScoreFollowingEnv(gym.Env):
 
         self.score_window = np.zeros(score_window_shape, dtype=np.float32)
         self.spectrogram_window = np.zeros(spectrogram_window_shape, dtype=np.float32)
+
+        self.sr = 22050
+        self.hop_length = 22050 / 20
 
         # Define the observation space as a dictionary with fixed shapes
         self.observation_space = gym.spaces.Dict({

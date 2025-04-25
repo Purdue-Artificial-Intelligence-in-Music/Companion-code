@@ -1,11 +1,13 @@
 from gymnasium_env.envs.score_following_env import ScoreFollowingEnv
+from gymnasium_env.envs.random_piece_env import RandomPieceEnv
 import numpy as np
 from stable_baselines3 import PPO
 
 alignment = [(i, 6 / 7 * i) for i in range(0, 64)]
 alignment = np.array(alignment).T
 
-env = ScoreFollowingEnv(midi_path="ode_beg.mid", audio_path="ode_beg.mp3", bpm=70, alignment=alignment)
+# env = ScoreFollowingEnv(midi_path="ode_beg.mid", audio_path="ode_beg.mp3", bpm=70, alignment=alignment)
+env = RandomPieceEnv("dataset")
 model = PPO.load("ppo_score_following", env=env)
 
 # Reset the environment
