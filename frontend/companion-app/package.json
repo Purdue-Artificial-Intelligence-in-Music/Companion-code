@@ -16,6 +16,8 @@
     "expo": "^52.0.0",
     "expo-asset": "~11.0.5",
     "expo-av": "~15.0.2",
+    "expo-document-picker": "~13.0.3",
+    "expo-file-system": "~18.0.12",
     "expo-status-bar": "~2.0.1",
     "fft-js": "^0.0.12",
     "fft.js": "^4.0.4",
@@ -29,9 +31,7 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
-    "wave-resampler": "^1.0.0",
-    "expo-document-picker": "~13.0.3",
-    "expo-file-system": "~18.0.12"
+    "wave-resampler": "^1.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

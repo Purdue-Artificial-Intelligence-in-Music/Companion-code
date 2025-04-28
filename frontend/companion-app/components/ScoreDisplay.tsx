@@ -1,28 +1,9 @@
-// ScoreDisplay.tsx
-import React, { useRef, useEffect, useState } from 'react';
-import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
-} from 'react-native';
-import { WebView, WebViewMessageEvent } from 'react-native-webview';
-import { Cursor, OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import scoresData from '../musicxml/scores'; // Local mapping of score filenames to XML content
-
-
-// Conditionally require native modules for mobile
-let DocumentPicker: any, FileSystem: any;
-if (Platform.OS !== 'web') {
-  DocumentPicker = require('expo-document-picker');
-  FileSystem = require('expo-file-system');
-}
+import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, Platform, useWindowDimensions} from "react-native";
+import { useRef, useEffect, useState} from "react";
+import { Cursor, OpenSheetMusicDisplay, Fraction, SourceMeasure } from "opensheetmusicdisplay";
+import Icon from "react-native-vector-icons/FontAwesome";
+import scoresData from "../musicxml/scores"; // Local mapping of score filenames to XML content
+import { WebView } from "react-native-webview";
 
 export default function ScoreDisplay({
   state,
@@ -31,268 +12,459 @@ export default function ScoreDisplay({
   state: any;
   dispatch: any;
 }) {
-  // Shared state for both platforms (speed / steps)
-  const [steps, setSteps] = useState('1');
-  const [speed, setSpeed] = useState('500');
-
-  // Refs for web version
+  
+  // web-only refs
   const osmContainerRef = useRef<HTMLDivElement | null>(null); // Reference for the SVG container
+
   // Create refs to the cursor and to the OSDiv
-  const cursorRef = useRef<Cursor | null>(null); 
+  const cursorRef = useRef<Cursor | null>(null);
   const osdRef = useRef<OpenSheetMusicDisplay | null>(null);
 
-  const scrollViewRef = useRef<ScrollView>(null); // reference to scroll view component
-  const scrollPositionRef = useRef(0); // ref to keep track of current y position of scroll view (used ref instead of state to prevent rerender when scroll)
-
-  // Refs/state for native version
+  // native-only refs
   const webviewRef = useRef<WebView>(null);
-  const [webviewHtml, setWebviewHtml] = useState('');
 
-  // Function that is used to move cursor x amount of steps, updating the cursor y milleconds
-  const moveCursorAhead = () => {
-    const s = parseInt(steps, 10) || 1; // parse 
-    const sp = parseInt(speed, 10) || 500;
+  const scrollViewRef = useRef<ScrollView>(null); // reference to scroll view component
+  const scrollPositionRef = useRef<number>(0); // ref to keep track of current y position of scroll view (used ref instead of state to prevent rerender when scroll)
+  const [steps, setSteps] = useState<string>(""); // state for declaring number of intended cursor iterations
+  const [speed, setSpeed] = useState<string>(""); // state for speed of cursor update
 
-    // web logic
-    if (Platform.OS === 'web') {
-      // return if error in cursor or osd 
-      if (!cursorRef.current || !osdRef.current) return;
+  const moveCursorByBeats = () => {
 
-      // Make sure Y position is always 0 when starting the cursor 
-      scrollPositionRef.current = 0;
+     // Mobile  approach
+    if (Platform.OS !== "web") {
+      if (!webviewRef.current) {
+        console.error("WebView not initialized.");
+        return;
+      }
 
-      const stepFn = (i: number) => {
-        if (i >= s) return;
-        cursorRef.current!.next();
-        osdRef.current!.render();
-        scrollUp(scrollPositionRef.current);
-        setTimeout(() => stepFn(i + 1), sp);
-      };
+      // Build one injected script that:
+      // 1. Grabs time‐sig denominator
+      // 2. Accumulates beats under the cursor
+      // 3. Recursively steps until totalBeats reached or passed 
+      // This script us the same used in the web version below
+      const script = `
+        (function() {
+          const osd = window.osm;
+          const cursor = window.cursor;
 
-      stepFn(0);
+          if (!osd.IsReadyToRender()) {
+            console.warn("Please call osmd.load() and osmd.render() before stepping the cursor.");
+            return;
+          }
 
-    } else {
-      // Safely call the _moveCursor function inside the WebView (native) to animate the OSMD cursor
-      // s = number of steps to move, sp = speed in ms between steps
-      // The `true;` at the end ensures the injected JS returns something non-falsy to avoid WebView warnings
-      webviewRef.current?.injectJavaScript(
-        `window._moveCursor(${s}, ${sp}); true;`
-      );
+          // get denom of first measure
+          const measures = osd.GraphicSheet.MeasureList;
+          if (!measures.length || !measures[0].length) {
+            console.warn("No measures found after render().");
+            return;
+          }
+          const denom = measures[0][0].parentSourceMeasure.ActiveTimeSignature.denominator;
+
+          // initial beats under cursor
+          let accumulated = 0;
+          const initVoices = cursor.VoicesUnderCursor();
+          if (initVoices.length && initVoices[0].Notes.length) {
+            const len = initVoices[0].Notes[0].Length;
+            accumulated += (len.Numerator / len.Denominator) * denom;
+          }
+
+          // recursive step
+          function stepFn() {
+            if (accumulated >= ${parseInt(steps)}) {
+              osd.render();
+              return;
+            }
+
+            cursor.next();
+            const voices = cursor.VoicesUnderCursor();
+            if (!voices.length || !voices[0].Notes.length) {
+              console.warn("Ran out of entries before hitting target beats.");
+              osd.render();
+              return;
+            }
+
+            const nextLen = voices[0].Notes[0].Length;
+            accumulated += (nextLen.Numerator / nextLen.Denominator) * denom;
+
+            osd.render();
+            setTimeout(stepFn, ${parseInt(speed)});
+          }
+
+          stepFn();
+        })();
+        true;
+      `;
+
+      webviewRef.current.injectJavaScript(script);
+      return;
     }
+
+    // Ensure OSMD is loaded and rendered
+    if (!osdRef.current!.IsReadyToRender()) {
+      console.warn("Please call osmd.load() and osmd.render() before stepping the cursor.");
+      return;
+    }
+  
+    // Grab all measure’s time signature 
+    const measures = osdRef.current!.GraphicSheet.MeasureList;
+    if (!measures.length || !measures[0].length) {
+      console.warn("No measures found after render()."); // error handling when no measures are found
+      return;
+    }
+
+    // Take the first measure's time signature denominator (e.g. 4 in “4/4”)
+    const denom = measures[0][0].parentSourceMeasure.ActiveTimeSignature!.denominator;
+  
+    // Compute the starting accumulated beats under the cursor
+    let accumulated = 0; // Represents the total number of beats the cursor has gone through
+    const initial = osdRef.current!.cursor.VoicesUnderCursor(); // Grab all voices that the cursor is currently “on”
+    
+    // Only proceed if there’s at least one voice and that voice has at least one note
+    if (initial.length && initial[0].Notes.length) {
+      
+      // Find the value of current note. e.g. 1/4 = Quarter Note 
+      const len = initial[0].Notes[0].Length as Fraction;
+      accumulated += (len.Numerator / len.Denominator) * denom;
+    }
+  
+    // Make sure Y position is always 0 when starting the cursor 
+    let scrollPosition = 0;
+  
+    // Recursive step function
+    function stepFn() {
+      
+      // Stop when we've reached (or exceeded) target beats
+      if (accumulated >= parseInt(steps)) {
+        osdRef.current!.render(); // final render to show final cursor position
+        return; 
+      }
+  
+      cursorRef.current!.next(); // Advance cursor one entry
+
+      // Accumulate the next note/rest length in beats
+      const voice = cursorRef.current!.VoicesUnderCursor();
+
+      if (!voice.length || !voice[0].Notes.length) {
+        console.warn("Ran out of entries before hitting target beats.");
+        osdRef.current!.render();
+        return;
+      }
+      const len = voice[0].Notes[0].Length as Fraction; 
+      accumulated += (len.Numerator / len.Denominator) * denom; // Find how many beats that note is worth based on denominator of time signature
+      
+      console.log(accumulated)
+      console.log(steps)
+      console.log("===========================================================")
+      osdRef.current!.render(); // Re-render to show the moved cursor
+
+      scrollUp(scrollPosition); // Scroll to saved position after rerendering the OSM container
+
+      // Schedule the next step after a delay (speed state decides how fast cursor should update)
+      setTimeout(stepFn, parseInt(speed));
+    }
+  
+    // run move cursor function
+    stepFn();
+  }
+  
+
+  // Build HTML for native WebView, exposing window.osm & window.cursor for moving cursor logic for mobile when injecting the js script above
+  const buildHtml = (xml: string) => {
+    const escaped = xml
+      // Escape every backtick so that embedding this string in a JS template literal
+      // won’t accidentally terminate the literal early.
+      .replace(/`/g, "\\`")
+      // Escape every closing </script> tag so that, when injected into our <script> block,
+      // it can’t break out of that block and end our script prematurely.
+      .replace(/<\/script>/g, "<\\/script>"); 
+      return `<!DOCTYPE html>
+                <html>
+                  <head>
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  </head>
+                  <body>
+                    <div id="osmd-container"></div>
+                    <script src="https://unpkg.com/opensheetmusicdisplay@latest/build/opensheetmusicdisplay.min.js"></script>
+                    <script>
+                      (async () => {
+                        const osm = new opensheetmusicdisplay.OpenSheetMusicDisplay(
+                          document.getElementById('osmd-container'),
+                          { autoResize: true, followCursor: true }
+                        );
+                        try {
+                          await osm.load(\`${escaped}\`);
+                          osm.render();
+                          // expose for RN->WebView injection
+                          window.osm = osm;
+                          window.cursor = osm.cursor;
+                          window.cursor.show();
+                          window.cursor.CursorOptions = {
+                            ...window.cursor.CursorOptions,
+                            follow: true
+                          };
+                          window.ReactNativeWebView.postMessage(JSON.stringify({
+                            type: 'loaded',
+                            time_signature: window.cursor.Iterator.CurrentMeasure.ActiveTimeSignature,
+                            tempo: 100
+                          }));
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      })();
+                    </script>
+                  </body>
+                </html>`;
   };
 
-  // WEB: initialize OSMD
+  // Web-only initialization
   useEffect(() => {
-
-    // ignore this use effect if on mobile
-    if (Platform.OS !== 'web') return;
-
-    // Remove any previously-loaded music
-    if (osmContainerRef.current) {
-      while (osmContainerRef.current.firstChild) {
-        osmContainerRef.current.removeChild(
-          osmContainerRef.current.firstChild
-        );
+    if (Platform.OS === "web" && osmContainerRef.current && state.score) {
+      // Remove any previously-loaded music
+      if (osmContainerRef.current) {
+        while (osmContainerRef.current.children[0]) {
+          osmContainerRef.current.removeChild(
+            osmContainerRef.current.children[0],
+          );
+        }
       }
-    }
-    if (!state.score) return;
 
-    const xml = scoresData[state.score];
-    if (!xml) return;
+      // Create an instance of OpenSheetMusicDisplay, passing the reference to the container
+      const osm = new OpenSheetMusicDisplay(osmContainerRef.current as HTMLElement, {
+        autoResize: true, // Enable automatic resizing of the sheet music display
+        followCursor: true, // And follow the cursor
+      });
+      osdRef.current = osm;
 
-    const osm = new OpenSheetMusicDisplay(
-      osmContainerRef.current as HTMLElement,
-      { autoResize: true, followCursor: true }
-    );
-    osdRef.current = osm;
+      // If score name is a key within ScoreContents use the xml content value within that key, otherwise access xml content through the static key value mapping defined within scores.ts
+      const xmlContent = (state.scoreContents && state.scoreContents[state.score]) || scoresData[state.score];
 
-    osm
-      .load(xml)
-      .then(() => {
-        osm.render();
-        cursorRef.current = osm.cursor;
-        cursorRef.current.show();
-        cursorRef.current.CursorOptions = {
-          ...cursorRef.current.CursorOptions,
-          follow: true,
-        };
-        dispatch({
-          type: 'update_piece_info',
-          time_signature:
-            cursorRef.current.Iterator.CurrentMeasure.ActiveTimeSignature,
-          tempo: 100,
-        });
-        // expose for stepping
-        (window as any)._moveCursor = (steps: number, speed: number) => {
-          let i = 0;
-          const fn = () => {
-            if (i >= steps) return;
-            cursorRef.current!.next();
-            osm.render();
-            i++;
-            setTimeout(fn, speed);
+      // Error handling if no xml content for selected score is found
+      if (!xmlContent) {
+        console.error("Score content not found for:", state.score);
+        return;
+      }
+
+      // Load and render the XML content.
+      osm
+        .load(xmlContent)
+        .then(() => {
+          // Render the sheet music
+          osm.render();
+          cursorRef.current = osm.cursor;
+          cursorRef.current.show(); // Ensure the cursor is visible
+          cursorRef.current.CursorOptions = {
+            ...cursorRef.current.CursorOptions,
+            follow: true,
           };
-          fn();
-        };
-      })
-      .catch((err) => console.error('Error loading OSMD:', err));
-  }, [state.score]);
 
-  // === NATIVE: prepare HTML for WebView ===
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-    if (!state.score) return;
+          // TODO!  Find the piece's tempo and send that instead of constant 100
+          dispatch({
+            type: "update_piece_info",
+            time_signature:
+              cursorRef.current.Iterator.CurrentMeasure.ActiveTimeSignature,
+            tempo: 100,
+          });
+        })
+        .catch((error) => {
+            // Handle errors in loading the music XML file
+            console.error("Error loading music XML:", error);
+        });
 
-    const xml = scoresData[state.score];
-    if (!xml) return;
-    const escaped = JSON.stringify(xml);
+        // // Fetch the MusicXML file from the backend
+        // fetch(`http://127.0.0.1:5000/score/${state.score}`) // Replace with your actual API endpoint
+        //   .then((response) => {
+        //     if (!response.ok) {
+        //       throw new Error(`HTTP error! status: ${response.status}`);
+        //     }
+        //     return response.text(); // Return the XML content as a string
+        //   })
+        //   .then((xmlContent) => {
+        //     // Load the fetched XML content into OpenSheetMusicDisplay
+        //     return osm.load(xmlContent);
+        //   })
+        //   .then(() => {
+        //     // Render the sheet music
+        //     osm.render();
+        //     console.log("Music XML loaded successfully");
 
-    const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"/>
-<script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.7.6/build/opensheetmusicdisplay.min.js"></script>
-<style>html,body{margin:0;padding:0;height:100%}#osmd{width:100%;height:100%;}</style>
-</head><body>
-  <div id="osmd"></div>
-  <script>
-    let osmd;
-    document.addEventListener('DOMContentLoaded', async () => {
-      osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay('osmd',{autoResize:true,followCursor:true});
-      await osmd.load(${escaped});
-      osmd.render();
-      osmd.cursor.show();
-      const ts = osmd.cursor.Iterator.CurrentMeasure.ActiveTimeSignature;
-      const tempo = osmd.sheet.SourceMeasures[0].tempoInBPM || 100;
-      window.ReactNativeWebView.postMessage(JSON.stringify({type:'LOADED',timeSignature:ts,tempo}));
-      window._moveCursor = (steps,speed) => {
-        let i=0;
-        const fn=()=>{ if(i>=steps) return; osmd.cursor.next(); osmd.render(); i++; setTimeout(fn,speed); };
-        fn();
-      };
-    });
+        //     cursorRef.current = osm.cursor;
+        //     cursorRef.current.show(); // Ensure the cursor is visible
+        //     cursorRef.current.CursorOptions = {
+        //       ...cursorRef.current.CursorOptions,
+        //       follow: true,
+        //     };
+        //     // TODO!  Find the piece's tempo and send that instead of constant 100
+        //     dispatch({
+        //       type: "update_piece_info",
+        //       time_signature:
+        //         cursorRef.current.Iterator.CurrentMeasure.ActiveTimeSignature,
+        //       tempo: 100,
+        //     });
+        //   })
+        //   .catch((error) => {
+        //     // Handle errors in loading the music XML file
+        //     console.error("Error loading music XML:", error); // Log the error message
+        //   });
+    } // Dependency array means this effect runs once when the component mounts and again when a new score is selected
+  }, [dispatch, state.score, state.scores])
 
-    window.addEventListener('message', ev => {
-      try {
-        const m = JSON.parse(ev.data);
-        if (m.type === 'NEXT') { osmd.cursor.next(); osmd.render(); }
-        if (m.type === 'RESET') { osmd.cursor.reset(); osmd.render(); }
-      } catch {}
-    });
-  </script>
-</body></html>`;
+// Define the handler to catch messages from the WebView:
+const onMessage = (event: any) => {
+  try {
+    // Obtain the string passed via postMessage(...)
+    const data = JSON.parse(event.nativeEvent.data);
 
-    setWebviewHtml(html);
-  }, [state.score]);
+    // Handle the 'loaded' event we sent from the <script> when the score finished rendering
+    if (data.type === 'loaded') {
+      dispatch({
+        type: 'update_piece_info',
+        time_signature: data.time_signature,
+        tempo: data.tempo,                   
+      });
+    }
+  } catch (e) {
+    // In case the message isn't valid JSON or misses fields
+    console.error('Failed to parse WebView message', e);
+  }
+};
 
+  const selectedXml = (state.scoreContents && state.scoreContents[state.score]) || scoresData[state.score] || "";
 
   // Function used for scrolling vertically through the OSM Container based on passed in value
-  const scrollUp = (y: number) => {
-    scrollViewRef.current?.scrollTo({ y, animated: false });
-  };
-  
-  // Function used to listen to scroll on OSM container and saves current Y position
-  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    scrollPositionRef.current = e.nativeEvent.contentOffset.y;
+  const scrollUp = (amount: number) => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: amount, animated: false });
+    }
   };
 
-  // Handle messages from WebView (native)
-  const onWebViewMessage = (e: WebViewMessageEvent) => {
-    try {
-      const msg = JSON.parse(e.nativeEvent.data);
-      if (msg.type === 'LOADED') {
-        dispatch({
-          type: 'update_piece_info',
-          time_signature: msg.timeSignature,
-          tempo: msg.tempo,
-        });
-      }
-    } catch {}
+  // Function used to listen to scroll on OSM container and saves current Y position
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const yOffset = event.nativeEvent.contentOffset.y;
+    // console.log('Current Scroll Position (Y):', yOffset);
+    scrollPositionRef.current = yOffset; // update ref immediately
   };
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // useEffect to tie the cursor position to the state
+  /////////////////////////////////////////////////////////////////////////////////
+//   useEffect(() => {
+//     let ct = state.cursorTimestamp; // current timestamp of cursor's note(s) in seconds
+//     var dt = new Fraction();
+//     console.log("ct:", ct);
+//     if (cursorRef.current?.Iterator.CurrentSourceTimestamp !== undefined) {
+//       var ts_meas = Fraction.createFromFraction(
+//         cursorRef.current?.Iterator.CurrentSourceTimestamp,
+//       ); // current timestamp of iterator as a fraction
+//       console.log("ts_meas:", ts_meas.RealValue);
+//       if (ct > state.timestamp) {
+//         // If timestamp is older, go back to beginning, b/c probably reset
+//         console.log("Moving ct back to beginning.");
+//         ct = 0;
+//         cursorRef.current?.reset();
+//         ts_meas = new Fraction();
+//       }
+
+//       // while timestamp is less than desired, update it
+//       while (ct <= state.timestamp) {
+//         cursorRef.current?.Iterator.moveToNextVisibleVoiceEntry(false);
+//         dt = Fraction.minus(
+//           cursorRef.current?.Iterator.CurrentSourceTimestamp,
+//           ts_meas,
+//         );
+//         // dt is a fraction indicating how much - in whole notes - the iterator moved
+
+//         ct +=
+//           (60 * dt.RealValue * state.time_signature.Denominator) /
+//           state.synth_tempo;
+//         console.log("ct:", ct);
+//         ts_meas = Fraction.plus(ts_meas, dt);
+//       }
+//       cursorRef.current?.Iterator.moveToPreviousVisibleVoiceEntry(false);
+//       console.log("Cursor should be updating");
+//       cursorRef.current?.update();
+//       dispatch({
+//         type: "cursor_update",
+//         time:
+//           (60 *
+//             cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue *
+//             state.time_signature.Denominator) /
+//           state.synth_tempo,
+//       });
+//     }
+//   },
+// [state.timestamp]);
 
   return (
     <>
-      {/* Inputs + Start button (shared) */}
+      {/* Temporary inputs for testing cursor movement */}
       <TextInput
         value={steps}
         onChangeText={setSteps}
-        placeholder="Type Number Of Steps"
         keyboardType="numeric"
+        placeholder="Number Of Steps"
       />
       <TextInput
         value={speed}
         onChangeText={setSpeed}
-        placeholder="Type Cursor Update Speed (ms)"
         keyboardType="numeric"
+        placeholder="Cursor Update Speed (ms)"
       />
-      <TouchableOpacity style={styles.startBtn} onPress={moveCursorAhead}>
-        <Text style={styles.startBtnText}>Start</Text>
+
+      <TouchableOpacity 
+      onPress={moveCursorByBeats}
+      >
+        <Text>Start</Text>
       </TouchableOpacity>
 
-      {Platform.OS === 'web' ? (
-        // ====== YOUR ORIGINAL WEB LAYOUT ======
-        <ScrollView
-          indicatorStyle="white"
-          contentContainerStyle={{ flexGrow: 1 }}
-          showsVerticalScrollIndicator
-          ref={scrollViewRef}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          style={styles.scrollContainer}
-        >
-          <div ref={osmContainerRef as any} style={styles.osmContainer} />
-          <Text style={styles.text}>
-            <Icon name="music" size={20} color="#2C3E50" /> Reference to the
-            SVG container for sheet music <Icon name="music" size={20} color="#2C3E50" />
-          </Text>
-        </ScrollView>
-      ) : webviewHtml ? (
-        // ====== NATIVE: mirror via WebView ======
-        <View style={styles.webviewWrapper}>
+      {/* Reference ScrollView Component for controlling scroll */}
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator
+        ref={scrollViewRef}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
+        {/* If on web, render the OSMD container like normal */}
+        {Platform.OS === "web" ? (
+          <div ref={osmContainerRef} style={styles.osmContainer} />
+        ) : (
+
+          // Otherwise use WebView component to render OSMD since it only has web base support so injecting html is the only way
           <WebView
             ref={webviewRef}
-            originWhitelist={['*']}
-            source={{ html: webviewHtml }}
-            onMessage={onWebViewMessage}
-            javaScriptEnabled
-            style={[styles.osmContainer, {flex: 1}]}
+            originWhitelist={["*"]}
+            source={{ html: buildHtml(selectedXml) }}
+            onMessage={onMessage} // Call function when page inside this Webview calls postMessage
+            style={{ height: 400 }}
           />
-        </View>
-      ) : null}
+        )}
+
+        <Text style={styles.text}>
+          <Icon name="music" size={20} color="#2C3E50" /> Reference to the SVG
+          container for sheet music{" "}
+          <Icon name="music" size={20} color="#2C3E50" />
+        </Text>
+      </ScrollView>
     </>
   );
 }
 
+// Define styles for the components using StyleSheet
 const styles = StyleSheet.create({
   scrollContainer: {
-    width: '100%',
-    height: '100%',
-    borderWidth: 1,
-    borderColor: 'black',
+    width: "100%", // Make the scroll container fill the width of the parent
+    height: "100%", // Set a specific height for scrolling (adjust as needed)
   },
   osmContainer: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: 'black',
-    overflow: 'hidden',
-    // no height here, so on web it expands to fit full score
+    width: "100%", // Make the sheet music container fill the width of the parent
+    borderWidth: 1, // Add border to the sheet music container
+    borderColor: "black", // Set border color to black
+    overflow: "hidden", // Ensure content doesn't overflow outside this container
   },
   text: {
     fontSize: 20,
-    textAlign: 'center',
-    color: '#2C3E50',
-    marginTop: 8,
-  },
-  input: {
-    borderColor: '#ccc',
-    borderWidth: 1,
-    padding: 8,
-    marginVertical: 4,
-  },
-  startBtn: {
-    backgroundColor: '#007AFF',
-    borderRadius: 4,
-    alignItems: 'center',
-    marginVertical: 6,
-  },
-  startBtnText: { color: '#fff' },
-  webviewWrapper: { flex: 1 },
+    textAlign: "center",
+    color: "#2C3E50"
+  }
 });

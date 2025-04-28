@@ -1,6 +1,6 @@
 // Import necessary modules and components from the Expo and React Native libraries
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View, Image, SafeAreaView, TouchableOpacity, useWindowDimensions, ScrollView, TextStyle, Animated } from "react-native";
+import { StyleSheet, Text, View, Image, SafeAreaView, TouchableOpacity, useWindowDimensions, ScrollView, TextStyle, Animated, Platform } from "react-native";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { startSession, synchronize } from "./components/Utils";
 import { Score_Select } from "./components/ScoreSelect";
@@ -17,6 +17,7 @@ import { SynthesizeButton } from "./components/SynthesizeButton";
 import Icon from 'react-native-vector-icons/Feather';
 import { ChromaMaker } from "./utils/features";
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { ExpoMicProcessor } from './utils/ExpoMicProcessor';
 
 // Define the main application component
 export default function App() {
@@ -49,33 +50,37 @@ export default function App() {
     },
   );
 
-  // State used to store session token
-  const [sessionToken, setSessionToken] = useState<string>("")
-
-  // Function used to generate session token using crypto API 
-  // const generateSecureSessionToken = (): string => {
-  //   return window.crypto.randomUUID();
-  // };
-  
-  // // On load, call generateSecureSessionToken function to generate and store new session token
-  // useEffect(() => {
-  //   const newToken: string = generateSecureSessionToken();
-  //   setSessionToken(newToken)
-  // }, []);
-
- // Initialize the chroma state as an array of 12 zeros (used to capture chroma vector at each chunk of audio).
- const [chroma, setChroma] = useState<number[]>(new Array(12).fill(0));
+ const [chroma, setChroma] = useState<number[]>(new Array(12).fill(0)); // Initialize the chroma state as an array of 12 zeros (used to capture chroma vector at each chunk of audio).
  const [started, setStarted] = useState(false); // state used to determine user selects live microphone option or not
+ const processor = useRef(new ExpoMicProcessor()).current; // Create a stable ExpoMicProcessor instance that persists across renders
+ const SAMPLE_RATE = 44100;  // Define sample rate for ChromaMaker
+ const N_FFT = 4096; // Define chunk size for ChromaMaker
+ const chromaMaker = useRef(new ChromaMaker(SAMPLE_RATE, N_FFT)).current; // Create a stable ChromaMaker instance that persists across renders
 
+  // Create an array of Animated.Value objects for a smooth height animation of each chroma bar.
+  // const animatedChroma = useRef(new Array(12).fill(0).map(() => new Animated.Value(0))).current;
+
+  // // Whenever the chroma state updates, animate each corresponding Animated.Value.
+  // useEffect(() => {
+  //   chroma.forEach((value, idx) => {
+  //     Animated.timing(animatedChroma[idx], {
+  //       toValue: value * 200, // scale factor to adjust maximum bar height
+  //       duration: 50,
+  //       useNativeDriver: false
+  //     }).start();
+  //   });
+  // }, [chroma]);
+  
  useEffect(() => {
    let audioCtx: AudioContext; // Declare a reference to the AudioContext, which manages all audio processing
    let micStream: MediaStream; // Declare a reference to the MediaStream from the user's microphone
 
-   const initAudio = async () => {
+   // Web version of intializing miccrophone (Uses AudioWorklet Node)
+   const initWebAudio = async () => {
      try {
        micStream = await navigator.mediaDevices.getUserMedia({ audio: true }); // Request access to user's microphone
        audioCtx = new AudioContext(); // Create a new AudioContext for audio processing
-       await audioCtx.audioWorklet.addModule('../utils/mic-processor.js'); // Load the custom AudioWorkletProcessor
+       await audioCtx.audioWorklet.addModule('./utils/mic-processor.js'); // Load the custom AudioWorkletProcessor
        const source = audioCtx.createMediaStreamSource(micStream); // Create a source node from the microphone stream
        const workletNode = new AudioWorkletNode(audioCtx, 'mic-processor');  // Create an AudioWorkletNode linked to our custom 'mic-processor'
        source.connect(workletNode); // Connect the mic source to the worklet
@@ -100,17 +105,47 @@ export default function App() {
        console.error('Failed to initialize audio:', err);
      }
    };
-   // If "started" state is true, initialize audio processing
+
+   // Mobile version of intializing miccrophone (Uses ExpoMicProcessor)
+   const initNativeAudio = async () => {
+    try {
+      await processor.init(); // ExpoMicProcessor intialization
+
+      processor.onmessage = ({ data }) => { // Once we get buffer of size 4096
+        const vec = chromaMaker.insert(data);  // Insert with ChromaMaker to get chroma vector
+        setChroma(vec); // Set chroma vector
+      };
+
+      await processor.start(); // Start recording 
+    } catch (err) {
+      console.error('Failed to initialize Native audio:', err);
+    }
+  };
+
+   // If "started" state is true, initialize audio processing based on platform
    if (started) {
-     initAudio();
-   }
-   
+    if (Platform.OS === 'web') {
+      initWebAudio();  // Use browser audio processor 
+    } else {
+      initNativeAudio(); // Use native Expo/React Native audio processor
+    }
+  }
+
    // Cleanup: when the component unmounts or `started` becomes false, 
    // stop the microphone stream and close the audio context to free up resources
    return () => {
-     if (micStream) micStream.getTracks().forEach((track) => track.stop());
-     if (audioCtx) audioCtx.close();
-   };
+
+    // Web version of microphone stop
+    if (Platform.OS === 'web') {
+      if (micStream) micStream.getTracks().forEach((track) => track.stop());
+      if (audioCtx) audioCtx.close();
+
+    // Mobile version of microphone stop
+    } else {
+      processor.stop();
+    }
+  };
+
  }, [started]);
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -236,6 +271,7 @@ export default function App() {
   const backgroundColorAnim = useRef(new Animated.Value(0)).current; 
   const textColorAnim = useRef(new Animated.Value(0)).current; 
   const borderBottomAnim = useRef(new Animated.Value(0)).current;
+
   // const borderColorAnim = useRef(new Animated.Value(0)).current;
 
   // Interpolate background color based on light or dark mode
@@ -268,16 +304,13 @@ export default function App() {
     inputRange: [0, 1],
     outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark
   });
-  // Interpolate header and footer container color based on light or dark mode
-  const menubarBackgroundColor =  backgroundColorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#2C3E50", "#1A252F"], // Light to dark
-  });
   // Interpolate border bottom color based on light or dark mode
   const borderBottomColor = borderBottomAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["#2C3E50", "#FFFFFF"], // Light to dark transition
   });
+
+  
 
   // Toggles between light and dark mode by animating background, text, and border properties smoothly
   const toggleTheme = () => {
@@ -303,20 +336,23 @@ export default function App() {
     });
   };
   // Get device's width 
-  const { width } = useWindowDimensions()
+  const { width, height } = useWindowDimensions()
   // Boolean used for dynmaic display (row or column)
   const isSmallScreen = width < 960;
+  // const noteLabels = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
   ////////////////////////////////////////////////////////////////////////////////
   // Render the component's UI
   ////////////////////////////////////////////////////////////////////////////////
   return (
-    <SafeAreaView style={[styles.container]}>
-      {/* Header with image */}
 
-      <SafeAreaView style={{ backgroundColor: '#2C3E50' }}>
+    // BG Color for iphone padding - no padding if on landscape mode (top and bottom)
+    <SafeAreaView style={[styles.container, {backgroundColor: width < height? '#2C3E50': ""}]} >
 
-        <Animated.View style={[styles.menu_bar, {backgroundColor: menubarBackgroundColor, height: isSmallScreen? 40: 80}, { position: 'relative', top: 0 }]}>
+      {/* Account for top padding on Iphone */}
+      <SafeAreaView > 
+        {/* Header with image */}
+        <Animated.View style={[styles.menu_bar, {backgroundColor: '#2C3E50', height: isSmallScreen? 40: 80}, { position: 'relative', top: 0 }]}>
           <Image source={require('./assets/companion.png')} style={[styles.logo, {height: isSmallScreen? 30: 100, width: isSmallScreen? 100: 200}]}/>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <TouchableOpacity onPress={() => setStarted(!started)}>
@@ -348,7 +384,7 @@ export default function App() {
             {/* Sidebar for inputs and buttons (takes up little width) */}
             <Animated.View style={[styles.sidebar, { backgroundColor: sidebarBackgroundColor }, isSmallScreen ? styles.sidebarColumn : {}]}>
               { // List of scores, show when not in play mode
-              state.inPlayMode || <Score_Select state={state} dispatch={dispatch} textStyle={textColor} borderStyle={borderBottomColor}/> }
+              state.inPlayMode || <Score_Select state={state} dispatch={dispatch} textStyle={textColor} borderStyle={borderBottomColor} button_text_style={invertTextColor} button_format={[styles.button, {backgroundColor: buttonBackgroundColor}]}/> }
               <Return_Button
                 state={state}
                 dispatch={dispatch}
@@ -392,14 +428,29 @@ export default function App() {
               </Animated.View>
             </ScrollView>
           </View>
+
+          {/* Chroma Vector Display - commented out just in case we need to check if mic works */}
+          {/* <View style={chromaStyles.container}>
+            <Text style={chromaStyles.infoText}>Live Chroma Visualization</Text>
+            <View style={chromaStyles.chromaContainer}>
+              {chroma.map((value, idx) => (
+                <View key={idx} style={chromaStyles.chromaBarContainer}>
+                  <Animated.View style={[chromaStyles.chromaBar, { height: animatedChroma[idx] }]} />
+                  <Text style={chromaStyles.chromaLabel}>{noteLabels[idx]}</Text>
+                </View>
+              ))}
+            </View>
+            
+          </View> */}
           {/* Footer display for status */}
           <StatusBar style="auto" />
           {/* Automatically adjusts the status bar style */}
         </ScrollView>
       </Animated.View>
-      <SafeAreaView>
 
-        <AudioPlayer state={state}  menuStyle={{ backgroundColor: menubarBackgroundColor }}/>
+      {/* Account for bottom padding on Iphone */}
+      <SafeAreaView>
+        <AudioPlayer state={state}  menuStyle={{ backgroundColor: '#2C3E50' }}/>
       </SafeAreaView>
     </SafeAreaView>
   );
@@ -511,3 +562,66 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+
+// const chromaStyles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//     alignItems: 'center',
+//     justifyContent: 'center',
+//     backgroundColor: '#FAFAFA', // Slight off-white for a subtle card look
+//     marginVertical: 20,
+//     padding: 15,
+//     borderRadius: 10,
+//     shadowColor: "#000",
+//     shadowOffset: { width: 0, height: 2 },
+//     shadowOpacity: 0.1,
+//     shadowRadius: 3,
+//     elevation: 3,
+//   },
+//   startButton: {
+//     backgroundColor: '#2196F3',
+//     paddingVertical: 15,
+//     paddingHorizontal: 25,
+//     borderRadius: 10,
+//     marginBottom: 15, // Added margin for better separation
+//   },
+//   startButtonText: {
+//     color: '#fff',
+//     fontSize: 18,
+//     fontWeight: '600',
+//   },
+//   infoText: {
+//     marginTop: 10,
+//     fontSize: 16,
+//     fontWeight: '500',
+//     color: '#333', // Dark text for clear contrast
+//   },
+//   chromaContainer: {
+//     flexDirection: 'row',
+//     alignItems: 'flex-end',
+//     height: 220, // Slightly taller for clarity
+//     width: '95%',
+//     backgroundColor: '#F0F0F0', // Differentiated background color
+//     borderWidth: 1,
+//     borderColor: '#ccc',
+//     borderRadius: 10,
+//     marginTop: 20,
+//     padding: 10,
+//   },
+//   chromaBarContainer: {
+//     flex: 1,
+//     alignItems: 'center',
+//     marginHorizontal: 4,
+//   },
+//   chromaBar: {
+//     width: '100%',
+//     backgroundColor: '#2196F3',
+//     borderRadius: 4, // Soften edges of chroma bars
+//   },
+//   chromaLabel: {
+//     marginTop: 4,
+//     fontSize: 12,
+//     color: '#555',
+//     fontWeight: '500',
+//   },
+// });
