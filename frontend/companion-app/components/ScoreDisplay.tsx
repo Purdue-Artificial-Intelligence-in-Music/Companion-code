@@ -27,7 +27,8 @@ export default function ScoreDisplay({
   const scrollPositionRef = useRef<number>(0); // ref to keep track of current y position of scroll view (used ref instead of state to prevent rerender when scroll)
   const [steps, setSteps] = useState<string>(""); // state for declaring number of intended cursor iterations
   const [speed, setSpeed] = useState<string>(""); // state for speed of cursor update
-
+  const { width, height } = useWindowDimensions();
+  const isLandscapeMode = width < height;
   const moveCursorByBeats = () => {
 
      // Mobile  approach
@@ -98,13 +99,51 @@ export default function ScoreDisplay({
       webviewRef.current.injectJavaScript(script);
       return;
     }
+    function debugCursor() {
+
+      
+      // 1) grab every voice‐entry under the cursor
+      const allVoices = cursorRef.current!.VoicesUnderCursor();
+    
+      // 2) if there's also an Iterator you can get the tick or timestamp
+      const ts = cursorRef.current!.Iterator.currentTimeStamp;
+      console.log(`\n--- Cursor at tick ${ts} ---`);
+      console.log(allVoices.length)
+      // 3) log each entry's staff & notes
+      allVoices.forEach((ve, i) => {
+        // depending on OSMD version this might be .SourceStaffEntry or .ParentSourceStaffEntry
+        const staffEntry = ve.ParentSourceStaffEntry ?? ve.ParentSourceStaffEntry
+        const staffId = staffEntry.ParentStaff.Id;
+        const notes = ve.Notes;
+        //console.log("ve: ", ve)
+        console.log(
+          `VoiceEntry[${i}]: staffId=${staffId}, notes count=${notes.length}`
+        );
+        notes.forEach((n, j) => {
+          const len = n.Length as Fraction;
+          console.log(
+            `   Note[${j}]: isRest=${n.isRest}, pitch=${n.Pitch?.ToString() ?? '–'}, length=${len.Numerator}/${len.Denominator}`
+          );
+        });
+      });
+    
+      // 4) finally show which ones would count for you
+      const topStaff = allVoices.filter(ve => {
+        const staffEntry = ve.ParentSourceStaffEntry ?? ve.ParentSourceStaffEntry
+        return staffEntry.ParentStaff.Id === 1;
+      });
+      console.log(`>>> top‐staff entries: ${topStaff.length}\n`);
+    }
+    
 
     // Ensure OSMD is loaded and rendered
     if (!osdRef.current!.IsReadyToRender()) {
       console.warn("Please call osmd.load() and osmd.render() before stepping the cursor.");
       return;
     }
-  
+
+
+
     // Grab all measure’s time signature 
     const measures = osdRef.current!.GraphicSheet.MeasureList;
     if (!measures.length || !measures[0].length) {
@@ -116,9 +155,13 @@ export default function ScoreDisplay({
     const denom = measures[0][0].parentSourceMeasure.ActiveTimeSignature!.denominator;
   
     // Compute the starting accumulated beats under the cursor
-    let accumulated = 0; // Represents the total number of beats the cursor has gone through
-    const initial = osdRef.current!.cursor.VoicesUnderCursor(); // Grab all voices that the cursor is currently “on”
+    let accumulated = -1; // Represents the total number of beats the cursor has gone through
+
+    const topPart = osdRef.current!.Sheet.Instruments[0];
+    // 1) get the VoiceEntry array in that part
+    const initial = osdRef.current!.cursor.VoicesUnderCursor(topPart);
     
+  
     // Only proceed if there’s at least one voice and that voice has at least one note
     if (initial.length && initial[0].Notes.length) {
       
@@ -126,6 +169,7 @@ export default function ScoreDisplay({
       const len = initial[0].Notes[0].Length as Fraction;
       accumulated += (len.Numerator / len.Denominator) * denom;
     }
+
   
     // Make sure Y position is always 0 when starting the cursor 
     let scrollPosition = 0;
@@ -138,19 +182,25 @@ export default function ScoreDisplay({
         osdRef.current!.render(); // final render to show final cursor position
         return; 
       }
-  
+      
       cursorRef.current!.next(); // Advance cursor one entry
+      
+      //debugCursor()
 
       // Accumulate the next note/rest length in beats
-      const voice = cursorRef.current!.VoicesUnderCursor();
-
+      const voice = cursorRef.current!.VoicesUnderCursor(topPart);
+      console.log("v:", voice)
       if (!voice.length || !voice[0].Notes.length) {
-        console.warn("Ran out of entries before hitting target beats.");
-        osdRef.current!.render();
-        return;
+        console.log("skip due to empty notes")
+      } else {
+
+        const len = voice[0].Notes[0].Length as Fraction; 
+        accumulated += (len.Numerator / len.Denominator) * denom; // Find how many beats that note is worth based on denominator of time signature
       }
-      const len = voice[0].Notes[0].Length as Fraction; 
-      accumulated += (len.Numerator / len.Denominator) * denom; // Find how many beats that note is worth based on denominator of time signature
+      
+      
+      
+    
       
       console.log(accumulated)
       console.log(steps)
@@ -196,6 +246,7 @@ export default function ScoreDisplay({
                           osm.render();
                           // expose for RN->WebView injection
                           window.osm = osm;
+                          window.osm.zoom = .45;
                           window.cursor = osm.cursor;
                           window.cursor.show();
                           window.cursor.CursorOptions = {
@@ -230,11 +281,11 @@ export default function ScoreDisplay({
 
       // Create an instance of OpenSheetMusicDisplay, passing the reference to the container
       const osm = new OpenSheetMusicDisplay(osmContainerRef.current as HTMLElement, {
-        autoResize: true, // Enable automatic resizing of the sheet music display
+        autoResize: true , // Enable automatic resizing of the sheet music display
         followCursor: true, // And follow the cursor
-      });
-      osdRef.current = osm;
 
+      });
+      osdRef.current = osm; 
       // If score name is a key within ScoreContents use the xml content value within that key, otherwise access xml content through the static key value mapping defined within scores.ts
       const xmlContent = (state.scoreContents && state.scoreContents[state.score]) || scoresData[state.score];
 
@@ -256,6 +307,7 @@ export default function ScoreDisplay({
             ...cursorRef.current.CursorOptions,
             follow: true,
           };
+          osdRef.current!.zoom = .45
 
           // TODO!  Find the piece's tempo and send that instead of constant 100
           dispatch({
@@ -436,7 +488,7 @@ const onMessage = (event: any) => {
             originWhitelist={["*"]}
             source={{ html: buildHtml(selectedXml) }}
             onMessage={onMessage} // Call function when page inside this Webview calls postMessage
-            style={{ height: 400 }}
+            style={{ backgroundColor: "transparent", height: 400 }}
           />
         )}
 

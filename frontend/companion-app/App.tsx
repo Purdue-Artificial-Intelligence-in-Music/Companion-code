@@ -418,13 +418,13 @@ export default function App() {
             
             {/* Scroll View used for horizontal scolling */}
             <ScrollView
-              horizontal={true} 
+              horizontal={false} 
               showsHorizontalScrollIndicator={false} 
               contentContainerStyle={{ flexGrow: 1 }} // Ensure the content fills the container
             >
               {/* Actual content display (takes up remaining width after sidebar) */}
               <Animated.View style={[styles.mainContent, {backgroundColor: mainContentBackgroundColor}, isSmallScreen ? styles.mainContentColumn : {}]}>
-                <ScoreDisplay state={state} dispatch={dispatch} />
+                <ScoreDisplay state={state} dispatch={dispatch}/>
               </Animated.View>
             </ScrollView>
           </View>
@@ -449,9 +449,9 @@ export default function App() {
       </Animated.View>
 
       {/* Account for bottom padding on Iphone */}
-      <SafeAreaView>
+      {/* <SafeAreaView>
         <AudioPlayer state={state}  menuStyle={{ backgroundColor: '#2C3E50' }}/>
-      </SafeAreaView>
+      </SafeAreaView> */}
     </SafeAreaView>
   );
 }
