@@ -1,3 +1,5 @@
+import MidiPerformance, { changeScorePosition, togglePerformance } from "./components/MidiPerformance"; // Import the function to change score position
+
 const reducer_function = (state: any, action: any) => {
   console.log("Dispatch received.");
   // Conventions vary, but this one is rather common - the action argument
@@ -13,6 +15,9 @@ const reducer_function = (state: any, action: any) => {
     // this object-join notation causes state to only change in one property, playing,
     // which becomes the opposite of what it was before.
     case "start/stop":
+      if (state.midiPerformance.current) {
+        togglePerformance(state.midiPerformance.current);
+      }
       return { ...state, ...{ playing: !state.playing } };
 
     // Example of dispatch call with special parameter:
@@ -100,16 +105,22 @@ const reducer_function = (state: any, action: any) => {
         },
       };
 
-      case "new_score_from_upload":
-        return {
-          ...state, // Keep the existing state
-          scores: [...state.scores, action.score.filename], // Add the new score filename to the scores array
-          score: action.score.filename, // Set the current score to the newly uploaded filename
-          scoreContents: { 
-            ...state.scoreContents, // Keep existing score content
-            [action.score.filename]: action.score.content, // Add the new score content to the scoreContents object using the filename as the key
-          },
-        };
+    case "new_score_from_upload":
+      return {
+        ...state, // Keep the existing state
+        scores: [...state.scores, action.score.filename], // Add the new score filename to the scores array
+        score: action.score.filename, // Set the current score to the newly uploaded filename
+        scoreContents: { 
+          ...state.scoreContents, // Keep existing score content
+          [action.score.filename]: action.score.content, // Add the new score content to the scoreContents object using the filename as the key
+        },
+      };
+      
+    case "update_timestamp":
+      const newTimeBeat = (action.timestamp as number) / (60 / state.tempo);
+      changeScorePosition(state.midiPerformance.current, newTimeBeat);
+      // state.midiPerformance.current.updateScorePosition(action.timestamp as number);
+      return { ...state, ...{ timestamp: action.timestamp as number } };
         
     default: // If no valid type, return state, otherwise the function returns null and the state is gone.
       return state;

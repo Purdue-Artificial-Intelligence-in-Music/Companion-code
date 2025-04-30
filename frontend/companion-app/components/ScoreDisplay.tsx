@@ -22,6 +22,26 @@ export default function ScoreDisplay({
   const [steps, setSteps] = useState<string | null>(""); // state for declaring number of intended cursor iterations
   const [speed, setSpeed] = useState<string | null>(""); // state for speed of cursor update
 
+  useEffect(()=> {
+    if (!cursorRef.current) {
+      console.error("Cursor not initialized.");
+      return;
+    }
+    scrollPositionRef.current = 0;
+
+      const moveCursorStep = (currentTime: number) => {
+        console.log("Current Time:", currentTime);
+        const newTime = currentTime + 0.1; // Convert speed from ms to seconds
+        dispatch({ type: "update_timestamp", timestamp: newTime });
+        setTimeout(() => {
+          moveCursorStep(newTime);
+        }, 0.1 * 1000);
+      };
+    
+    // moveCursorStep(0, state.timestamp);
+    moveCursorStep(state.timestamp);
+  }, [dispatch, state.playing]);
+
   // Function that is used to move cursor x amount of steps, updating the cursor y milleconds
   const moveCursorAhead = () => {
     // Check if cursor is referenced
@@ -39,7 +59,7 @@ export default function ScoreDisplay({
       if (step >= parseInt(steps)) {
         return;
       }
-
+      console.log("Current Cursor", cursorRef)
       // Move the cursor to the next note
       if (cursorRef.current) {
         cursorRef.current.next()
@@ -54,9 +74,12 @@ export default function ScoreDisplay({
       scrollUp(scrollPositionRef.current);
 
       // Schedule the next step after a delay (speed state decides how fast cursor should update)
+      // setTimeout(() => {
+      //   moveCursorStep(step + 1);
+      // }, parseInt(speed)); 
       setTimeout(() => {
         moveCursorStep(step + 1);
-      }, parseInt(speed)); 
+      }, 1000); 
     };
 
     // run move cursor function given an intial starting step number
@@ -182,52 +205,51 @@ export default function ScoreDisplay({
   /////////////////////////////////////////////////////////////////////////////////
   // useEffect to tie the cursor position to the state
   /////////////////////////////////////////////////////////////////////////////////
-//   useEffect(() => {
-//     let ct = state.cursorTimestamp; // current timestamp of cursor's note(s) in seconds
-//     var dt = new Fraction();
-//     console.log("ct:", ct);
-//     if (cursorRef.current?.Iterator.CurrentSourceTimestamp !== undefined) {
-//       var ts_meas = Fraction.createFromFraction(
-//         cursorRef.current?.Iterator.CurrentSourceTimestamp,
-//       ); // current timestamp of iterator as a fraction
-//       console.log("ts_meas:", ts_meas.RealValue);
-//       if (ct > state.timestamp) {
-//         // If timestamp is older, go back to beginning, b/c probably reset
-//         console.log("Moving ct back to beginning.");
-//         ct = 0;
-//         cursorRef.current?.reset();
-//         ts_meas = new Fraction();
-//       }
+  useEffect(() => {
+    let ct = state.cursorTimestamp; // current timestamp of cursor's note(s) in seconds
+    var dt = new Fraction();
+    console.log("ct:", ct);
+    if (cursorRef.current?.Iterator.CurrentSourceTimestamp !== undefined) {
+      var ts_meas = Fraction.createFromFraction(
+        cursorRef.current?.Iterator.CurrentSourceTimestamp,
+      ); // current timestamp of iterator as a fraction
+      console.log("ts_meas:", ts_meas.RealValue);
+      // if (ct > state.timestamp) {
+      //   // If timestamp is older, go back to beginning, b/c probably reset
+      //   console.log("Moving ct back to beginning.");
+      //   ct = 0;
+      //   cursorRef.current?.reset();
+      //   ts_meas = new Fraction();
+      // }
 
-//       // while timestamp is less than desired, update it
-//       while (ct <= state.timestamp) {
-//         cursorRef.current?.Iterator.moveToNextVisibleVoiceEntry(false);
-//         dt = Fraction.minus(
-//           cursorRef.current?.Iterator.CurrentSourceTimestamp,
-//           ts_meas,
-//         );
-//         // dt is a fraction indicating how much - in whole notes - the iterator moved
+      // while timestamp is less than desired, update it
+      while (ct <= state.timestamp) {
+        cursorRef.current?.Iterator.moveToNextVisibleVoiceEntry(false);
+        dt = Fraction.minus(
+          cursorRef.current?.Iterator.CurrentSourceTimestamp,
+          ts_meas,
+        );
+        // dt is a fraction indicating how much - in whole notes - the iterator moved
 
-//         ct +=
-//           (60 * dt.RealValue * state.time_signature.Denominator) /
-//           state.synth_tempo;
-//         console.log("ct:", ct);
-//         ts_meas = Fraction.plus(ts_meas, dt);
-//       }
-//       cursorRef.current?.Iterator.moveToPreviousVisibleVoiceEntry(false);
-//       console.log("Cursor should be updating");
-//       cursorRef.current?.update();
-//       dispatch({
-//         type: "cursor_update",
-//         time:
-//           (60 *
-//             cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue *
-//             state.time_signature.Denominator) /
-//           state.synth_tempo,
-//       });
-//     }
-//   },
-// [state.timestamp]);
+        ct +=
+          (60 * dt.RealValue * state.time_signature.Denominator) /
+          state.synth_tempo;
+        console.log("ct:", ct);
+        ts_meas = Fraction.plus(ts_meas, dt);
+      }
+      cursorRef.current?.Iterator.moveToPreviousVisibleVoiceEntry(false);
+      console.log("Cursor should be updating");
+      cursorRef.current?.update();
+      dispatch({
+        type: "cursor_update",
+        time:
+          (60 *
+            cursorRef.current?.Iterator.CurrentSourceTimestamp.RealValue *
+            state.time_signature.Denominator) /
+          state.synth_tempo,
+      });
+    }
+  }, [state.timestamp]);
 
   return (
     <>

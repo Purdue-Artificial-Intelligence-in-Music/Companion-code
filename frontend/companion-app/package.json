@@ -33,14 +33,19 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
+    "@tonejs/midi": "^2.0.28",
     "@types/react": "~18.2.45",
     "@types/react-native": "^0.73.0",
+    "@types/xml2js": "^0.4.14",
     "eslint": "^8.57.0",
     "eslint-config-expo": "~7.1.2",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
+    "events": "^3.3.0",
     "prettier": "^3.3.3",
-    "typescript": "~5.3.3"
+    "tone": "^15.1.22",
+    "typescript": "~5.3.3",
+    "xml2js": "^0.6.2"
   },
   "private": true
 }

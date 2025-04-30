@@ -17,6 +17,8 @@ import { SynthesizeButton } from "./components/SynthesizeButton";
 import Icon from 'react-native-vector-icons/Feather';
 import { ChromaMaker } from "./utils/features";
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import MidiPerformance, { changeTempo, togglePerformance } from "./components/MidiPerformance";
+
 
 // Define the main application component
 export default function App() {
@@ -45,7 +47,8 @@ export default function App() {
       synth_tempo: 100, // the tempo of the synthesized audio
       tempo: 100, // the tempo in the tempo box (even if changed more recently)
       score_tempo: 100, // the tempo in the musical score
-      scores: [] // the list of scores to choose from
+      scores: [], // the list of scores to choose from
+      midiPerformance: null, // the MidiPerformance object for playing MIDI files
     },
   );
 
@@ -112,6 +115,43 @@ export default function App() {
      if (audioCtx) audioCtx.close();
    };
  }, [started]);
+
+  state.midiPerformance = React.useRef<MidiPerformance | null>(null);
+
+  // Initialize MidiPerformance when the score changes
+  useEffect(() => {
+    if (state.score) {
+      // midiPerformance.current = new MidiPerformance(
+      //   `http://127.0.0.1:5000/scores/${state.score}`, // Replace with the correct endpoint for MIDI files
+      //   state.tempo
+      // );
+      state.midiPerformance.current = new MidiPerformance(
+        `${state.score}`, // Replace with the correct endpoint for MIDI files
+        state.tempo
+      );
+      // dispatch({ type: "set_midi_performance", midiPerformance: state.midiPerformance });
+      // midiPerformance.current = new MidiPerformance(
+      //   `http://localhost:8081/scores/${state.score}`, // Replace with the correct endpoint for MIDI files
+      //   state.tempo
+      // );
+      console.log("MidiPerformance initialized with score:", state.score);
+    }
+  }, [state.score]);
+
+  // Update tempo in MidiPerformance when state.tempo changes
+  useEffect(() => {
+    if (state.midiPerformance.current) {
+      changeTempo(state.midiPerformance.current, state.tempo);
+    }
+  }, [state.tempo]);
+
+  // Handle start/stop functionality
+  const handleStartStop = async () => {
+    if (state.midiPerformance.current) {
+      await togglePerformance(state.midiPerformance.current);
+      dispatch({ type: "start/stop" }); // Toggle playing state
+    }
+  };
 
   ////////////////////////////////////////////////////////////////////////////////
   // The lines below were modified, copied and pasted out of the audio recorder object
