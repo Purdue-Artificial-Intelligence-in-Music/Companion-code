@@ -17,7 +17,10 @@ import { SynthesizeButton } from "./components/SynthesizeButton";
 import Icon from 'react-native-vector-icons/Feather';
 import { ChromaMaker } from "./utils/features";
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+<<<<<<< HEAD
 import { ExpoMicProcessor } from './utils/ExpoMicProcessor';
+=======
+>>>>>>> main
 
 // Define the main application component
 export default function App() {
@@ -146,6 +149,56 @@ export default function App() {
     }
   };
 
+ }, [started]);
+
+ // Initialize the chroma state as an array of 12 zeros (used to capture chroma vector at each chunk of audio).
+ const [chroma, setChroma] = useState<number[]>(new Array(12).fill(0));
+ const [started, setStarted] = useState(false); // state used to determine user selects live microphone option or not
+
+ useEffect(() => {
+   let audioCtx: AudioContext; // Declare a reference to the AudioContext, which manages all audio processing
+   let micStream: MediaStream; // Declare a reference to the MediaStream from the user's microphone
+
+   const initAudio = async () => {
+     try {
+       micStream = await navigator.mediaDevices.getUserMedia({ audio: true }); // Request access to user's microphone
+       audioCtx = new AudioContext(); // Create a new AudioContext for audio processing
+       await audioCtx.audioWorklet.addModule('../utils/mic-processor.js'); // Load the custom AudioWorkletProcessor
+       const source = audioCtx.createMediaStreamSource(micStream); // Create a source node from the microphone stream
+       const workletNode = new AudioWorkletNode(audioCtx, 'mic-processor');  // Create an AudioWorkletNode linked to our custom 'mic-processor'
+       source.connect(workletNode); // Connect the mic source to the worklet
+       workletNode.connect(audioCtx.destination); // connect worklet to output 
+
+      // Initialize the ChromaMaker for extracting chroma features
+       const n_fft = 4096;
+       const chromaMaker = new ChromaMaker(audioCtx.sampleRate, n_fft); 
+
+      // Handle incoming audio chunks from the worklet
+       workletNode.port.onmessage = (event) => {
+         const audioChunk = event.data as Float32Array;
+         try {
+            // Extract chroma features and update state
+           const chromaResult = chromaMaker.insert(audioChunk);
+           setChroma(chromaResult);
+         } catch (e) {
+           console.error('Chroma extraction error:', e);
+         }
+       };
+     } catch (err) {
+       console.error('Failed to initialize audio:', err);
+     }
+   };
+   // If "started" state is true, initialize audio processing
+   if (started) {
+     initAudio();
+   }
+   
+   // Cleanup: when the component unmounts or `started` becomes false, 
+   // stop the microphone stream and close the audio context to free up resources
+   return () => {
+     if (micStream) micStream.getTracks().forEach((track) => track.stop());
+     if (audioCtx) audioCtx.close();
+   };
  }, [started]);
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -339,12 +392,16 @@ export default function App() {
   const { width, height } = useWindowDimensions()
   // Boolean used for dynmaic display (row or column)
   const isSmallScreen = width < 960;
+<<<<<<< HEAD
   // const noteLabels = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+=======
+>>>>>>> main
 
   ////////////////////////////////////////////////////////////////////////////////
   // Render the component's UI
   ////////////////////////////////////////////////////////////////////////////////
   return (
+<<<<<<< HEAD
 
     // BG Color for iphone padding - no padding if on landscape mode (top and bottom)
     <SafeAreaView style={[styles.container, {backgroundColor: width < height? '#2C3E50': ""}]} >
@@ -370,6 +427,27 @@ export default function App() {
       </SafeAreaView>
 
 
+=======
+    <SafeAreaView style={[styles.container]}>
+      {/* Header with image */}
+      <Animated.View style={[styles.menu_bar, {backgroundColor: menubarBackgroundColor, height: isSmallScreen? 40: 80}]}>
+        <Image source={require('./assets/companion.png')} style={[styles.logo, {height: isSmallScreen? 30: 100, width: isSmallScreen? 100: 200}]}/>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity onPress={() => setStarted(!started)}>
+            <FontAwesome
+              name={started ? 'microphone' : 'microphone-slash'}
+              size={isSmallScreen ? 15 : 30}
+              color="white"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={toggleTheme}>
+            <Icon name={theme === 'light' ? 'sun' : 'moon'} size={isSmallScreen? 15: 30} color="white" />
+          </TouchableOpacity>
+
+        </View>
+        
+      </Animated.View>
+>>>>>>> main
 
         {/* Provides safe area insets for mobile devices */}
         <Animated.View style={[styles.container, { backgroundColor: containerBackgroundColor }]}>
@@ -428,6 +506,7 @@ export default function App() {
               </Animated.View>
             </ScrollView>
           </View>
+<<<<<<< HEAD
 
           {/* Chroma Vector Display - commented out just in case we need to check if mic works */}
           {/* <View style={chromaStyles.container}>
@@ -442,16 +521,22 @@ export default function App() {
             </View>
             
           </View> */}
+=======
+>>>>>>> main
           {/* Footer display for status */}
           <StatusBar style="auto" />
           {/* Automatically adjusts the status bar style */}
         </ScrollView>
       </Animated.View>
+<<<<<<< HEAD
 
       {/* Account for bottom padding on Iphone */}
       {/* <SafeAreaView>
         <AudioPlayer state={state}  menuStyle={{ backgroundColor: '#2C3E50' }}/>
       </SafeAreaView> */}
+=======
+      <AudioPlayer state={state}  menuStyle={{ backgroundColor: menubarBackgroundColor }}/>
+>>>>>>> main
     </SafeAreaView>
   );
 }

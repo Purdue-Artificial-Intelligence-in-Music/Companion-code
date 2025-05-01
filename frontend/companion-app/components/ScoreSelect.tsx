@@ -47,9 +47,37 @@ export function Score_Select({
     'twelve_duets.musicxml',
   ];
   
+<<<<<<< HEAD
   useEffect(() => {
     dispatch({ type: "new_scores_from_backend", scores: musicxmlFiles }); // pass in defined array of musicxml files
   }, [dispatch]);
+=======
+  useEffect(()=> {
+    dispatch({ type: "new_scores_from_backend", scores: musicxmlFiles }); // pass in defined array of musicxml files
+  }, [dispatch])
+
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const xmlContent = e.target?.result as string; 
+      const fileName = file.name; // extract the file name 
+
+      if (!state.scores.includes(fileName)) { // only add new score if the new uploaded score's name isn't already stored within scores
+        const newScore = {
+          filename: file.name,
+          piece: file.name.replace(".musicxml", ""),
+          content: xmlContent,
+        };
+        dispatch({ type: "new_score_from_upload", score: newScore }); 
+      }
+    };
+
+    reader.onerror = (e) => {
+      console.error("Error reading file:", e);
+    };
+    reader.readAsText(file);
+  };
+>>>>>>> main
 
   // Web file upload handler
   const noteFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

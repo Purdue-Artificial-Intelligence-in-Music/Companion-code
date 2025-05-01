@@ -97,6 +97,7 @@ export default function ScoreDisplay({
     }
 
 
+<<<<<<< HEAD
     // Web Approach to moving cursor by beats
 
     // Ensure OSMD is loaded and rendered
@@ -226,6 +227,15 @@ export default function ScoreDisplay({
           osmContainerRef.current.removeChild(
             osmContainerRef.current.children[0],
           );
+=======
+        osdRef.current = osm;
+        // If score name is a key within ScoreContents use the xml content value within that key, otherwise access xml content through the static key value mapping defined within scores.ts
+        const xmlContent = (state.scoreContents && state.scoreContents[selectedScore]) || scoresData[selectedScore];
+        // Error handling if no xml content for selected score is found
+        if (!xmlContent) {
+          console.error("Score content not found for:", selectedScore);
+          return;
+>>>>>>> main
         }
       }
 

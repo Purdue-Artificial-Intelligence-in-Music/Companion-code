@@ -33,12 +33,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //  - fft-js (for FFT computation on audio frames)
 
 // Import necessary modules
+<<<<<<< HEAD
 // const fs = require('fs');
 const wav = require('node-wav');
 const waveResampler = require('wave-resampler');
 const { fft } = require('fft-js');
 import * as FileSystem from 'expo-file-system';
 import { Buffer } from 'buffer';
+=======
+const fs = require('fs');
+const wav = require('node-wav');
+const waveResampler = require('wave-resampler');
+const { fft } = require('fft-js');
+>>>>>>> main
 
 /**
  * Equivalent to Python function pitch_freqs.
@@ -296,6 +303,7 @@ function audio_to_np_cens(y: Float32Array | number[], sr: number, n_fft: number,
  *        { sr: desired sample rate (Hz), n_fft: FFT length, ref_hop_len: hop length in samples }.
  * @returns A 12 x M chromagram matrix as a 2D array of numbers.
  */
+<<<<<<< HEAD
 async function file_to_np_cens(
     fileUri: string,
     params: { sr: number; n_fft: number; ref_hop_len: number }
@@ -351,6 +359,41 @@ async function file_to_np_cens(
     );
   }
   
+=======
+function file_to_np_cens(filepath: string, params: { sr: number; n_fft: number; ref_hop_len: number; }): number[][] {
+    // Read the file and decode WAV audio
+    const buffer = fs.readFileSync(filepath);
+    const result = wav.decode(buffer);
+    let audioData: Float32Array = result.channelData[0];
+    // If more than one channel, convert to mono by averaging channels
+    if (result.channelData.length > 1) {
+        const numChannels = result.channelData.length;
+        const length = result.channelData[0].length;
+        // Average across channels for each sample
+        const mono = new Float32Array(length);
+        for (let i = 0; i < length; i++) {
+            let sum = 0;
+            for (let ch = 0; ch < numChannels; ch++) {
+                sum += result.channelData[ch][i];
+            }
+            mono[i] = sum / numChannels;
+        }
+        audioData = mono;
+    }
+    // Resample to desired sample rate if needed
+    const origSr = result.sampleRate;
+    const targetSr = params.sr;
+    let resampled: Float32Array = audioData;
+    if (origSr !== targetSr) {
+        // Use wave-resampler to resample from origSr to targetSr
+        // The resample function returns a Float32Array (by default, uses cubic interpolation with anti-aliasing).
+        const resampledData: Float32Array | number[] = waveResampler.resample(audioData, origSr, targetSr);
+        resampled = resampledData instanceof Float32Array ? resampledData : Float32Array.from(resampledData);
+    }
+    // Now compute the chromagram from the audio data
+    return audio_to_np_cens(resampled, targetSr, params.n_fft, params.ref_hop_len);
+}
+>>>>>>> main
 
 // Export functions and class for external use
 export { pitch_freqs, spec_to_pitch_mtx, ChromaMaker, audio_to_np_cens, file_to_np_cens };
