@@ -26,6 +26,8 @@ export default function ScoreDisplay({
   const scrollPositionRef = useRef<number>(0); // ref to keep track of current y position of scroll view (used ref instead of state to prevent rerender when scroll)
   const [steps, setSteps] = useState<string>(""); // state for declaring number of intended cursor iterations
   const [speed, setSpeed] = useState<string>(""); // state for speed of cursor update
+  const { width, height } = useWindowDimensions()
+  const isSmallScreen = width < 960;
 
   const moveCursorByBeats = () => {
 
@@ -255,7 +257,9 @@ export default function ScoreDisplay({
             ...cursorRef.current.CursorOptions,
             follow: true,
           };
-          //osdRef.current!.zoom = .45
+          if (isSmallScreen) {
+            osdRef.current!.zoom = .45
+          }
 
           // TODO!  Find the piece's tempo and send that instead of constant 100
           dispatch({
