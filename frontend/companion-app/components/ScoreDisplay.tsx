@@ -62,8 +62,11 @@ export default function ScoreDisplay({
           const denom = measures[0][0].parentSourceMeasure.ActiveTimeSignature.denominator;
 
           // initial beats under cursor
-          let accumulated = 0;
-          const initVoices = cursor.VoicesUnderCursor();
+          let accumulated = -1;
+
+          const topPart = osd.Sheet.Instruments[0];
+
+          const initVoices = cursor.VoicesUnderCursor(topPart);
           if (initVoices.length && initVoices[0].Notes.length) {
             const len = initVoices[0].Notes[0].Length;
             accumulated += (len.Numerator / len.Denominator) * denom;
@@ -77,15 +80,17 @@ export default function ScoreDisplay({
             }
 
             cursor.next();
-            const voices = cursor.VoicesUnderCursor();
+            const voices = cursor.VoicesUnderCursor(topPart);
             if (!voices.length || !voices[0].Notes.length) {
               console.warn("Ran out of entries before hitting target beats.");
-              osd.render();
-              return;
-            }
+              //osd.render();
+              //return;
+            } else {
+              const nextLen = voices[0].Notes[0].Length;
+              accumulated += (nextLen.Numerator / nextLen.Denominator) * denom;
+             }
 
-            const nextLen = voices[0].Notes[0].Length;
-            accumulated += (nextLen.Numerator / nextLen.Denominator) * denom;
+            
 
             osd.render();
             setTimeout(stepFn, ${parseInt(speed)});
@@ -99,6 +104,14 @@ export default function ScoreDisplay({
       webviewRef.current.injectJavaScript(script);
       return;
     }
+
+    // Ensure OSMD is loaded and rendered
+    if (!osdRef.current!.IsReadyToRender()) {
+      console.warn("Please call osmd.load() and osmd.render() before stepping the cursor.");
+      return;
+    }
+
+
     function debugCursor() {
 
       
@@ -307,7 +320,7 @@ export default function ScoreDisplay({
             ...cursorRef.current.CursorOptions,
             follow: true,
           };
-          osdRef.current!.zoom = .45
+          //osdRef.current!.zoom = .45
 
           // TODO!  Find the piece's tempo and send that instead of constant 100
           dispatch({
