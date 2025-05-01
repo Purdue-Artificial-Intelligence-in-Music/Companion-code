@@ -13,46 +13,45 @@ export default function ScoreDisplay({
   dispatch: any;
 }) {
   
-  // web-only refs
+  // Web-only refs
   const osmContainerRef = useRef<HTMLDivElement | null>(null); // Reference for the SVG container
-
   // Create refs to the cursor and to the OSDiv
   const cursorRef = useRef<Cursor | null>(null);
   const osdRef = useRef<OpenSheetMusicDisplay | null>(null);
 
-  // native-only refs
+  // Native-only ref (Used to inject html code into since OSMD is only supported through browser)
   const webviewRef = useRef<WebView>(null);
 
   const scrollViewRef = useRef<ScrollView>(null); // reference to scroll view component
   const scrollPositionRef = useRef<number>(0); // ref to keep track of current y position of scroll view (used ref instead of state to prevent rerender when scroll)
   const [steps, setSteps] = useState<string>(""); // state for declaring number of intended cursor iterations
   const [speed, setSpeed] = useState<string>(""); // state for speed of cursor update
-  const { width, height } = useWindowDimensions();
-  const isLandscapeMode = width < height;
+
   const moveCursorByBeats = () => {
 
-     // Mobile  approach
+     // Mobile approach
     if (Platform.OS !== "web") {
+
+      // Check to make sure WebView component exists to continue 
       if (!webviewRef.current) {
         console.error("WebView not initialized.");
         return;
       }
 
       // Build one injected script that:
-      // 1. Grabs time‐sig denominator
-      // 2. Accumulates beats under the cursor
+      // 1. Grabs time‐sig denominator (Assumption: Only dealing with pieces with a fixed time signature)
+      // 2. Accumulates beats under the cursor (first instrument only)
       // 3. Recursively steps until totalBeats reached or passed 
-      // This script us the same used in the web version below
+      // This script is essentially the same movement logic on the web version 
+
       const script = `
         (function() {
           const osd = window.osm;
           const cursor = window.cursor;
-
           if (!osd.IsReadyToRender()) {
             console.warn("Please call osmd.load() and osmd.render() before stepping the cursor.");
             return;
           }
-
           // get denom of first measure
           const measures = osd.GraphicSheet.MeasureList;
           if (!measures.length || !measures[0].length) {
@@ -60,25 +59,20 @@ export default function ScoreDisplay({
             return;
           }
           const denom = measures[0][0].parentSourceMeasure.ActiveTimeSignature.denominator;
-
           // initial beats under cursor
           let accumulated = -1;
-
           const topPart = osd.Sheet.Instruments[0];
-
           const initVoices = cursor.VoicesUnderCursor(topPart);
           if (initVoices.length && initVoices[0].Notes.length) {
             const len = initVoices[0].Notes[0].Length;
             accumulated += (len.Numerator / len.Denominator) * denom;
           }
-
           // recursive step
           function stepFn() {
             if (accumulated >= ${parseInt(steps)}) {
               osd.render();
               return;
             }
-
             cursor.next();
             const voices = cursor.VoicesUnderCursor(topPart);
             if (!voices.length || !voices[0].Notes.length) {
@@ -89,73 +83,25 @@ export default function ScoreDisplay({
               const nextLen = voices[0].Notes[0].Length;
               accumulated += (nextLen.Numerator / nextLen.Denominator) * denom;
              }
-
-            
-
             osd.render();
             setTimeout(stepFn, ${parseInt(speed)});
           }
-
           stepFn();
         })();
         true;
       `;
-
       webviewRef.current.injectJavaScript(script);
       return;
     }
 
-    // Ensure OSMD is loaded and rendered
-    if (!osdRef.current!.IsReadyToRender()) {
-      console.warn("Please call osmd.load() and osmd.render() before stepping the cursor.");
-      return;
-    }
 
-
-    function debugCursor() {
-
-      
-      // 1) grab every voice‐entry under the cursor
-      const allVoices = cursorRef.current!.VoicesUnderCursor();
-    
-      // 2) if there's also an Iterator you can get the tick or timestamp
-      const ts = cursorRef.current!.Iterator.currentTimeStamp;
-      console.log(`\n--- Cursor at tick ${ts} ---`);
-      console.log(allVoices.length)
-      // 3) log each entry's staff & notes
-      allVoices.forEach((ve, i) => {
-        // depending on OSMD version this might be .SourceStaffEntry or .ParentSourceStaffEntry
-        const staffEntry = ve.ParentSourceStaffEntry ?? ve.ParentSourceStaffEntry
-        const staffId = staffEntry.ParentStaff.Id;
-        const notes = ve.Notes;
-        //console.log("ve: ", ve)
-        console.log(
-          `VoiceEntry[${i}]: staffId=${staffId}, notes count=${notes.length}`
-        );
-        notes.forEach((n, j) => {
-          const len = n.Length as Fraction;
-          console.log(
-            `   Note[${j}]: isRest=${n.isRest}, pitch=${n.Pitch?.ToString() ?? '–'}, length=${len.Numerator}/${len.Denominator}`
-          );
-        });
-      });
-    
-      // 4) finally show which ones would count for you
-      const topStaff = allVoices.filter(ve => {
-        const staffEntry = ve.ParentSourceStaffEntry ?? ve.ParentSourceStaffEntry
-        return staffEntry.ParentStaff.Id === 1;
-      });
-      console.log(`>>> top‐staff entries: ${topStaff.length}\n`);
-    }
-    
+    // Web Approach to moving cursor by beats
 
     // Ensure OSMD is loaded and rendered
     if (!osdRef.current!.IsReadyToRender()) {
       console.warn("Please call osmd.load() and osmd.render() before stepping the cursor.");
       return;
     }
-
-
 
     // Grab all measure’s time signature 
     const measures = osdRef.current!.GraphicSheet.MeasureList;
@@ -163,31 +109,34 @@ export default function ScoreDisplay({
       console.warn("No measures found after render()."); // error handling when no measures are found
       return;
     }
+    
+    // This first part is accounting for the note that the cursor is hovering on load 
 
     // Take the first measure's time signature denominator (e.g. 4 in “4/4”)
     const denom = measures[0][0].parentSourceMeasure.ActiveTimeSignature!.denominator;
   
     // Compute the starting accumulated beats under the cursor
-    let accumulated = -1; // Represents the total number of beats the cursor has gone through
+    let accumulated = -1; // Represents the total number of beats the cursor has gone through (-1 so it is 0 indexed)
 
+    // Focus on only the voice entries of the first instrument
     const topPart = osdRef.current!.Sheet.Instruments[0];
-    // 1) get the VoiceEntry array in that part
     const initial = osdRef.current!.cursor.VoicesUnderCursor(topPart);
     
-  
     // Only proceed if there’s at least one voice and that voice has at least one note
     if (initial.length && initial[0].Notes.length) {
       
       // Find the value of current note. e.g. 1/4 = Quarter Note 
       const len = initial[0].Notes[0].Length as Fraction;
+
+      // Multiply fraction value of current note by denominator of time signature to get how much beat this current note is worth
+      // The add to cumulative number of beats the cursor as went over so far
       accumulated += (len.Numerator / len.Denominator) * denom;
     }
 
-  
     // Make sure Y position is always 0 when starting the cursor 
     let scrollPosition = 0;
   
-    // Recursive step function
+    // Recursive step function used to
     function stepFn() {
       
       // Stop when we've reached (or exceeded) target beats
@@ -195,38 +144,24 @@ export default function ScoreDisplay({
         osdRef.current!.render(); // final render to show final cursor position
         return; 
       }
+      cursorRef.current!.next(); // Advance cursor one note 
       
-      cursorRef.current!.next(); // Advance cursor one entry
-      
-      //debugCursor()
-
-      // Accumulate the next note/rest length in beats
+      // Get voice entries of new position of cursor (only focused on first instrument) 
       const voice = cursorRef.current!.VoicesUnderCursor(topPart);
-      console.log("v:", voice)
-      if (!voice.length || !voice[0].Notes.length) {
-        console.log("skip due to empty notes")
-      } else {
 
+      if (!voice.length || !voice[0].Notes.length) { // If no notes for first instrument, continue to next note
+        console.log("skip due to empty notes")
+
+      } else { // Case if there is a note, we get it's value in beats and add to our cumulative beats
         const len = voice[0].Notes[0].Length as Fraction; 
         accumulated += (len.Numerator / len.Denominator) * denom; // Find how many beats that note is worth based on denominator of time signature
       }
-      
-      
-      
-    
-      
-      console.log(accumulated)
-      console.log(steps)
-      console.log("===========================================================")
+
       osdRef.current!.render(); // Re-render to show the moved cursor
-
       scrollUp(scrollPosition); // Scroll to saved position after rerendering the OSM container
-
-      // Schedule the next step after a delay (speed state decides how fast cursor should update)
-      setTimeout(stepFn, parseInt(speed));
+      setTimeout(stepFn, parseInt(speed)); // Schedule the next step after a delay (speed state decides how fast cursor should update)
     }
-  
-    // run move cursor function
+    // Start the cursor movement logic
     stepFn();
   }
   
@@ -373,22 +308,22 @@ export default function ScoreDisplay({
     } // Dependency array means this effect runs once when the component mounts and again when a new score is selected
   }, [dispatch, state.score, state.scores])
 
-// Define the handler to catch messages from the WebView:
+// Define the handler to catch messages sent from the WebView back to React Native
 const onMessage = (event: any) => {
   try {
-    // Obtain the string passed via postMessage(...)
+    // Extract the message string sent via window.ReactNativeWebView.postMessage(...)
     const data = JSON.parse(event.nativeEvent.data);
 
-    // Handle the 'loaded' event we sent from the <script> when the score finished rendering
+    // We expect a message of type 'loaded' sent after OSMD has finished rendering
     if (data.type === 'loaded') {
       dispatch({
         type: 'update_piece_info',
         time_signature: data.time_signature,
-        tempo: data.tempo,                   
+        tempo: data.tempo,
       });
     }
   } catch (e) {
-    // In case the message isn't valid JSON or misses fields
+    // Catch and log any errors during message parsing or if expected fields are missing
     console.error('Failed to parse WebView message', e);
   }
 };

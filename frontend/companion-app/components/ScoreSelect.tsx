@@ -81,36 +81,39 @@ export function Score_Select({
   const nativeNoteFileUpload = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*', 
-        copyToCacheDirectory: true,
+        type: '*/*', // Alllow any file
+        copyToCacheDirectory: true, // Save to cache for performance
       });
   
-      if (result.canceled || !result.assets || result.assets.length === 0) {
+      if (result.canceled || !result.assets || result.assets.length === 0) { // Error handling  
         console.log("No file selected or canceled");
         return;
       }
-  
+      // Extract the file URI and name from the result
       const { uri, name: fileName } = result.assets[0];
       console.log("lets goooo!", fileName);
-  
+      
+      // Error handling if file is not type .musicxml 
       if (!fileName.toLowerCase().endsWith('.musicxml')) {
         alert('Please select a .musicxml file');
         return;
       }
-  
+      // Only read from URI if file name is not already in the available scores
       if (!state.scores.includes(fileName)) {
         const xmlContent = await FileSystem.readAsStringAsync(uri, {
           encoding: FileSystem.EncodingType.UTF8,
         });
-  
+        
+        // Setup payload  (object containing: filename, piecename (filtered out .musicxml), and the loaded xml content)
         const newScore = {
           filename: fileName,
           piece: fileName.replace(/\.musicxml$/, ''),
           content: xmlContent,
         };
-  
+
         dispatch({ type: 'new_score_from_upload', score: newScore });
       }
+      // Catch any errors (e.g. getting file using DocumentPicker or reading using FileSystem)
     } catch (err) {
       console.error('Error picking document:', err);
       alert('Something went wrong. Check console.');
@@ -137,7 +140,7 @@ export function Score_Select({
             label: "Select a score",
             value: "",
           }}
-          // drop down arrow for mobile to select score
+          // Drop down arrow for mobile to select score
           Icon={Platform.OS !== 'web' ? () => <Icon name="chevron-down" size={16} color="#000" /> : undefined}
         />
       </View>
@@ -145,11 +148,13 @@ export function Score_Select({
       <Animated.Text style={{ color: textStyle, marginTop: 12}}>Or upload a new score:</Animated.Text>
       <Animated.View style={[styles.input, { borderBottomWidth: 2, borderBottomColor: borderStyle, paddingBottom: 24 }]}>      
 
-        {/* if on browser render upload field for web*/}
-        {Platform.OS === 'web' ? (
+        {/* If on browser render upload field for web*/}
+        {Platform.OS === 'web' ? 
+        (
           <input type="file" accept=".musicxml" onChange={noteFileUpload} style={{ color: '#000' }} />
-        ) : (
-          // else render upload field for mobile
+        ) : 
+        (
+          // Else render upload field for mobile
           <Animated.View 
             style={
               [...button_format]
@@ -159,7 +164,6 @@ export function Score_Select({
                 <Animated.Text style={{color: button_text_style, fontWeight: "bold"}}>Upload File</Animated.Text>
               </TouchableOpacity>
           </Animated.View>
-          
         )}
       </Animated.View>
     </View>
