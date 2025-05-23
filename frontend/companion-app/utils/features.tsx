@@ -33,10 +33,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //  - fft-js (for FFT computation on audio frames)
 
 // Import necessary modules
-const fs = require('fs');
+// const fs = require('fs');
 const wav = require('node-wav');
 const waveResampler = require('wave-resampler');
 const { fft } = require('fft-js');
+import * as FileSystem from 'expo-file-system';
+import { Buffer } from 'buffer';
 
 /**
  * Equivalent to Python function pitch_freqs.
@@ -294,39 +296,61 @@ function audio_to_np_cens(y: Float32Array | number[], sr: number, n_fft: number,
  *        { sr: desired sample rate (Hz), n_fft: FFT length, ref_hop_len: hop length in samples }.
  * @returns A 12 x M chromagram matrix as a 2D array of numbers.
  */
-function file_to_np_cens(filepath: string, params: { sr: number; n_fft: number; ref_hop_len: number; }): number[][] {
-    // Read the file and decode WAV audio
-    const buffer = fs.readFileSync(filepath);
-    const result = wav.decode(buffer);
-    let audioData: Float32Array = result.channelData[0];
-    // If more than one channel, convert to mono by averaging channels
+async function file_to_np_cens(
+    fileUri: string,
+    params: { sr: number; n_fft: number; ref_hop_len: number }
+  ): Promise<number[][]> {
+    // Verify the file exists
+    const info = await FileSystem.getInfoAsync(fileUri, { size: true });
+    if (!info.exists) {
+      throw new Error(`File not found at ${fileUri}`);
+    }
+  
+    // Read the file as a Base64‑encoded string
+    const base64 = await FileSystem.readAsStringAsync(fileUri, {
+      encoding: FileSystem.EncodingType.Base64
+    });
+    const buffer = Buffer.from(base64, 'base64');
+  
+    // Decode WAV buffer
+    const result = wav.decode(buffer.buffer as ArrayBuffer);
+    let audioData = result.channelData[0];
+  
+    // Convert to mono if needed
     if (result.channelData.length > 1) {
-        const numChannels = result.channelData.length;
-        const length = result.channelData[0].length;
-        // Average across channels for each sample
-        const mono = new Float32Array(length);
-        for (let i = 0; i < length; i++) {
-            let sum = 0;
-            for (let ch = 0; ch < numChannels; ch++) {
-                sum += result.channelData[ch][i];
-            }
-            mono[i] = sum / numChannels;
-        }
-        audioData = mono;
+      const numCh = result.channelData.length;
+      const len = audioData.length;
+      const mono = new Float32Array(len);
+      for (let i = 0; i < len; i++) {
+        let sum = 0;
+        for (let ch = 0; ch < numCh; ch++) sum += result.channelData[ch][i];
+        mono[i] = sum / numCh;
+      }
+      audioData = mono;
     }
-    // Resample to desired sample rate if needed
-    const origSr = result.sampleRate;
-    const targetSr = params.sr;
-    let resampled: Float32Array = audioData;
-    if (origSr !== targetSr) {
-        // Use wave-resampler to resample from origSr to targetSr
-        // The resample function returns a Float32Array (by default, uses cubic interpolation with anti-aliasing).
-        const resampledData: Float32Array | number[] = waveResampler.resample(audioData, origSr, targetSr);
-        resampled = resampledData instanceof Float32Array ? resampledData : Float32Array.from(resampledData);
+  
+    // Resample if sample rates differ
+    if (result.sampleRate !== params.sr) {
+      const resampled = waveResampler.resample(
+        audioData,
+        result.sampleRate,
+        params.sr
+      );
+      audioData =
+        resampled instanceof Float32Array
+          ? resampled
+          : Float32Array.from(resampled as number[]);
     }
-    // Now compute the chromagram from the audio data
-    return audio_to_np_cens(resampled, targetSr, params.n_fft, params.ref_hop_len);
-}
+  
+    // Compute and return the chromagram
+    return audio_to_np_cens(
+      audioData,
+      params.sr,
+      params.n_fft,
+      params.ref_hop_len
+    );
+  }
+  
 
 // Export functions and class for external use
 export { pitch_freqs, spec_to_pitch_mtx, ChromaMaker, audio_to_np_cens, file_to_np_cens };

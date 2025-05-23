@@ -1,17 +1,24 @@
-import { StyleSheet, View, Text, TextStyle, Animated } from "react-native";
+import { StyleSheet, View, Text, Animated, Platform, TouchableOpacity } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 import React, { useEffect } from "react";
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import Icon from "react-native-vector-icons/FontAwesome";
 
 export function Score_Select({
   state,
   dispatch,
   textStyle,
-  borderStyle
+  borderStyle, 
+  button_format,
+  button_text_style
 }: {
   state: { score: string; scores: string[] };
   dispatch: Function;
   textStyle: Animated.AnimatedInterpolation<string | number>;
   borderStyle: Animated.AnimatedInterpolation<string | number>
+  button_format: object[];
+  button_text_style: Animated.AnimatedInterpolation<string | number>;
 }) {
   // Fetch scores from the backend
   // useEffect(() => {
@@ -35,48 +42,88 @@ export function Score_Select({
   // }, [dispatch]);
 
   // Array of score names used to render score display options 
+  // Array of score names used to render score display options 
   const musicxmlFiles: string[] = [
     'air_on_the_g_string.musicxml',
     'twelve_duets.musicxml',
   ];
   
-  useEffect(()=> {
+  useEffect(() => {
     dispatch({ type: "new_scores_from_backend", scores: musicxmlFiles }); // pass in defined array of musicxml files
-  }, [dispatch])
+  }, [dispatch]);
 
-  const handleFileUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const xmlContent = e.target?.result as string; 
-      const fileName = file.name; // extract the file name 
-
-      if (!state.scores.includes(fileName)) { // only add new score if the new uploaded score's name isn't already stored within scores
-        const newScore = {
-          filename: file.name,
-          piece: file.name.replace(".musicxml", ""),
-          content: xmlContent,
-        };
-        dispatch({ type: "new_score_from_upload", score: newScore }); 
-      }
-    };
-
-    reader.onerror = (e) => {
-      console.error("Error reading file:", e);
-    };
-    reader.readAsText(file);
-  };
-
+  // Web file upload handler
   const noteFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      handleFileUpload(file);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const xmlContent = ev.target?.result as string;
+        const fileName = file.name; // extract the file name 
+        if (!state.scores.includes(fileName)) { // only add new score if the new uploaded score's name isn't already stored within scores
+          const newScore = {
+            filename: fileName,
+            piece: fileName.replace(".musicxml", ""),
+            content: xmlContent,
+          };
+          dispatch({ type: "new_score_from_upload", score: newScore });
+        }
+      };
+      reader.onerror = (e) => {
+        console.error("Error reading file:", e);
+      };      
+      reader.readAsText(file);
     } else {
-      console.log("Fail");
+      console.log("No file selected");
     }
   };
 
+  // mobile file upload handler
+  const nativeNoteFileUpload = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*', // Alllow any file
+        copyToCacheDirectory: true, // Save to cache for performance
+      });
+  
+      if (result.canceled || !result.assets || result.assets.length === 0) { // Error handling  
+        console.log("No file selected or canceled");
+        return;
+      }
+      // Extract the file URI and name from the result
+      const { uri, name: fileName } = result.assets[0];
+      console.log("lets goooo!", fileName);
+      
+      // Error handling if file is not type .musicxml 
+      if (!fileName.toLowerCase().endsWith('.musicxml')) {
+        alert('Please select a .musicxml file');
+        return;
+      }
+      // Only read from URI if file name is not already in the available scores
+      if (!state.scores.includes(fileName)) {
+        const xmlContent = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+        
+        // Setup payload  (object containing: filename, piecename (filtered out .musicxml), and the loaded xml content)
+        const newScore = {
+          filename: fileName,
+          piece: fileName.replace(/\.musicxml$/, ''),
+          content: xmlContent,
+        };
+
+        dispatch({ type: 'new_score_from_upload', score: newScore });
+      }
+      // Catch any errors (e.g. getting file using DocumentPicker or reading using FileSystem)
+    } catch (err) {
+      console.error('Error picking document:', err);
+      alert('Something went wrong. Check console.');
+    }
+  };
+  
+
   return (
-    <View >
+    <View>
       <Animated.Text style={[{color: textStyle}, styles.text]}>Select a score:</Animated.Text>
       <View style={styles.input}>
         <RNPickerSelect
@@ -92,13 +139,33 @@ export function Score_Select({
           }))}
           placeholder={{
             label: "Select a score",
-            value: "air_on_the_g_string.musicxml",
+            value: "",
           }}
+          // Drop down arrow for mobile to select score
+          Icon={Platform.OS !== 'web' ? () => <Icon name="chevron-down" size={16} color="#000" /> : undefined}
         />
       </View>
-      <Animated.Text style={[styles.text, {color: textStyle}]}>Or upload a new score:</Animated.Text>
-      <Animated.View style={[styles.input, { borderBottomWidth: 2, borderBottomColor: borderStyle, paddingBottom: 24 }]}>
-        <input type="file" accept=".musicxml" onChange={noteFileUpload} style={{color: "#000"}}/>
+
+      <Animated.Text style={{ color: textStyle, marginTop: 12}}>Or upload a new score:</Animated.Text>
+      <Animated.View style={[styles.input, { borderBottomWidth: 2, borderBottomColor: borderStyle, paddingBottom: 24 }]}>      
+
+        {/* If on browser render upload field for web*/}
+        {Platform.OS === 'web' ? 
+        (
+          <input type="file" accept=".musicxml" onChange={noteFileUpload} style={{ color: '#000' }} />
+        ) : 
+        (
+          // Else render upload field for mobile
+          <Animated.View 
+            style={
+              [...button_format]
+            }
+            >
+              <TouchableOpacity onPress={nativeNoteFileUpload} >
+                <Animated.Text style={{color: button_text_style, fontWeight: "bold"}}>Upload File</Animated.Text>
+              </TouchableOpacity>
+          </Animated.View>
+        )}
       </Animated.View>
     </View>
   );
@@ -106,17 +173,17 @@ export function Score_Select({
 
 const styles = StyleSheet.create({
 
-    // Main text styles (text labels)
-    text : {
-      fontSize: 24,
-      fontWeight: "bold",
-      // Text shadow properties
-      textShadowColor: 'rgba(0, 0, 0, 0.3)', // Shadow color with transparency
-      textShadowOffset: { width: 1, height: 1 }, // Slight offset
-      textShadowRadius: 4,
-    },
-    // Styles added to View component that wraps the inputs (used for spacing purposes)
-    input: {
-      paddingVertical: 12
-    },
+  // Main text styles (text labels)
+  text : {
+    fontSize: 24,
+    fontWeight: "bold",
+    // Text shadow properties
+    textShadowColor: 'rgba(0, 0, 0, 0.3)', // Shadow color with transparency
+    textShadowOffset: { width: 1, height: 1 }, // Slight offset
+    textShadowRadius: 4,
+  },
+  // Styles added to View component that wraps the inputs (used for spacing purposes)
+  input: {
+    paddingVertical: 12
+  },
 })
