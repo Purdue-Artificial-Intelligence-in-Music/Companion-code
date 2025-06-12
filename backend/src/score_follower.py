@@ -1,7 +1,6 @@
 from .otw import OnlineTimeWarping as OTW
 import numpy as np
-from .features import ChromaMaker, file_to_np_cens
-
+from .features_cens import CENSFeatures, file_to_np_cens
 
 class ScoreFollower:
     """Performs online dynamic time warping (DTW) between reference audio and live microphone audio
@@ -50,7 +49,7 @@ class ScoreFollower:
         self.win_length = win_length
 
         # Instantiate ChromaMaker object
-        self.chroma_maker = ChromaMaker(sr=sample_rate, n_fft=win_length)
+        self.chroma_maker = CENSFeatures(sr=sample_rate, n_fft=win_length)
 
         # Params for OTW
         params = {
