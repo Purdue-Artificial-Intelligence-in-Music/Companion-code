@@ -2,27 +2,58 @@ import numpy as np
 import librosa
 
 class Features(object):
-    FEATURE_SIZE = 0
+    FEATURE_LEN = 0
 
-    def __init__(self, sr, win_len):
+    def __init__(self, sr, win_len, num_features=0):
         '''Streaming implementation of wave-to-feature. Initialize with sr, win_len.
         Then call .insert(y) to add a frame of win_len samples.'''
         self.sr = sr
         self.win_len = win_len
 
-        self.buffer = []
+        self.num_features = num_features
+        self.preallocated = num_features > 0
 
+        if self.preallocated:
+            self.buffer = np.zeros((self.FEATURE_LEN, self.num_features))
+        else:
+            self.buffer = []
+        
+        self.current_index = 0
+
+    def compare_features(self, other: 'Features', i: int, j: int) -> float:
+        raise NotImplementedError("Subclasses must implement compare_features()")
+
+    def make_feature(self, y):
+        raise NotImplementedError("Subclasses must implement make_feature()")
+    
     def insert(self, y):
         'Insert new audio y. Return a (feature_size, 1) vector representing a feature.'
-        raise NotImplementedError("Subclasses must implement insert()")
+        vec = self.make_feature(y)
+
+        if self.preallocated:
+            if self.current_index >= self.buffer.shape[1]:
+                raise IndexError("Buffer full")
+            self.buffer[:, self.current_index] = vec
+        else:
+            self.buffer.append(vec)
+            self.num_features += 1
+
+        self.current_index += 1
+
+        return vec
     
-    def access(self, index):
-        'Access a feature at index feature_ind. Return a (feature_size, 1) vector representing a feature.'
-        raise NotImplementedError("Subclasses must implement access()")
-    
-    def get_buffer(self):
+    def get_feature(self, index):
+        if self.preallocated:
+            return self.buffer[:, index]
+        else:
+            return self.buffer[index]
+        
+    def get_featuregram(self):
         'Return buffer as ndarray with shape: (FEATURE_SIZE, num_features)'
-        return np.stack(self.buffer, axis=1)
+        if self.preallocated:
+            return self.buffer
+        else:
+            return np.stack(self.buffer, axis=1)
 
     @classmethod
     def from_audio(cls, y, sr, win_len, hop_len):

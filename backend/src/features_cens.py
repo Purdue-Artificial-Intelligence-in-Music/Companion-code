@@ -60,7 +60,7 @@ def spec_to_pitch_mtx(fs, fft_len, tuning=0.):
 
 
 class CENSFeatures(Features):
-    FEATURE_SIZE = 12
+    FEATURE_LEN = 12
     
     def __init__(self, sr, n_fft):
         '''Streaming implementation of wave to chroma. Initialize with parameters sr, n_fft. Then
@@ -78,12 +78,11 @@ class CENSFeatures(Features):
         c_pc = np.tile(np.identity(12), 11)[:, 0:128]
         self.c_fc = np.dot(c_pc, c_fp)
 
-    def reset(self):
-        pass
+    def compare_features(self, other, i, j):
+        return np.dot(self.get_feature(i), other.get_feature(j))
 
-    def insert(self, y):
-        'insert new audio. Return length 12 CENS chroma vector'
-
+    def make_feature(self, y):
+        'Convert new audio to length 12 CENS chroma vector'
         # apply window, apply FFT, convert to chroma
         sig = y * self.window
         X = np.abs(np.fft.rfft(sig)).reshape(-1, 1)
@@ -117,14 +116,12 @@ class CENSFeatures(Features):
             length = 12**(0.5)
         chroma = chroma / length
 
-        self.buffer.append(chroma)
         return chroma
-
 
 def audio_to_np_cens(y, sr, n_fft, hop_len):
     'Use ChromaMaker to create an np-cens chromagram from the given audio'
     obj = CENSFeatures.from_audio(y, sr, n_fft, hop_len)
-    return obj.get_buffer()
+    return obj.get_featuregram()
 
 
 def file_to_np_cens(filepath, params):
@@ -135,4 +132,4 @@ def file_to_np_cens(filepath, params):
     hop_len = params['ref_hop_len']
 
     obj = CENSFeatures.from_file(filepath, sr, n_fft, hop_len)
-    return obj.get_buffer()
+    return obj.get_featuregram()
