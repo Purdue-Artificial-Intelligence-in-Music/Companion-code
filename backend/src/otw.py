@@ -10,6 +10,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 # Variable names have been modified for clarity
 
+from .features_cens import CENSFeatures
 import numpy as np
 from typing import Dict, Tuple
 
@@ -20,7 +21,7 @@ def find_key(d: Dict, k: str):
 
 
 class OnlineTimeWarping:
-    def __init__(self, ref: np.ndarray, params: Dict[str, float]):
+    def __init__(self, ref: np.ndarray, params: Dict[str, float], debug: 'CENSFeatures'):
         """
         Implements Online Time Warping [1], adapted for Python as a streaming algorithm 
         with a few modifications for clarity.
@@ -66,12 +67,29 @@ class OnlineTimeWarping:
 
         [1] Simon Dixon: "Live Tracking of Musical Performances Using On-Line Time Warping".
         """
+        self.debug_ref = debug
         self.ref = ref  # Reference sequence (assumed chroma)
+
         self.feature_len, self.ref_len = self.ref.shape
+
+        debug_flen = debug.FEATURE_LEN
+        debug_rlen = debug.num_features
+
+        if debug_flen != self.feature_len:
+            print("Mismatch", debug_flen, "|", self.feature_len)
+
+        if debug_rlen != self.ref_len:
+            print("Mismatch", debug_rlen, "|", self.ref_len)
+
+        live_size = self.ref_len * 4
+
+        self.debug_live = CENSFeatures(params["sr"], params["n_fft"], live_size)
+
         self.live = np.zeros(
-            (self.feature_len, self.ref_len * 4), dtype=np.float32)  # Live input
+            (self.feature_len, live_size), dtype=np.float32)  # Live input
+        
         self.accumulated_cost = np.full(
-            (self.ref_len, self.ref_len * 4), np.inf, dtype=np.float32)
+            (self.ref_len, live_size), np.inf, dtype=np.float32)
 
         self.live_index = -1  # Index in live sequence
         self.ref_index = 0  # Index in ref sequence
@@ -86,7 +104,7 @@ class OnlineTimeWarping:
         self.last_ref_index = 0  # Track the last reference index to prevent backward steps
         self.path_z = []  # Chosen path for debugging or tracking
 
-    def insert(self, live_input: np.ndarray) -> int:
+    def insert(self, live_input: np.ndarray, original_frames) -> int:
         """
         Insert a new live input frame (chroma vector) and estimate the current position 
         in the reference time series.
@@ -103,6 +121,11 @@ class OnlineTimeWarping:
         """
         self.live_index += 1
         self.live[:, self.live_index] = live_input
+
+        self.debug_live.insert(original_frames)
+        debug_live_vector = self.debug_live.get_feature(self.live_index)
+
+        print("Feature comparator", self.live[:, self.live_index], debug_live_vector)
 
         for k in range(max(0, self.ref_index - self.window_size + 1), self.ref_index + 1):
             self._update_accumulated_cost(k, self.live_index)
@@ -219,6 +242,10 @@ class OnlineTimeWarping:
         The function considers three possible steps: diagonal, vertical, and horizontal, and chooses the one with the minimum cost.
         """
         cost = 1 - np.dot(self.ref[:, ref_index], self.live[:, live_index])
+        debug_cost = 1 - self.debug_ref.compare_features(self.debug_live, ref_index, live_index)
+
+        if (cost != debug_cost):
+            print("Comparator fail", cost, debug_cost)
 
         if ref_index == 0 and live_index == 0:
             self.accumulated_cost[ref_index, live_index] = cost

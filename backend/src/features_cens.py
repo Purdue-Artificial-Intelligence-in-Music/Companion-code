@@ -62,7 +62,7 @@ def spec_to_pitch_mtx(fs, fft_len, tuning=0.):
 class CENSFeatures(Features):
     FEATURE_LEN = 12
     
-    def __init__(self, sr, n_fft):
+    def __init__(self, sr, n_fft, num_features=0):
         '''Streaming implementation of wave to chroma. Initialize with parameters sr, n_fft. Then
         call cm.insert(y) to insert an audio buffer which must be of length n_fft'''
 

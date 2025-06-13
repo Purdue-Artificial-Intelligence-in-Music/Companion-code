@@ -61,10 +61,14 @@ class ScoreFollower:
             "diag_weight": diag_weight
         }
 
+        debug = CENSFeatures.from_file(filepath=reference,
+                                          sr=sample_rate,
+                                          win_len=win_length,
+                                          hop_len=win_length)
         self.ref = file_to_np_cens(filepath=reference, params=params)
 
         # Initialize OTW object
-        self.otw = OTW(ref=self.ref, params=params)
+        self.otw = OTW(ref=self.ref, params=params, debug=debug)
 
         # Online DTW alignment path
         self.path = []
@@ -82,10 +86,6 @@ class ScoreFollower:
         np.ndarray
             Chroma feature
         """
-        # If the number of frames is too small, pad with zeros
-        if audio.shape[-1] < self.win_length:
-            audio = np.pad(audio, ((0, 0), (0, self.win_length -
-                           audio.shape[-1])), mode='constant', constant_values=((0, 0), (0, 0)))
 
         # Return a chroma feature for the audio
         return self.chroma_maker.insert(audio)
@@ -93,11 +93,16 @@ class ScoreFollower:
     def step(self, frames: np.ndarray) -> float:
         """Calculate next step in the alignment path between the microphone and reference audio """
 
+        # If the number of frames is too small, pad with zeros
+        if frames.shape[-1] < self.win_length:
+            frames = np.pad(frames, ((0, 0), (0, self.win_length -
+                            frames.shape[-1])), mode='constant', constant_values=((0, 0), (0, 0)))
+
         # Generate chroma feature
         chroma = self._get_chroma(frames)
 
         # Calculate position in reference audio
-        ref_index = self.otw.insert(chroma)
+        ref_index = self.otw.insert(chroma, frames)
 
         # Record position in alignment path
         self.path.append((ref_index, self.otw.live_index))
