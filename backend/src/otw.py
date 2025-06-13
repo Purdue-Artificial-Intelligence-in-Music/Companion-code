@@ -19,9 +19,14 @@ def find_key(d: Dict, k: str):
     """Returns the value of key `k` in dictionary `d`, or None if key is not found."""
     return d.get(k)
 
-
 class OnlineTimeWarping:
-    def __init__(self, ref: np.ndarray, params: Dict[str, float], debug: 'CENSFeatures'):
+    def __init__(self,
+                 ref: 'CENSFeatures',
+                 sr: int,
+                 n_fft: int,
+                 big_c: int,
+                 max_run_count: int,
+                 diag_weight: float):
         """
         Implements Online Time Warping [1], adapted for Python as a streaming algorithm 
         with a few modifications for clarity.
@@ -67,26 +72,14 @@ class OnlineTimeWarping:
 
         [1] Simon Dixon: "Live Tracking of Musical Performances Using On-Line Time Warping".
         """
-        self.debug_ref = debug
-        self.ref = ref  # Reference sequence (assumed chroma)
+        self.ref = ref  # Reference sequence (Features object)
 
-        self.feature_len, self.ref_len = self.ref.shape
-
-        debug_flen = debug.FEATURE_LEN
-        debug_rlen = debug.num_features
-
-        if debug_flen != self.feature_len:
-            print("Mismatch", debug_flen, "|", self.feature_len)
-
-        if debug_rlen != self.ref_len:
-            print("Mismatch", debug_rlen, "|", self.ref_len)
+        self.feature_len = self.ref.FEATURE_LEN
+        self.ref_len = self.ref.num_features
 
         live_size = self.ref_len * 4
 
-        self.debug_live = CENSFeatures(params["sr"], params["n_fft"], live_size)
-
-        self.live = np.zeros(
-            (self.feature_len, live_size), dtype=np.float32)  # Live input
+        self.live = CENSFeatures(sr, n_fft, live_size)  # Live input
         
         self.accumulated_cost = np.full(
             (self.ref_len, live_size), np.inf, dtype=np.float32)
@@ -97,22 +90,22 @@ class OnlineTimeWarping:
         self.run_count = 1  # Run count for controlling step switching
 
         # Parameters
-        self.window_size = params["c"]
-        self.max_run_count = params["max_run_count"]
-        self.diag_weight = params["diag_weight"]
+        self.window_size = big_c
+        self.max_run_count = max_run_count
+        self.diag_weight = diag_weight
 
         self.last_ref_index = 0  # Track the last reference index to prevent backward steps
         self.path_z = []  # Chosen path for debugging or tracking
 
-    def insert(self, live_input: np.ndarray, original_frames) -> int:
+    def insert(self, live_frames: np.ndarray) -> int:
         """
-        Insert a new live input frame (chroma vector) and estimate the current position 
+        Insert 1 feature of audio frames and estimate the current position 
         in the reference time series.
 
         Parameters
         ----------
-        live_input : np.ndarray
-            Live chroma vector.
+        live_frames : np.ndarray
+            Live audio.
 
         Returns
         -------
@@ -120,12 +113,7 @@ class OnlineTimeWarping:
             Estimated position in the reference sequence.
         """
         self.live_index += 1
-        self.live[:, self.live_index] = live_input
-
-        self.debug_live.insert(original_frames)
-        debug_live_vector = self.debug_live.get_feature(self.live_index)
-
-        print("Feature comparator", self.live[:, self.live_index], debug_live_vector)
+        self.live.insert(live_frames)
 
         for k in range(max(0, self.ref_index - self.window_size + 1), self.ref_index + 1):
             self._update_accumulated_cost(k, self.live_index)
@@ -241,11 +229,7 @@ class OnlineTimeWarping:
         The cost is computed as `1 - dot_product(ref[:, ref_index], live[:, live_index])`.
         The function considers three possible steps: diagonal, vertical, and horizontal, and chooses the one with the minimum cost.
         """
-        cost = 1 - np.dot(self.ref[:, ref_index], self.live[:, live_index])
-        debug_cost = 1 - self.debug_ref.compare_features(self.debug_live, ref_index, live_index)
-
-        if (cost != debug_cost):
-            print("Comparator fail", cost, debug_cost)
+        cost = 1 - self.ref.compare_features(self.live, ref_index, live_index)
 
         if ref_index == 0 and live_index == 0:
             self.accumulated_cost[ref_index, live_index] = cost

@@ -1,6 +1,6 @@
 from .otw import OnlineTimeWarping as OTW
 import numpy as np
-from .features_cens import CENSFeatures, file_to_np_cens
+from .features_cens import CENSFeatures
 
 class ScoreFollower:
     """Performs online dynamic time warping (DTW) between reference audio and live microphone audio
@@ -43,52 +43,27 @@ class ScoreFollower:
 
     """
 
-    def __init__(self, reference: str, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4, sample_rate: int = 44100, win_length: int = 8192):
+    def __init__(self,
+                 ref_filename: str,
+                 c: int = 10,
+                 max_run_count: int = 3,
+                 diag_weight: int = 0.4,
+                 sample_rate: int = 44100,
+                 win_length: int = 8192):
 
         self.sample_rate = sample_rate
         self.win_length = win_length
 
-        # Instantiate ChromaMaker object
-        self.chroma_maker = CENSFeatures(sr=sample_rate, n_fft=win_length)
-
-        # Params for OTW
-        params = {
-            "sr": sample_rate,
-            "n_fft": win_length,
-            "ref_hop_len": win_length,
-            "c": c,
-            "max_run_count": max_run_count,
-            "diag_weight": diag_weight
-        }
-
-        debug = CENSFeatures.from_file(filepath=reference,
+        self.ref = CENSFeatures.from_file(filepath=ref_filename,
                                           sr=sample_rate,
                                           win_len=win_length,
                                           hop_len=win_length)
-        self.ref = file_to_np_cens(filepath=reference, params=params)
 
         # Initialize OTW object
-        self.otw = OTW(ref=self.ref, params=params, debug=debug)
+        self.otw = OTW(self.ref, sample_rate, win_length, c, max_run_count, diag_weight)
 
         # Online DTW alignment path
         self.path = []
-
-    def _get_chroma(self, audio: np.ndarray) -> np.ndarray:
-        """
-
-        Parameters
-        ----------
-        audio : np.ndarray
-            Audio frames to convert to a chroma feature
-
-        Returns
-        -------
-        np.ndarray
-            Chroma feature
-        """
-
-        # Return a chroma feature for the audio
-        return self.chroma_maker.insert(audio)
 
     def step(self, frames: np.ndarray) -> float:
         """Calculate next step in the alignment path between the microphone and reference audio """
@@ -98,11 +73,8 @@ class ScoreFollower:
             frames = np.pad(frames, ((0, 0), (0, self.win_length -
                             frames.shape[-1])), mode='constant', constant_values=((0, 0), (0, 0)))
 
-        # Generate chroma feature
-        chroma = self._get_chroma(frames)
-
         # Calculate position in reference audio
-        ref_index = self.otw.insert(chroma, frames)
+        ref_index = self.otw.insert(frames)
 
         # Record position in alignment path
         self.path.append((ref_index, self.otw.live_index))
