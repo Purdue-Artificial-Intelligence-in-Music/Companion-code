@@ -10,7 +10,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 # Variable names have been modified for clarity
 
-from .features_cens import CENSFeatures
+from .features import Features
 import numpy as np
 from typing import Dict, Tuple
 
@@ -21,7 +21,7 @@ def find_key(d: Dict, k: str):
 
 class OnlineTimeWarping:
     def __init__(self,
-                 ref: 'CENSFeatures',
+                 ref: 'Features',
                  sr: int,
                  n_fft: int,
                  big_c: int,
@@ -79,7 +79,7 @@ class OnlineTimeWarping:
 
         live_size = self.ref_len * 4
 
-        self.live = CENSFeatures(sr, n_fft, live_size)  # Live input
+        self.live = type(self.ref)(sr, n_fft, live_size)  # Live input, same Features subclass as ref
         
         self.accumulated_cost = np.full(
             (self.ref_len, live_size), np.inf, dtype=np.float32)

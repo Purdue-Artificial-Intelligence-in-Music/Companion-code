@@ -49,12 +49,13 @@ class ScoreFollower:
                  max_run_count: int = 3,
                  diag_weight: int = 0.4,
                  sample_rate: int = 44100,
-                 win_length: int = 8192):
+                 win_length: int = 8192,
+                 features_cls = CENSFeatures):
 
         self.sample_rate = sample_rate
         self.win_length = win_length
 
-        self.ref = CENSFeatures.from_file(filepath=ref_filename,
+        self.ref = features_cls.from_file(filepath=ref_filename,
                                           sr=sample_rate,
                                           win_len=win_length,
                                           hop_len=win_length)
