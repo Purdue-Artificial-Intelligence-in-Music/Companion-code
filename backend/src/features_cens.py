@@ -11,6 +11,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 from .features import Features
 
 import numpy as np
+import librosa
 
 class CENSFeatures(Features):
     """
@@ -50,7 +51,7 @@ class CENSFeatures(Features):
         '''Streaming implementation of wave to chroma. Initialize with parameters sr, n_fft. Then
         call cm.insert(y) to insert an audio buffer which must be of length n_fft'''
 
-        super().__init__(sr=sr, win_len=n_fft)
+        super().__init__(sr=sr, win_len=n_fft, num_features=num_features)
 
         self.sr = sr
         self.n_fft = n_fft
