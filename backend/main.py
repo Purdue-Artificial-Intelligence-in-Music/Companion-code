@@ -2,6 +2,7 @@ import numpy as np
 from src.alignment_error import load_data, calculate_alignment_error
 from src.accompaniment_error import calculate_accompaniment_error
 import os
+import yaml
 import librosa
 from src.audio_buffer import AudioBuffer
 from src.score_follower import ScoreFollower
@@ -16,42 +17,53 @@ def normalize_audio(audio: np.ndarray) -> np.ndarray:
     """Normalize audio data to the range [-1, 1]."""
     return audio / np.max(np.abs(audio))
 
-SAMPLE_RATE = 44100  # Universal sample rate
-CHANNELS = 1  # Universal number of channels
-WIN_LENGTH = 4096  # Samples per window for score follower
-HOP_LENGTH = 4096  # Samples per hop for score follower. This should be the same as WIN_LENGTH for now. Can add support for different values in the future
-C = 50  # Search width for score follower. Higher values are more computationally expensive
-MAX_RUN_COUNT = 3  # Slope constraint for score follower. 1 / MAX_RUN_COUNT <= slope <= MAX_RUN_COUNT
-DIAG_WEIGHT = 0.75  # Weight for the diagonal in the cost matrix for score follower. Values less than 2 bias toward diagonal steps
-MAX_DURATION = 600  # Maximum duration of audio buffer in seconds
+# Load config
+with open("config.yaml", "r") as f:
+    config = yaml.safe_load(f)
 
+# Base parameters
+SAMPLE_RATE = config.get("sample_rate", 44100)
+CHANNELS = config.get("channels", 1)
+WIN_LENGTH = config.get("win_length", 4096)
+HOP_LENGTH = config.get("hop_length", WIN_LENGTH)
+C = config.get("c", 50)
+MAX_RUN_COUNT = config.get("max_run_count", 3)
+DIAG_WEIGHT = config.get("diag_weight", 0.75)
+MAX_DURATION = config.get("max_duration", 600)
+SOLO_VOLUME_MULTIPLIER = config.get("solo_volume_multiplier", 0.75)
+PROGAM_NUMBER = config.get("program_number", 42)
+REF_TEMPO = config.get("ref_tempo", 100)
+LIVE_TEMPO = config.get("live_tempo", 110)
+USE_MIC = config.get("use_mic", False)
 
-STATED_TEMPO = 100  # Tempo at which the user plans to play in BPM
-SOURCE_TEMPO = 110  # Tempo at which the user actually plays in BPM
-PIECE_NAME = 'rubato'  # Name of piece
-PROGAM_NUMBER = 42  # Program number for accompaniment instrument
-SOLO_VOLUME_MULTIPLIER = 0.75
+# PATH LOGIC
+PIECE_NAME = config.get("piece_name", "ode_to_joy")
+PATH_MIDI_SCORE = config.get("path_midi_score")
+PATH_REF_WAV = config.get("path_ref_wav")
+PATH_LIVE_WAV = config.get("path_live_wav")
 
-MIDI_SCORE = os.path.join('data', 'midi', PIECE_NAME + '.mid')  # Path to MIDI file
-OUTPUT_DIR = os.path.join('data', 'audio', PIECE_NAME)  # Directory where synthesized audio will be saved
+if PIECE_NAME:
+    PATH_MIDI_SCORE = os.path.join('data', 'midi', f"{PIECE_NAME}.mid")
+    PATH_REF_WAV = os.path.join('data', 'audio', PIECE_NAME, f"ref_{REF_TEMPO}bpm.wav")
+    PATH_LIVE_WAV = os.path.join('data', 'audio', PIECE_NAME, f"live_{LIVE_TEMPO}bpm.wav")
+elif not (PATH_MIDI_SCORE and PATH_REF_WAV and PATH_LIVE_WAV):
+    raise ValueError("Must specify either 'piece_name' or all of 'path_midi_score', 'path_ref_wav', and 'path_live_wav'.")
 
-generator = AudioGenerator(score_path=MIDI_SCORE)  # Create an AudioGenerator instance
-generator.generate_audio(output_dir=os.path.join(OUTPUT_DIR, f'{STATED_TEMPO}bpm'), tempo=STATED_TEMPO)  # Generate a WAV file for each instrument in the MIDI file
-generator.generate_audio(output_dir=os.path.join(OUTPUT_DIR, f'{SOURCE_TEMPO}bpm'), tempo=SOURCE_TEMPO)  # Generate a WAV file for each instrument in the MIDI file at a different tempo
+generator = AudioGenerator(score_path=PATH_MIDI_SCORE)  # Create an AudioGenerator instance
+if not os.path.isfile(PATH_REF_WAV):
+    generator.generate_solo(output_file=PATH_REF_WAV, tempo=REF_TEMPO, instrument_index=0)
+if not os.path.isfile(PATH_LIVE_WAV):
+    generator.generate_solo(output_file=PATH_LIVE_WAV, tempo=LIVE_TEMPO, instrument_index=0)
 
-reference = os.path.join('data', 'audio', PIECE_NAME, f'{STATED_TEMPO}bpm', 'instrument_0.wav')  # Path to reference audio file
-source = os.path.join('data', 'audio', PIECE_NAME, f'{SOURCE_TEMPO}bpm', 'instrument_0.wav')  # Path to soloist audio file (can optionally replace mic input)
-
-source_audio, _ = librosa.load(source, sr=SAMPLE_RATE)  # load soloist audio
+source_audio, _ = librosa.load(PATH_LIVE_WAV, sr=SAMPLE_RATE)  # load soloist audio
 source_audio = source_audio.reshape((CHANNELS, -1))  # reshape soloist audio to 2D array
 source_index = 0  # index to keep track of soloist audio
-use_mic = False  # set to True to use microphone input, False to use prerecorded soloist audio
 
 # Create an audio buffer to store the soloist audio
 solo_buffer = AudioBuffer(max_duration=MAX_DURATION, sample_rate=SAMPLE_RATE, channels=1)
 
 # Create a ScoreFollower instance to track the soloist
-score_follower = ScoreFollower(reference=reference, 
+score_follower = ScoreFollower(reference=PATH_REF_WAV, 
                                c=C, 
                                max_run_count=MAX_RUN_COUNT, 
                                diag_weight=DIAG_WEIGHT, 
@@ -67,7 +79,7 @@ playback_rates = []
 def callback(in_data, frame_count, time_info, status):
     global source_index
 
-    if use_mic:  # If using microphone input
+    if USE_MIC:  # If using microphone input
         data = np.frombuffer(in_data, dtype=np.float32)  # convert data to numpy array
         data = data.reshape((1, -1))  # reshape data to 2D array
     else:  # If using prerecorded soloist audio
@@ -79,15 +91,14 @@ def callback(in_data, frame_count, time_info, status):
     estimated_time = score_follower.step(data)  # get estimated time in soloist audio in seconds
 
     ref_index, live_index = score_follower.path[-1]
-    ref_beat = ref_index * WIN_LENGTH / SAMPLE_RATE * STATED_TEMPO / 60
-    live_beat = live_index * WIN_LENGTH / SAMPLE_RATE * STATED_TEMPO / 60
+    ref_beat = ref_index * WIN_LENGTH / SAMPLE_RATE * REF_TEMPO / 60
+    live_beat = live_index * WIN_LENGTH / SAMPLE_RATE * REF_TEMPO / 60
     print(f"Alignment path (beats): ({ref_beat:.2f}, {live_beat:.2f})")
-
 
     soloist_times.append(source_index / SAMPLE_RATE)  # log soloist time for error analysis
     estimated_times.append(estimated_time)  # log estimated time for error analysis
 
-    position = estimated_time  / 60 * STATED_TEMPO  # convert estimated time (seconds) to position in piece (beats)
+    position = estimated_time  / 60 * REF_TEMPO  # convert estimated time (seconds) to position in piece (beats)
 
     # Tell the MidiPerformance instance to update the score position.
     # The MidiPerformance instance will play the most recently passed note in the accompaniment.
@@ -109,7 +120,7 @@ stream = p.open(rate=SAMPLE_RATE,
                 stream_callback=callback)
 
 # Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
-performance = MidiPerformance(midi_file_path=MIDI_SCORE, tempo=STATED_TEMPO, instrument_index=1, program_number=PROGAM_NUMBER)
+performance = MidiPerformance(midi_file_path=PATH_MIDI_SCORE, tempo=REF_TEMPO, instrument_index=1, program_number=PROGAM_NUMBER)
 
 # Wait for user input to start the performance
 input('Press Enter to start the performance')
@@ -139,20 +150,6 @@ solo_audio = normalize_audio(solo_audio)
 solo_audio = solo_audio.reshape(-1)
 sf.write('solo.wav', solo_audio, SAMPLE_RATE)
 
-# df_alignment = load_data('data\\alignments\\constant_tempo.csv')
-# warping_path = np.asarray([estimated_times, soloist_times], dtype=np.float32).T
-# df_alignment = calculate_alignment_error(df_alignment, warping_path)
-
-# estimated_times = warping_path[:, 0]
-# df_accompaniment = calculate_accompaniment_error(
-#     df_alignment,
-#     estimated_times=estimated_times,
-#     accompanist_times=np.asarray(accompanist_times)
-# )
-
-# df_accompaniment.to_csv(
-#     'output\\error_analysis_per_measure_constant.csv', index=False)
-# print(df_accompaniment)
 # Build the DataFrame
 df_alignment = pd.DataFrame({
     'measure': list(range(len(soloist_times))),
@@ -164,8 +161,8 @@ warping_path = np.asarray(score_follower.path, dtype=np.float32)
 df_alignment = calculate_alignment_error(df_alignment, warping_path)
 
 # Convert to beats and round
-df_alignment['ref_beats'] = (df_alignment['ref'] * STATED_TEMPO / 60).round(2)
-df_alignment['live_beats'] = (df_alignment['live'] * STATED_TEMPO / 60).round(2)
+df_alignment['ref_beats'] = (df_alignment['ref'] * REF_TEMPO / 60).round(2)
+df_alignment['live_beats'] = (df_alignment['live'] * REF_TEMPO / 60).round(2)
 df_alignment['alignment_error'] = df_alignment['alignment_error'].round(2)
 
 # Clean column names for CSV

@@ -1,0 +1,49 @@
+# Universal sample rate
+sample_rate: 44100
+
+# Universal number of channels
+channels: 1
+
+# Samples per window for score follower
+win_length: 4096
+
+# Samples per hop for score follower. This should be the same as WIN_LENGTH for now.
+# Can add support for different values in the future
+hop_length: 4096
+
+# Search width for score follower. Higher values are more computationally expensive
+c: 50
+
+# Slope constraint for score follower. 1 / MAX_RUN_COUNT <= slope <= MAX_RUN_COUNT
+max_run_count: 3
+
+# Weight for the diagonal in the cost matrix for score follower.
+# Values less than 2 bias toward diagonal steps
+diag_weight: 0.75
+
+# Maximum duration of audio buffer in seconds
+max_duration: 600
+
+# Set to true to use microphone input, false to use prerecorded soloist audio
+use_mic: false
+
+# Volume multiplier for solo instrument
+solo_volume_multiplier: 0.75
+
+# Program number for accompaniment instrument
+program_number: 42
+
+# Tempo at which the user plans to play in BPM
+ref_tempo: 100
+
+# Tempo at which the user actually plays in BPM
+live_tempo: 110
+
+# Name of piece - if provided, paths will be auto-generated from this
+piece_name: ode_to_joy
+# Otherwise, supply all three paths below manually
+
+# Uncomment and set these paths if piece_name is not provided
+# path_midi_score: data/midi/your_piece.mid
+# path_ref_wav: data/audio/your_piece/ref_100bpm.wav
+# path_live_wav: data/audio/your_piece/live_110bpm.wav

@@ -182,6 +182,69 @@ class AudioGenerator:
         if os.path.exists(temp_full_midi):
             temp_full_midi.unlink()
 
+    def generate_solo(self, output_file, tempo: float = 120, sample_rate: int = 44100, instrument_index: int = 0) -> None:
+        """
+        Generate audio files for each instrument in the MIDI score.
+
+        Parameters
+        ----------
+        output_dir : Path or str
+            File path where the generated audio file will be saved.
+        tempo : float, optional
+            The tempo (BPM) to set for the MIDI file, by default 120 BPM.
+        sample_rate : int, optional
+            The sample rate for the generated audio, by default 44100.
+        """
+        output_dir = Path(os.path.dirname(output_file))
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create a temporary copy of the MIDI file so that the original file is not modified.
+        with tempfile.NamedTemporaryFile(suffix=".mid", delete=False) as tempo_temp:
+            temp_full_midi = Path(tempo_temp.name)
+        shutil.copy(self.score_path, temp_full_midi)
+        self.change_midi_tempo(temp_full_midi, tempo)
+
+        # Load the tempo-modified MIDI file using pretty_midi
+        midi_data = pretty_midi.PrettyMIDI(str(temp_full_midi))
+        logger.info(f"Loaded MIDI file with {len(midi_data.instruments)} instrument(s)")
+
+        # Process the instrument separately
+        instrument = midi_data.instruments[instrument_index]
+        
+        # Create a new MIDI object for this instrument
+        instrument_midi = pretty_midi.PrettyMIDI()
+        instrument_midi.instruments.append(instrument)
+        
+        # Use a temporary file for the instrument MIDI
+        with tempfile.NamedTemporaryFile(suffix=".mid", delete=False) as tmp_file:
+            temp_midi_path = Path(tmp_file.name)
+        instrument_midi.write(str(temp_midi_path))
+        
+        # Define the output audio file
+        fluidsynth_command = [
+            "fluidsynth",
+            "-ni",
+            str(self.soundfont_path),
+            str(temp_midi_path),
+            "-F",
+            str(output_file),
+            "-r",
+            str(sample_rate)
+        ]
+        try:
+            subprocess.run(fluidsynth_command, check=True)
+            logger.info(f"Generated audio file: {output_file}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error generating audio for instrument {instrument_index}: {e}")
+        finally:
+            # Clean up the temporary instrument MIDI file
+            if os.path.exists(temp_midi_path):
+                temp_midi_path.unlink()
+
+        # Clean up the temporary full MIDI file with updated tempo
+        if os.path.exists(temp_full_midi):
+            temp_full_midi.unlink()
+
 
 if __name__ == '__main__':
     # Example usage:
