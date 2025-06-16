@@ -43,7 +43,7 @@ class ScoreFollower:
                  ref_filename: str,
                  c: int = 10,
                  max_run_count: int = 3,
-                 diag_weight: int = 0.4,
+                 diag_weight: float = 0.4,
                  sample_rate: int = 44100,
                  win_length: int = 8192,
                  features_cls = CENSFeatures):

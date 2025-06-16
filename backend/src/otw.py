@@ -21,7 +21,7 @@ def find_key(d: Dict, k: str):
 
 class OnlineTimeWarping:
     def __init__(self,
-                 ref: 'Features',
+                 ref: Features,
                  sr: int,
                  n_fft: int,
                  big_c: int,

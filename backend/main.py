@@ -8,6 +8,7 @@ from src.audio_buffer import AudioBuffer
 from src.score_follower import ScoreFollower
 from src.midi_performance import MidiPerformance
 from src.audio_generator import AudioGenerator
+from src.features_cens import CENSFeatures
 import soundfile as sf
 import pyaudio
 import pandas as pd
@@ -63,12 +64,13 @@ source_index = 0  # index to keep track of soloist audio
 solo_buffer = AudioBuffer(max_duration=MAX_DURATION, sample_rate=SAMPLE_RATE, channels=1)
 
 # Create a ScoreFollower instance to track the soloist
-score_follower = ScoreFollower(reference=PATH_REF_WAV, 
+score_follower = ScoreFollower(ref_filename=PATH_REF_WAV, 
                                c=C, 
                                max_run_count=MAX_RUN_COUNT, 
                                diag_weight=DIAG_WEIGHT, 
                                sample_rate=SAMPLE_RATE, 
-                               win_length=WIN_LENGTH)
+                               win_length=WIN_LENGTH,
+                               features_cls=CENSFeatures)
 
 soloist_times = []
 estimated_times = []
