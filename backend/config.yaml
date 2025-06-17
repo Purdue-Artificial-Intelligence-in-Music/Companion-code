@@ -24,20 +24,26 @@ diag_weight: 0.75
 # Maximum duration of audio buffer in seconds
 max_duration: 600
 
-# Set to true to use microphone input, false to use prerecorded soloist audio
-use_mic: false
+# Type of feature to use for alignment
+feature_type: "CENS"
 
 # Volume multiplier for solo instrument
-solo_volume_multiplier: 0.75
+solo_volume_multiplier: 1.05
 
-# Program number for accompaniment instrument
-program_number: 42
+# Instrument number in MIDI score of accompaniment part (set to 0 to copy solo)
+accomp_instr_index: 1
+
+# Instrument sound (MIDI program number, 1=piano, 43=cello) for accompaniment part
+accomp_program_num: 43
 
 # Tempo at which the user plans to play in BPM
 ref_tempo: 100
 
 # Tempo at which the user actually plays in BPM
 live_tempo: 110
+
+# Set to true to use microphone input, false to use prerecorded soloist audio
+use_mic: false
 
 # Name of piece - if provided, paths will be auto-generated from this
 piece_name: ode_to_joy
