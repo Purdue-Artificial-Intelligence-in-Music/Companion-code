@@ -10,6 +10,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 # Variable names have been modified for clarity
 
+from .features import Features
 import numpy as np
 from typing import Dict, Tuple
 
@@ -18,60 +19,82 @@ def find_key(d: Dict, k: str):
     """Returns the value of key `k` in dictionary `d`, or None if key is not found."""
     return d.get(k)
 
-
 class OnlineTimeWarping:
-    def __init__(self, ref: np.ndarray, params: Dict[str, float]):
+    def __init__(self,
+                 ref: Features,
+                 sr: int,
+                 n_fft: int,
+                 big_c: int,
+                 max_run_count: int,
+                 diag_weight: float):
         """
-        Implements Online Time Warping [1], adapted for Python as a streaming algorithm 
-        with a few modifications for clarity.
+        Initialize the Online Time Warping [1] algorithm for streaming alignment
+        of live audio features to a reference feature sequence.
 
         Parameters
         ----------
-        ref : np.ndarray
-            Reference time series (assumed chroma).
-        params : Dict[str, float]
-            Dictionary of configuration parameters. Expected keys are:
-            - "c": int - Search width for the time warping.
-            - "max_run_count": int - Maximum run count for controlling step switching.
-            - "diag_weight": float - Weight for the diagonal step in the cost calculation.
+        ref : Features
+            Precomputed feature sequence of the reference audio (e.g., CENS chroma).
+            Each feature vector corresponds to a window of mono audio frames.
+        sr : int
+            Sampling rate of audio in Hz.
+        n_fft : int
+            Number of audio samples per feature window (FFT size).
+        big_c : int
+            Width of the search window for constrained DTW.
+        max_run_count : int
+            Maximum consecutive steps allowed in one direction (slope constraint).
+        diag_weight : float
+            Weight applied to diagonal moves in the accumulated cost matrix.
 
         Attributes
         ----------
-        ref : np.ndarray
-            Reference sequence (assumed chroma).
+        ref : Features
+            Reference feature sequence.
+        live : Features
+            Buffer for live audio features of same type as `ref`.
         feature_len : int
-            Length of the feature dimension of the reference sequence.
+            Dimensionality of the feature vectors.
         ref_len : int
-            Length of the reference sequence.
-        live : np.ndarray
-            Live input sequence initialized with zeros.
+            Number of feature frames in the reference sequence.
         accumulated_cost : np.ndarray
-            Accumulated cost matrix initialized with infinity.
-            Index in the live sequence.
-            Index in the reference sequence.
+            Dynamic programming matrix storing cumulative alignment costs.
+        live_index : int
+            Index of current live feature frame.
+        ref_index : int
+            Index of current reference feature frame.
         previous_step : str
-            Previous step taken ('ref', 'live', or 'both').
+            Last alignment step taken ('ref', 'live', or 'both').
         run_count : int
-            Run count for controlling step switching.
+            Count of consecutive steps taken in the same direction.
         window_size : int
-            Window size for the time warping.
+            DTW search window size.
         max_run_count : int
-            Maximum run count for controlling step switching.
+            Maximum allowed consecutive steps in one direction.
         diag_weight : float
-            Weight for the diagonal step in the cost calculation.
+            Weight factor for diagonal steps.
         last_ref_index : int
-            Tracks the last reference index to prevent backward steps.
-        path_z : list
-            Chosen path for debugging or tracking.
+            Last matched reference frame index, prevents backward jumps.
+        path_z : list[int]
+            History of matched reference indices for debugging or tracking.
 
-        [1] Simon Dixon: "Live Tracking of Musical Performances Using On-Line Time Warping".
+        Notes
+        -----
+        This implementation is adapted from:
+        [1] Dixon, Simon. "Live Tracking of Musical Performances Using On-Line Time Warping"
         """
-        self.ref = ref  # Reference sequence (assumed chroma)
-        self.feature_len, self.ref_len = self.ref.shape
-        self.live = np.zeros(
-            (self.feature_len, self.ref_len * 4), dtype=np.float32)  # Live input
+
+        self.ref = ref  # Reference sequence (Features object)
+
+        self.feature_len = self.ref.FEATURE_LEN
+        self.ref_len = self.ref.num_features
+
+        live_size = self.ref_len * 4
+
+        self.live = type(self.ref)(sr, n_fft, live_size)  # Live input, same Features subclass as ref
+        
         self.accumulated_cost = np.full(
-            (self.ref_len, self.ref_len * 4), np.inf, dtype=np.float32)
+            (self.ref_len, live_size), np.inf, dtype=np.float32)
 
         self.live_index = -1  # Index in live sequence
         self.ref_index = 0  # Index in ref sequence
@@ -79,30 +102,36 @@ class OnlineTimeWarping:
         self.run_count = 1  # Run count for controlling step switching
 
         # Parameters
-        self.window_size = params["c"]
-        self.max_run_count = params["max_run_count"]
-        self.diag_weight = params["diag_weight"]
+        self.window_size = big_c
+        self.max_run_count = max_run_count
+        self.diag_weight = diag_weight
 
         self.last_ref_index = 0  # Track the last reference index to prevent backward steps
         self.path_z = []  # Chosen path for debugging or tracking
 
-    def insert(self, live_input: np.ndarray) -> int:
+    def insert(self, live_frames: np.ndarray) -> int:
         """
-        Insert a new live input frame (chroma vector) and estimate the current position 
-        in the reference time series.
+        Insert a new frame of live audio features and update alignment position.
 
         Parameters
         ----------
-        live_input : np.ndarray
-            Live chroma vector.
+        live_frames : np.ndarray
+            1D array representing a single live feature vector computed from a
+            mono audio window of length `n_fft` samples (shape: [feature_len]).
 
         Returns
         -------
         int
-            Estimated position in the reference sequence.
+            Estimated frame index in the reference feature sequence that best matches
+            the current live input.
+
+        Notes
+        -----
+        This method updates the accumulated cost matrix with the new live frame,
+        performs online DTW steps, and returns the current estimated alignment position.
         """
         self.live_index += 1
-        self.live[:, self.live_index] = live_input
+        self.live.insert(live_frames)
 
         for k in range(max(0, self.ref_index - self.window_size + 1), self.ref_index + 1):
             self._update_accumulated_cost(k, self.live_index)
@@ -118,7 +147,7 @@ class OnlineTimeWarping:
             # Increment referene index, but keep it in bounds
             self.ref_index = min(self.ref_index + 1, self.ref_len - 1)
 
-            # calculate a new reference column
+            # Calculate a new reference column
             for k in range(max(self.live_index - self.window_size + 1, 0), self.live_index + 1):
                 self._update_accumulated_cost(self.ref_index, k)
 
@@ -140,14 +169,19 @@ class OnlineTimeWarping:
 
     def _get_best_step(self) -> Tuple[str, Tuple[int, int]]:
         """
-        Determines the best step (ref, live, or both) based on the accumulated cost matrix.
+        Determines the optimal next step in the DTW alignment path 
+        using the current accumulated cost matrix.
 
         Returns
         -------
         step : str
-            The best step, which can be 'ref', 'live', or 'both'.
+            Best step direction: 'ref', 'live', or 'both'.
         indices : Tuple[int, int]
-            The corresponding indices for the best step in the accumulated cost matrix.
+            Indices (ref_index, live_index) representing the alignment point for this step.
+
+        Notes
+        -----
+        Considers slope constraints, run counts, and weighting factors in decision.
         """
 
         row_costs = self.accumulated_cost[self.ref_index,
@@ -199,26 +233,24 @@ class OnlineTimeWarping:
 
     def _update_accumulated_cost(self, ref_index: int, live_index: int):
         """
-        Updates the accumulated cost matrix at the given indices using the cost function.
+        Updates the dynamic programming cost matrix at a specific (ref_index, live_index) 
+        position based on the similarity between live and reference features.
+
         Parameters
         ----------
         ref_index : int
-            The index in the reference sequence.
+            Frame index in the reference sequence.
         live_index : int
-            The index in the live sequence.
-
-        Returns
-        -------
-        None
-            This function updates the accumulated cost matrix in place and does not return any value.
+            Frame index in the live sequence.
 
         Notes
         -----
-        The accumulated cost matrix is updated based on the minimum cost path from the previous indices.
-        The cost is computed as `1 - dot_product(ref[:, ref_index], live[:, live_index])`.
-        The function considers three possible steps: diagonal, vertical, and horizontal, and chooses the one with the minimum cost.
+        The local cost is calculated as 1 minus the similarity measure defined in 
+        `Features.compare_features()`, which may vary depending on the feature subclass.
+        The accumulated cost matrix is updated considering diagonal,
+        vertical, and horizontal transitions.
         """
-        cost = 1 - np.dot(self.ref[:, ref_index], self.live[:, live_index])
+        cost = 1 - self.ref.compare_features(self.live, ref_index, live_index)
 
         if ref_index == 0 and live_index == 0:
             self.accumulated_cost[ref_index, live_index] = cost

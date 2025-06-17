@@ -1,104 +1,90 @@
 from .otw import OnlineTimeWarping as OTW
 import numpy as np
-from .features import ChromaMaker, file_to_np_cens
-
+from .features_cens import CENSFeatures
 
 class ScoreFollower:
-    """Performs online dynamic time warping (DTW) between reference audio and live microphone audio
+    """
+    Performs real-time audio-to-audio alignment using Online Time Warping (OTW).
+
+    This class wraps the OTW algorithm and provides an interface to incrementally
+    align a live audio stream (e.g., from a microphone) to a fixed reference audio file.
 
     Parameters
     ----------
     reference : str
-        Path to reference audio file
-    c : int, optional
-        Width of online DTW search
+        Path to the reference audio file.
+    c:  int, optional
+        Width of the DTW search window (default: 10).
     max_run_count : int, optional
-        Slope constraint for online DTW (1/max_run_count to max_run_count)
-    diag_weight : int, optional
-        Diagonal weight for OTW. Values less than 2 bias toward diagonal steps.
+        Slope constraint for how many steps can occur in one direction before switching (default: 3).
+    diag_weight : float, optional
+        Weight for diagonal steps in DTW cost calculation; values < 2 bias toward diagonal steps (default: 0.4).
     sample_rate : int, optional
-        Sample rate of the audio buffer
+        Sample rate for audio processing (default: 44100).
+    win_length : int, optional
+        Number of samples per audio frame (FFT window length, default: 8192).
+    features_cls : Type[Features], optional
+        Feature extraction class to use (default: CENSFeatures).
 
     Attributes
     ----------
-    sample_rate : int
-        Sample rate of the audio buffer
-    win_length : int
-        Number of frames per chroma feature
-    channels : int
-        Number of channels
-    frames_per_buffer : int
-        Number of frames per buffer for PyAudio stream
-    mic : int
-        AudioBuffer object to store microphone audio
-    chroma_maker : ChromaMaker
-        ChromaMaker object to create CENS features
-    ref_audio : np.ndarray
-        Reference audio
     ref : np.ndarray
-        Reference sequence of CENS feaures
+        Matrix of reference CENS feature vectors (shape: [n_frames, 12]).
     otw : OTW
-        OTW object to align live features with reference sequence
-    path : list
-        Alignment path between live and reference sequences
-
+        Online time warping object for matching features.
+    path : list of tuple
+        List of (ref_index, live_index) alignment points.
+    sample_rate : int
+        Sample rate of the audio signal.
+    win_length : int
+        Number of samples per feature frame.
     """
-
-    def __init__(self, reference: str, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4, sample_rate: int = 44100, win_length: int = 8192):
+    def __init__(self,
+                 ref_filename: str,
+                 c: int = 10,
+                 max_run_count: int = 3,
+                 diag_weight: float = 0.4,
+                 sample_rate: int = 44100,
+                 win_length: int = 8192,
+                 features_cls = CENSFeatures):
 
         self.sample_rate = sample_rate
         self.win_length = win_length
 
-        # Instantiate ChromaMaker object
-        self.chroma_maker = ChromaMaker(sr=sample_rate, n_fft=win_length)
-
-        # Params for OTW
-        params = {
-            "sr": sample_rate,
-            "n_fft": win_length,
-            "ref_hop_len": win_length,
-            "c": c,
-            "max_run_count": max_run_count,
-            "diag_weight": diag_weight
-        }
-
-        self.ref = file_to_np_cens(filepath=reference, params=params)
+        self.ref_features = features_cls.from_file(filepath=ref_filename,
+                                          sr=sample_rate,
+                                          win_len=win_length,
+                                          hop_len=win_length)
 
         # Initialize OTW object
-        self.otw = OTW(ref=self.ref, params=params)
+        self.otw = OTW(self.ref_features, sample_rate, win_length, c, max_run_count, diag_weight)
 
         # Online DTW alignment path
         self.path = []
 
-    def _get_chroma(self, audio: np.ndarray) -> np.ndarray:
+    
+    def step(self, frames: np.ndarray) -> float:
         """
+        Process the next chunk of mono audio samples and update alignment path.
 
         Parameters
         ----------
-        audio : np.ndarray
-            Audio frames to convert to a chroma feature
+        frames : np.ndarray
+            1D array of mono audio samples. Must be at least `win_length` in length.
+            If fewer, zero-padding is applied.
 
         Returns
         -------
-        np.ndarray
-            Chroma feature
+        float
+            Estimated position in the reference audio (in seconds).
         """
         # If the number of frames is too small, pad with zeros
-        if audio.shape[-1] < self.win_length:
-            audio = np.pad(audio, ((0, 0), (0, self.win_length -
-                           audio.shape[-1])), mode='constant', constant_values=((0, 0), (0, 0)))
-
-        # Return a chroma feature for the audio
-        return self.chroma_maker.insert(audio)
-
-    def step(self, frames: np.ndarray) -> float:
-        """Calculate next step in the alignment path between the microphone and reference audio """
-
-        # Generate chroma feature
-        chroma = self._get_chroma(frames)
+        if frames.shape[-1] < self.win_length:
+            frames = np.pad(frames, ((0, 0), (0, self.win_length -
+                            frames.shape[-1])), mode='constant', constant_values=((0, 0), (0, 0)))
 
         # Calculate position in reference audio
-        ref_index = self.otw.insert(chroma)
+        ref_index = self.otw.insert(frames)
 
         # Record position in alignment path
         self.path.append((ref_index, self.otw.live_index))
@@ -107,6 +93,23 @@ class ScoreFollower:
         return (ref_index+1) * self.win_length / self.sample_rate 
 
     def get_backwards_path(self, b):
+        """
+        Traces a backwards path from the current alignment position using the accumulated cost matrix.
+
+        Parameters
+        ----------
+        b : int
+            Number of steps to trace backward from the current reference index.
+
+        Returns
+        -------
+        list of tuple
+            A list of (ref_index, live_index) coordinates representing the backward path.
+
+        Notes
+        -----
+        Used to analyze or visualize local sections of the DTW path.
+        """
         cost_matrix = self.otw.accumulated_cost
         ref_index = self.otw.ref_index  # row index
         live_index = self.otw.live_index  # column index
