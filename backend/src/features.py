@@ -28,7 +28,11 @@ class Features(object):
     
     def insert(self, audio: np.ndarray) -> np.ndarray:
         'Insert new audio y. Return a (feature_size, 1) vector representing a feature.'
-        vec = self.make_feature(audio)
+
+        # Ensure the audio chunk is shaped (sr,) for librosa input, not (1, sr) 
+        y = np.squeeze(audio)
+
+        vec = self.make_feature(y)
 
         if self.preallocated:
             if self.current_index >= self.buffer.shape[1]:
