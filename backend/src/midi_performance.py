@@ -3,6 +3,7 @@ import threading
 from time import sleep, time
 from typing import List, Tuple
 import fluidsynth
+import os
 from music21 import converter, chord, note
 
 
@@ -37,7 +38,7 @@ class MidiPerformance:
         Current position (in beats) of the soloist as estimated by the score follower.
     """
 
-    def __init__(self, midi_file_path: str, tempo: float, instrument_index: int = 0, program_number: int = 43):
+    def __init__(self, midi_file_path: str, tempo: float, instrument_index: int = 0, program_number: int = 43, soundfont_path=None):
         """
         Initialize the MidiPerformance with a MIDI file and an initial tempo.
 
@@ -62,7 +63,9 @@ class MidiPerformance:
         # Initialize FluidSynth.
         self.fs = fluidsynth.Synth(samplerate=44100)
         self.fs.start()
-        sfid = self.fs.sfload(r"soundfonts\FluidR3_GM.sf2")
+        if soundfont_path is None:
+            soundfont_path = os.path.join('soundfonts', 'FluidR3_GM.sf2')
+        sfid = self.fs.sfload(soundfont_path)
         self.fs.program_select(0, sfid, 0, program_number)
 
         # Extract note info in quarter-note units.
