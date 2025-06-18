@@ -9,6 +9,8 @@ from src.score_follower import ScoreFollower
 from src.midi_performance import MidiPerformance
 from src.audio_generator import AudioGenerator
 from src.features_cens import CENSFeatures
+from src.features_mel_spec import MelSpecFeatures
+from src.features_f0 import F0Features
 import soundfile as sf
 import pyaudio
 import pandas as pd
@@ -27,18 +29,36 @@ SAMPLE_RATE = config.get("sample_rate", 44100)
 CHANNELS = config.get("channels", 1)
 WIN_LENGTH = config.get("win_length", 4096)
 HOP_LENGTH = config.get("hop_length", WIN_LENGTH)
+
+# OTW Specific
 C = config.get("c", 50)
 MAX_RUN_COUNT = config.get("max_run_count", 3)
 DIAG_WEIGHT = config.get("diag_weight", 0.75)
 MAX_DURATION = config.get("max_duration", 600)
+
+# Feature Selection
+feature_name = config.get("feature_type", "CENS")
+implemented_features = {
+    "CENS": CENSFeatures,
+    "F0": F0Features,
+    "Mel Spec": MelSpecFeatures,
+}
+
+FEATURE_TYPE = implemented_features.get(feature_name, CENSFeatures)
+if feature_name not in implemented_features:
+    print(f"Warning: Unknown feature_type '{feature_name}', defaulting to 'CENS'")
+
+# Accompaniment Playback
 SOLO_VOLUME_MULTIPLIER = config.get("solo_volume_multiplier", 0.75)
-PROGAM_NUMBER = config.get("program_number", 42)
+ACCOMP_INSTR_INDEX = config.get("accomp_instr_index", 1)
+ACCOMP_PROGAM_NUMBER = config.get("accomp_program_num", 42)
+
 REF_TEMPO = config.get("ref_tempo", 100)
 LIVE_TEMPO = config.get("live_tempo", 110)
 USE_MIC = config.get("use_mic", False)
 
-# PATH LOGIC
-PIECE_NAME = config.get("piece_name", "ode_to_joy")
+# Path logic
+PIECE_NAME = config.get("piece_name")
 PATH_MIDI_SCORE = config.get("path_midi_score")
 PATH_REF_WAV = config.get("path_ref_wav")
 PATH_LIVE_WAV = config.get("path_live_wav")
@@ -50,7 +70,8 @@ if PIECE_NAME:
 elif not (PATH_MIDI_SCORE and PATH_REF_WAV and PATH_LIVE_WAV):
     raise ValueError("Must specify either 'piece_name' or all of 'path_midi_score', 'path_ref_wav', and 'path_live_wav'.")
 
-generator = AudioGenerator(score_path=PATH_MIDI_SCORE)  # Create an AudioGenerator instance
+# Generate missing files
+generator = AudioGenerator(score_path=PATH_MIDI_SCORE)
 if not os.path.isfile(PATH_REF_WAV):
     generator.generate_solo(output_file=PATH_REF_WAV, tempo=REF_TEMPO, instrument_index=0)
 if not os.path.isfile(PATH_LIVE_WAV):
@@ -122,7 +143,7 @@ stream = p.open(rate=SAMPLE_RATE,
                 stream_callback=callback)
 
 # Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
-performance = MidiPerformance(midi_file_path=PATH_MIDI_SCORE, tempo=REF_TEMPO, instrument_index=1, program_number=PROGAM_NUMBER)
+performance = MidiPerformance(midi_file_path=PATH_MIDI_SCORE, tempo=REF_TEMPO, instrument_index=ACCOMP_INSTR_INDEX, program_number=ACCOMP_PROGAM_NUMBER)
 
 # Wait for user input to start the performance
 input('Press Enter to start the performance')
