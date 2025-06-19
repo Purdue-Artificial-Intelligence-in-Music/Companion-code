@@ -63,6 +63,10 @@ PATH_MIDI_SCORE = config.get("path_midi_score")
 PATH_REF_WAV = config.get("path_ref_wav")
 PATH_LIVE_WAV = config.get("path_live_wav")
 
+# Soundfont
+SOUNDFONT_FILENAME = config.get("soundfont_filename")
+PATH_SOUNDFONT = config.get("path_soundfont")
+
 if PIECE_NAME:
     PATH_MIDI_SCORE = os.path.join('data', 'midi', f"{PIECE_NAME}.mid")
     PATH_REF_WAV = os.path.join('data', 'audio', PIECE_NAME, f"ref_{REF_TEMPO}bpm.wav")
@@ -70,8 +74,13 @@ if PIECE_NAME:
 elif not (PATH_MIDI_SCORE and PATH_REF_WAV and PATH_LIVE_WAV):
     raise ValueError("Must specify either 'piece_name' or all of 'path_midi_score', 'path_ref_wav', and 'path_live_wav'.")
 
+if SOUNDFONT_FILENAME:
+    PATH_SOUNDFONT = os.path.join('soundfonts', SOUNDFONT_FILENAME)
+elif PATH_SOUNDFONT is None:
+    raise ValueError("Must specify either 'soundfont_filename' or 'path_soundfont'")
+
 # Generate missing files
-generator = AudioGenerator(score_path=PATH_MIDI_SCORE)
+generator = AudioGenerator(score_path=PATH_MIDI_SCORE, soundfont_path=PATH_SOUNDFONT)
 if not os.path.isfile(PATH_REF_WAV):
     generator.generate_solo(output_file=PATH_REF_WAV, tempo=REF_TEMPO, instrument_index=0)
 if not os.path.isfile(PATH_LIVE_WAV):
@@ -91,7 +100,7 @@ score_follower = ScoreFollower(ref_filename=PATH_REF_WAV,
                                diag_weight=DIAG_WEIGHT, 
                                sample_rate=SAMPLE_RATE, 
                                win_length=WIN_LENGTH,
-                               features_cls=CENSFeatures)
+                               features_cls=FEATURE_TYPE)
 
 soloist_times = []
 estimated_times = []
@@ -143,7 +152,7 @@ stream = p.open(rate=SAMPLE_RATE,
                 stream_callback=callback)
 
 # Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
-performance = MidiPerformance(midi_file_path=PATH_MIDI_SCORE, tempo=REF_TEMPO, instrument_index=ACCOMP_INSTR_INDEX, program_number=ACCOMP_PROGAM_NUMBER)
+performance = MidiPerformance(midi_file_path=PATH_MIDI_SCORE, tempo=REF_TEMPO, instrument_index=ACCOMP_INSTR_INDEX, program_number=ACCOMP_PROGAM_NUMBER, soundfont_path=PATH_SOUNDFONT)
 
 # Wait for user input to start the performance
 input('Press Enter to start the performance')

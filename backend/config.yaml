@@ -53,3 +53,8 @@ piece_name: ode_to_joy
 # path_midi_score: data/midi/your_piece.mid
 # path_ref_wav: data/audio/your_piece/ref_100bpm.wav
 # path_live_wav: data/audio/your_piece/live_110bpm.wav
+
+# Soundfont (looks for a soundfont under the 'soundfonts' folder)
+soundfont_filename: FluidR3_GM.sf2
+# Uncomment and set soundfont path if soundfont_filename is not provided
+# path_soundfont: soundfonts/FluidR3_GM.sf2
