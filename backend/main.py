@@ -1,5 +1,5 @@
 import numpy as np
-from src.alignment_error import load_data, calculate_alignment_error
+from src.alignment_error import load_data, calculate_alignment_error, calculate_align_err_beats
 from src.accompaniment_error import calculate_accompaniment_error
 import os
 import yaml
@@ -56,6 +56,7 @@ ACCOMP_PROGAM_NUMBER = config.get("accomp_program_num", 42)
 REF_TEMPO = config.get("ref_tempo", 100)
 LIVE_TEMPO = config.get("live_tempo", 110)
 USE_MIC = config.get("use_mic", False)
+SKIP_PLAYBACK = config.get("skip_playback", False)
 
 # Path logic
 PIECE_NAME = config.get("piece_name")
@@ -66,6 +67,9 @@ PATH_LIVE_WAV = config.get("path_live_wav")
 # Soundfont
 SOUNDFONT_FILENAME = config.get("soundfont_filename")
 PATH_SOUNDFONT = config.get("path_soundfont")
+
+if USE_MIC and SKIP_PLAYBACK:
+    raise ValueError("Cannot specify 'skip_playback' and 'use_mic' simultaneously")
 
 if PIECE_NAME:
     PATH_MIDI_SCORE = os.path.join('data', 'midi', f"{PIECE_NAME}.mid")
@@ -105,7 +109,20 @@ score_follower = ScoreFollower(ref_filename=PATH_REF_WAV,
 soloist_times = []
 estimated_times = []
 accompanist_times = []
-playback_rates = []
+
+def step(data) -> int:
+    estimated_time = score_follower.step(data)  # get estimated time in soloist audio in seconds
+
+    ref_index, live_index = score_follower.path[-1]
+    ref_beat = ref_index * WIN_LENGTH / SAMPLE_RATE * REF_TEMPO / 60
+    live_beat = live_index * WIN_LENGTH / SAMPLE_RATE * REF_TEMPO / 60
+    print(f"Alignment path (beats): ({ref_beat:.2f}, {live_beat:.2f})")
+
+    soloist_times.append(source_index / SAMPLE_RATE)  # log soloist time for error analysis
+    estimated_times.append(estimated_time)  # log estimated time for error analysis
+
+    position = estimated_time / 60 * REF_TEMPO  # convert estimated time (seconds) to position in piece (beats)
+    return position
 
 # PyAudio callback function
 def callback(in_data, frame_count, time_info, status):
@@ -119,18 +136,7 @@ def callback(in_data, frame_count, time_info, status):
         source_index += frame_count  # update source index
 
     solo_buffer.write(data)  # write soloist audio to buffer so it can be saved to a WAV file later
-
-    estimated_time = score_follower.step(data)  # get estimated time in soloist audio in seconds
-
-    ref_index, live_index = score_follower.path[-1]
-    ref_beat = ref_index * WIN_LENGTH / SAMPLE_RATE * REF_TEMPO / 60
-    live_beat = live_index * WIN_LENGTH / SAMPLE_RATE * REF_TEMPO / 60
-    print(f"Alignment path (beats): ({ref_beat:.2f}, {live_beat:.2f})")
-
-    soloist_times.append(source_index / SAMPLE_RATE)  # log soloist time for error analysis
-    estimated_times.append(estimated_time)  # log estimated time for error analysis
-
-    position = estimated_time  / 60 * REF_TEMPO  # convert estimated time (seconds) to position in piece (beats)
+    position = step(data)
 
     # Tell the MidiPerformance instance to update the score position.
     # The MidiPerformance instance will play the most recently passed note in the accompaniment.
@@ -138,71 +144,58 @@ def callback(in_data, frame_count, time_info, status):
     sleep(0.01)  # update roughly every 10ms
     return (SOLO_VOLUME_MULTIPLIER * data, pyaudio.paContinue)  # Output the solo to the speakers. The accompaniment is already being played by the MidiPerformance instance.
 
-# PyAudio
-p = pyaudio.PyAudio()
+if SKIP_PLAYBACK:
+    source_index = 0
+    while source_index < source_audio.shape[-1]:
+        data = source_audio[:, source_index:source_index + WIN_LENGTH]  # get audio data from source audio
+        source_index += WIN_LENGTH  # update source index
+        step(data)
+else: 
+    # PyAudio
+    p = pyaudio.PyAudio()
 
-# Open a stream with the callback function
-stream = p.open(rate=SAMPLE_RATE,
-                channels=CHANNELS,
-                format=pyaudio.paFloat32,
-                input=True,
-                output=True,
-                frames_per_buffer=WIN_LENGTH,
-                start=False,
-                stream_callback=callback)
+    # Open a stream with the callback function
+    stream = p.open(rate=SAMPLE_RATE,
+                    channels=CHANNELS,
+                    format=pyaudio.paFloat32,
+                    input=True,
+                    output=True,
+                    frames_per_buffer=WIN_LENGTH,
+                    start=False,
+                    stream_callback=callback)
 
-# Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
-performance = MidiPerformance(midi_file_path=PATH_MIDI_SCORE, tempo=REF_TEMPO, instrument_index=ACCOMP_INSTR_INDEX, program_number=ACCOMP_PROGAM_NUMBER, soundfont_path=PATH_SOUNDFONT)
+    # Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
+    performance = MidiPerformance(midi_file_path=PATH_MIDI_SCORE, tempo=REF_TEMPO, instrument_index=ACCOMP_INSTR_INDEX, program_number=ACCOMP_PROGAM_NUMBER, soundfont_path=PATH_SOUNDFONT)
 
-# Wait for user input to start the performance
-input('Press Enter to start the performance')
+    # Wait for user input to start the performance
+    input('Press Enter to start the performance')
 
-# Start the performance to start playing the accompaniment
-performance.start()
+    # Start the performance to start playing the accompaniment
+    performance.start()
 
-# Start the stream to start recording the soloist
-stream.start_stream()
+    # Start the stream to start recording the soloist
+    stream.start_stream()
 
-try:
-    # Wait for stream to finish
-    while stream.is_active():
-        sleep(0.01)
-except KeyboardInterrupt:
-    pass
+    try:
+        # Wait for stream to finish
+        while stream.is_active():
+            sleep(0.01)
+    except KeyboardInterrupt:
+        pass
 
-# Close the stream
-stream.close()
+    # Close the stream
+    stream.close()
 
-# Release PortAudio system resources
-p.terminate()
+    # Release PortAudio system resources
+    p.terminate()
 
-# Save the soloist audio to a WAV file
-solo_audio = solo_buffer.get_audio()
-solo_audio = normalize_audio(solo_audio)
-solo_audio = solo_audio.reshape(-1)
-sf.write('solo.wav', solo_audio, SAMPLE_RATE)
-
-# Build the DataFrame
-df_alignment = pd.DataFrame({
-    'measure': list(range(len(soloist_times))),
-    'live': soloist_times,
-    'ref': estimated_times
-})
-
-warping_path = np.asarray(score_follower.path, dtype=np.float32)
-df_alignment = calculate_alignment_error(df_alignment, warping_path)
-
-# Convert to beats and round
-df_alignment['ref_beats'] = (df_alignment['ref'] * REF_TEMPO / 60).round(2)
-df_alignment['live_beats'] = (df_alignment['live'] * REF_TEMPO / 60).round(2)
-df_alignment['alignment_error'] = df_alignment['alignment_error'].round(2)
-
-# Clean column names for CSV
-df_alignment_final = df_alignment.rename(columns={
-    'ref_beats': 'Ref Audio (Beats)',
-    'live_beats': 'Live Audio (Beats)',
-    'alignment_error': 'Alignment Error (Seconds)'
-})[['measure', 'Ref Audio (Beats)', 'Live Audio (Beats)', 'Alignment Error (Seconds)']]
+    # Save the soloist audio to a WAV file
+    solo_audio = solo_buffer.get_audio()
+    solo_audio = normalize_audio(solo_audio)
+    solo_audio = solo_audio.reshape(-1)
+    sf.write('solo.wav', solo_audio, SAMPLE_RATE)
+# Alignment DF
+df_alignment_final = calculate_align_err_beats(score_follower, soloist_times, estimated_times, REF_TEMPO)
 
 # Print results to terminal
 print(f"{'Ref Audio (Beats)':>18} | {'Live Audio (Beats)':>18} | {'Alignment Error (Seconds)':>27}")
@@ -211,5 +204,5 @@ for _, row in df_alignment_final.iterrows():
     print(f"{row['Ref Audio (Beats)']:18.2f} | {row['Live Audio (Beats)']:18.2f} | {row['Alignment Error (Seconds)']:27.2f}")
 
 # Save to CSV
-# df_alignment_final.to_csv(r'C:\Users\ashwi\OneDrive\Documents\Companion-code\backend\alignment_error_results.csv', index=False)
+# df_alignment_final.to_csv("alignment_error_results.csv", index=False)
 

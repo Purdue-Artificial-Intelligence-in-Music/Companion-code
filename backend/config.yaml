@@ -45,6 +45,9 @@ live_tempo: 110
 # Set to true to use microphone input, false to use prerecorded soloist audio
 use_mic: false
 
+# Set to true to only compute alignment w/o playback, not compatible with use_mic
+skip_playback: false
+
 # Name of piece - if provided, paths will be auto-generated from this
 piece_name: ode_to_joy
 # Otherwise, supply all three paths below manually
