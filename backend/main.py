@@ -100,7 +100,7 @@ score_follower = ScoreFollower(ref_filename=PATH_REF_WAV,
                                diag_weight=DIAG_WEIGHT, 
                                sample_rate=SAMPLE_RATE, 
                                win_length=WIN_LENGTH,
-                               features_cls=CENSFeatures)
+                               features_cls=FEATURE_TYPE)
 
 soloist_times = []
 estimated_times = []
