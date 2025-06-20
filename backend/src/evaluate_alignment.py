@@ -71,7 +71,10 @@ def evaluate_alignment(score_follower: ScoreFollower, path_alignment_csv, align_
                 live_time_left = live_times[ind - 1]
 
         interpolation = (live_time_right - live_time_left) * (diffs[ind] / STEP_SIZE)
-        live_time = live_time_left + interpolation
+        if diffs[ind] < 0:
+            live_time = live_time_right + interpolation
+        else:
+            live_time = live_time_left + interpolation
         
         predicted_times.append(live_time) # append corresponding live time as the predicted rubato time
         
