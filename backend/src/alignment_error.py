@@ -118,4 +118,12 @@ def calculate_align_err_beats(score_follower, soloist_times, estimated_times, RE
         'alignment_error': 'Alignment Error (Seconds)'
     })[['measure', 'Ref Audio (Beats)', 'Live Audio (Beats)', 'Alignment Error (Seconds)']]
 
+    # Print results to terminal
+    print(f"{'Ref Audio (Beats)':>18} | {'Live Audio (Beats)':>18} | {'Alignment Error (Seconds)':>27}")
+    print("-" * 70)
+    for _, row in df_alignment_final.iterrows():
+        print(f"{row['Ref Audio (Beats)']:18.2f} | {row['Live Audio (Beats)']:18.2f} | {row['Alignment Error (Seconds)']:27.2f}")
+
+    # Save to CSV
+    # df_alignment_final.to_csv("alignment_error_results.csv", index=False)
     return df_alignment_final

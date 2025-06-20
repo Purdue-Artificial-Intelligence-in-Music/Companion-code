@@ -1,6 +1,7 @@
 import numpy as np
 from src.alignment_error import load_data, calculate_alignment_error, calculate_align_err_beats
-from src.accompaniment_error import calculate_accompaniment_error
+# from src.accompaniment_error import calculate_accompaniment_error
+from src.evaluate_alignment import evaluate_alignment, analyze_eval_df
 import os
 import yaml
 import librosa
@@ -60,9 +61,15 @@ SKIP_PLAYBACK = config.get("skip_playback", False)
 
 # Path logic
 PIECE_NAME = config.get("piece_name")
-PATH_MIDI_SCORE = config.get("path_midi_score")
+PATH_REF_MIDI = config.get("path_ref_midi")
 PATH_REF_WAV = config.get("path_ref_wav")
+PATH_LIVE_MIDI = config.get("path_live_midi")
 PATH_LIVE_WAV = config.get("path_live_wav")
+
+# Evaluation Metrics
+PATH_ALIGNMENT_CSV = config.get("path_alignment_csv")
+ALIGN_COL_REF = config.get("align_col_ref", "baseline_time")
+ALIGN_COL_LIVE = config.get("align_col_ref", "altered_time")
 
 # Soundfont
 SOUNDFONT_FILENAME = config.get("soundfont_filename")
@@ -72,11 +79,15 @@ if USE_MIC and SKIP_PLAYBACK:
     raise ValueError("Cannot specify 'skip_playback' and 'use_mic' simultaneously")
 
 if PIECE_NAME:
-    PATH_MIDI_SCORE = os.path.join('data', 'midi', f"{PIECE_NAME}.mid")
+    PATH_REF_MIDI = os.path.join('data', 'midi', f"{PIECE_NAME}.mid")
+    PATH_LIVE_MIDI = os.path.join('data', 'midi', f"{PIECE_NAME}.mid")
     PATH_REF_WAV = os.path.join('data', 'audio', PIECE_NAME, f"ref_{REF_TEMPO}bpm.wav")
     PATH_LIVE_WAV = os.path.join('data', 'audio', PIECE_NAME, f"live_{LIVE_TEMPO}bpm.wav")
-elif not (PATH_MIDI_SCORE and PATH_REF_WAV and PATH_LIVE_WAV):
-    raise ValueError("Must specify either 'piece_name' or all of 'path_midi_score', 'path_ref_wav', and 'path_live_wav'.")
+elif not (PATH_REF_MIDI and PATH_REF_WAV and PATH_REF_MIDI and PATH_LIVE_WAV):
+    raise ValueError("Must specify either 'piece_name' or all of 'path_ref_midi', 'path_ref_wav', 'path_live_midi', and 'path_live_wav'.")
+
+if PATH_ALIGNMENT_CSV and (not ALIGN_COL_LIVE or not ALIGN_COL_REF ):
+    raise ValueError("If specifying 'path_alignment_csv', must also specify 'align_col_ref', 'align_col_live'")    
 
 if SOUNDFONT_FILENAME:
     PATH_SOUNDFONT = os.path.join('soundfonts', SOUNDFONT_FILENAME)
@@ -84,10 +95,11 @@ elif PATH_SOUNDFONT is None:
     raise ValueError("Must specify either 'soundfont_filename' or 'path_soundfont'")
 
 # Generate missing files
-generator = AudioGenerator(score_path=PATH_MIDI_SCORE, soundfont_path=PATH_SOUNDFONT)
 if not os.path.isfile(PATH_REF_WAV):
+    generator = AudioGenerator(score_path=PATH_REF_MIDI, soundfont_path=PATH_SOUNDFONT)
     generator.generate_solo(output_file=PATH_REF_WAV, tempo=REF_TEMPO, instrument_index=0)
 if not os.path.isfile(PATH_LIVE_WAV):
+    generator = AudioGenerator(score_path=PATH_LIVE_MIDI, soundfont_path=PATH_SOUNDFONT)
     generator.generate_solo(output_file=PATH_LIVE_WAV, tempo=LIVE_TEMPO, instrument_index=0)
 
 source_audio, _ = librosa.load(PATH_LIVE_WAV, sr=SAMPLE_RATE)  # load soloist audio
@@ -165,7 +177,7 @@ else:
                     stream_callback=callback)
 
     # Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
-    performance = MidiPerformance(midi_file_path=PATH_MIDI_SCORE, tempo=REF_TEMPO, instrument_index=ACCOMP_INSTR_INDEX, program_number=ACCOMP_PROGAM_NUMBER, soundfont_path=PATH_SOUNDFONT)
+    performance = MidiPerformance(midi_file_path=PATH_REF_MIDI, tempo=REF_TEMPO, instrument_index=ACCOMP_INSTR_INDEX, program_number=ACCOMP_PROGAM_NUMBER, soundfont_path=PATH_SOUNDFONT)
 
     # Wait for user input to start the performance
     input('Press Enter to start the performance')
@@ -194,15 +206,7 @@ else:
     solo_audio = normalize_audio(solo_audio)
     solo_audio = solo_audio.reshape(-1)
     sf.write('solo.wav', solo_audio, SAMPLE_RATE)
-# Alignment DF
-df_alignment_final = calculate_align_err_beats(score_follower, soloist_times, estimated_times, REF_TEMPO)
 
-# Print results to terminal
-print(f"{'Ref Audio (Beats)':>18} | {'Live Audio (Beats)':>18} | {'Alignment Error (Seconds)':>27}")
-print("-" * 70)
-for _, row in df_alignment_final.iterrows():
-    print(f"{row['Ref Audio (Beats)']:18.2f} | {row['Live Audio (Beats)']:18.2f} | {row['Alignment Error (Seconds)']:27.2f}")
-
-# Save to CSV
-# df_alignment_final.to_csv("alignment_error_results.csv", index=False)
-
+if PATH_ALIGNMENT_CSV:
+    eval_df = evaluate_alignment(score_follower, PATH_ALIGNMENT_CSV, ALIGN_COL_REF, ALIGN_COL_LIVE)
+    analyze_eval_df(eval_df)
