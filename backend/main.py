@@ -69,7 +69,7 @@ PATH_LIVE_WAV = config.get("path_live_wav")
 # Evaluation Metrics
 PATH_ALIGNMENT_CSV = config.get("path_alignment_csv")
 ALIGN_COL_REF = config.get("align_col_ref", "baseline_time")
-ALIGN_COL_LIVE = config.get("align_col_ref", "altered_time")
+ALIGN_COL_LIVE = config.get("align_col_live", "altered_time")
 
 # Soundfont
 SOUNDFONT_FILENAME = config.get("soundfont_filename")
@@ -86,7 +86,7 @@ if PIECE_NAME:
 elif not (PATH_REF_MIDI and PATH_REF_WAV and PATH_REF_MIDI and PATH_LIVE_WAV):
     raise ValueError("Must specify either 'piece_name' or all of 'path_ref_midi', 'path_ref_wav', 'path_live_midi', and 'path_live_wav'.")
 
-if PATH_ALIGNMENT_CSV and (not ALIGN_COL_LIVE or not ALIGN_COL_REF ):
+if PATH_ALIGNMENT_CSV and (not ALIGN_COL_LIVE or not ALIGN_COL_REF):
     raise ValueError("If specifying 'path_alignment_csv', must also specify 'align_col_ref', 'align_col_live'")    
 
 if SOUNDFONT_FILENAME:

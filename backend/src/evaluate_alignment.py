@@ -1,3 +1,4 @@
+import pretty_midi
 import pandas as pd
 import numpy as np
 import yaml
@@ -13,6 +14,36 @@ REF_TEMPO = config.get("ref_tempo")
 
 STEP_SIZE = (WIN_LENGTH / SAMPLE_RATE) # * (REF_TEMPO / 60) for beats
 
+def create_alignment_csv(baseline_file, altered_file, csv_out_path):
+    midi_baseline = pretty_midi.PrettyMIDI(baseline_file)
+    midi_altered = pretty_midi.PrettyMIDI(altered_file)
+    pitch = []
+    baseline_time = []
+    
+    for instruments in midi_baseline.instruments:
+        for note in instruments.notes:
+            pitch.append(note.pitch)
+            baseline_time.append(note.start)
+
+    altered_time = []
+    for instruments in midi_altered.instruments:
+        for note in instruments.notes:
+            altered_time.append(note.start)
+
+    df = pd.DataFrame({
+        'note pitch': pitch,
+        'baseline_time': baseline_time,
+        'altered_time': altered_time
+    })
+
+    df['Serial No.'] = df.index
+    df = df[['Serial No.', 'note pitch', 'baseline_time', 'altered_time']]
+
+    print(df.head(n=10))
+
+    df.to_csv(csv_out_path, sep=',', index=False)
+    #df.to_csv(midi_out, sep=';', quoting=2, float_format='%.3f', index=False)
+    
 def evaluate_alignment(score_follower: ScoreFollower, path_alignment_csv, align_col_ref, align_col_live):
     source_times_df = pd.read_csv(path_alignment_csv)
 

@@ -61,7 +61,7 @@ path_live_wav: data/audio/ode_to_joy_altered/100bpm.wav
 
 # Evaluation Metrics
 path_alignment_csv: data/alignments/ode_to_joy_100bpm.csv 
-algin_col_ref: "baseline_time"
+align_col_ref: "baseline_time"
 align_col_live: "altered_time"
 
 # Soundfont (looks for a soundfont under the 'soundfonts' folder)
