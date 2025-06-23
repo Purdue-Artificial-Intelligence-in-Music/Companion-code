@@ -63,6 +63,8 @@ path_live_wav: data/audio/ode_to_joy_altered/300bpm.wav
 path_alignment_csv: data/alignments/ode_to_joy_300bpm.csv 
 align_col_ref: "baseline_time"
 align_col_live: "altered_time"
+# Override the warping path and use a pure diagonal for testing
+align_use_diag: false
 
 # Soundfont (looks for a soundfont under the 'soundfonts' folder)
 soundfont_filename: FluidR3_GM.sf2

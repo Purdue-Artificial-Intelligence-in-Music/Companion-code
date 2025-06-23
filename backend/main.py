@@ -70,6 +70,7 @@ PATH_LIVE_WAV = config.get("path_live_wav")
 PATH_ALIGNMENT_CSV = config.get("path_alignment_csv")
 ALIGN_COL_REF = config.get("align_col_ref", "baseline_time")
 ALIGN_COL_LIVE = config.get("align_col_live", "altered_time")
+ALIGN_USE_DIAG = config.get("align_use_diag", False)
 
 # Soundfont
 SOUNDFONT_FILENAME = config.get("soundfont_filename")
@@ -208,5 +209,5 @@ else:
     sf.write('solo.wav', solo_audio, SAMPLE_RATE)
 
 if PATH_ALIGNMENT_CSV:
-    eval_df = evaluate_alignment(score_follower, PATH_ALIGNMENT_CSV, ALIGN_COL_REF, ALIGN_COL_LIVE)
+    eval_df = evaluate_alignment(score_follower, PATH_ALIGNMENT_CSV, ALIGN_COL_REF, ALIGN_COL_LIVE, ALIGN_USE_DIAG)
     analyze_eval_df(eval_df)

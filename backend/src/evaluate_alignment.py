@@ -44,40 +44,57 @@ def create_alignment_csv(baseline_file, altered_file, csv_out_path):
     df.to_csv(csv_out_path, sep=',', index=False)
     #df.to_csv(midi_out, sep=';', quoting=2, float_format='%.3f', index=False)
     
-def evaluate_alignment(score_follower: ScoreFollower, path_alignment_csv, align_col_ref, align_col_live):
+def calculate_warped_times(warping_path, ref_times):
+    # map each baseline note time to live time
+    warped_times = []
+    
+    path_times = warping_path * STEP_SIZE
+    
+    ref_path_times = path_times[:, 0] 
+    live_path_times = path_times[:, 1] 
+
+    for query_time in ref_times:
+        diffs = ref_path_times - query_time
+        idx = np.argmin(np.abs(diffs))  # find closest step in warping path to ref_time
+        
+        if diffs[idx] >= 0 and idx > 0:
+            left_idx = idx - 1
+            right_idx = idx
+        elif idx + 1 < len(live_path_times):
+            left_idx = idx
+            right_idx = idx + 1
+        else:
+            left_idx = right_idx = idx 
+
+        if left_idx == right_idx:
+            warped_times.append(live_path_times[left_idx])
+            continue
+
+        query_ref_offset = query_time - ref_path_times[left_idx]  # must be positive
+        
+        query_offset_norm = query_ref_offset
+        if query_ref_offset != 0:
+            query_offset_norm = query_offset_norm / STEP_SIZE
+
+        live_max_offset = live_path_times[right_idx] - live_path_times[left_idx]
+        query_offset_live = live_max_offset * query_offset_norm
+
+        live_time = live_path_times[left_idx] + query_offset_live
+        warped_times.append(live_time)
+    
+    return warped_times
+
+def evaluate_alignment(score_follower: ScoreFollower, path_alignment_csv, align_col_ref, align_col_live, force_diagonal=False):
     source_times_df = pd.read_csv(path_alignment_csv)
 
     warping_path = np.array(score_follower.path)
-    path_times = warping_path * STEP_SIZE
-    
-    ref_times = path_times[:, 0] 
-    live_times = path_times[:, 1] 
+
+    if (force_diagonal):
+        warping_path = np.array([(i, i) for i in range(len(score_follower.path))])
   
     # map each baseline note time to live time
-    predicted_times = []
-    for time in source_times_df[align_col_ref]: #testDF['baseline_time_s] - expected time of each note in the baseline
-        diffs = ref_times - time
-        ind = np.argmin(np.abs(diffs))  # find closest time in warping path (closest point in ref_time, which is the ref time sequence that DTW aligned)
-        
-        if diffs[ind] < 0:
-            live_time_left = live_times[ind]
-            live_time_right = live_time_left
-            if ind + 1 < len(live_times):   
-                live_time_right = live_times[ind + 1]
-        else:
-            live_time_right = live_times[ind]
-            live_time_left = live_time_right
-            if ind - 1 >= 0:   
-                live_time_left = live_times[ind - 1]
-
-        interpolation = (live_time_right - live_time_left) * (diffs[ind] / STEP_SIZE)
-        if diffs[ind] < 0:
-            live_time = live_time_right + interpolation
-        else:
-            live_time = live_time_left + interpolation
-        
-        predicted_times.append(live_time) # append corresponding live time as the predicted rubato time
-        
+    predicted_times = calculate_warped_times(warping_path, source_times_df[align_col_ref])
+ 
     eval_df = pd.DataFrame({
         'baseline': source_times_df[align_col_ref],
         'predicted live time': predicted_times,
