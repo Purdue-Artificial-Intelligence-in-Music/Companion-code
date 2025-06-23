@@ -37,10 +37,10 @@ accomp_instr_index: 0
 accomp_program_num: 1
 
 # Tempo at which the user plans to play in BPM
-ref_tempo: 100
+ref_tempo: 300
 
 # Tempo at which the user actually plays in BPM
-live_tempo: 100
+live_tempo: 300
 
 # Set to true to use microphone input, false to use prerecorded soloist audio
 use_mic: false
@@ -54,13 +54,13 @@ skip_playback: true
 
 # Uncomment and set these paths if piece_name is not provided
 path_ref_midi: data/midi/ode_to_joy_baseline.mid
-path_ref_wav: data/audio/ode_to_joy_baseline/100bpm.wav
+path_ref_wav: data/audio/ode_to_joy_baseline/300bpm.wav
 
 path_live_midi: data/midi/ode_to_joy_altered.mid
-path_live_wav: data/audio/ode_to_joy_altered/100bpm.wav
+path_live_wav: data/audio/ode_to_joy_altered/300bpm.wav
 
 # Evaluation Metrics
-path_alignment_csv: data/alignments/ode_to_joy_100bpm.csv 
+path_alignment_csv: data/alignments/ode_to_joy_300bpm.csv 
 align_col_ref: "baseline_time"
 align_col_live: "altered_time"
 
