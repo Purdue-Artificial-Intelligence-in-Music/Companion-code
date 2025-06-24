@@ -21,35 +21,36 @@ def convert(filepath: Path):
         bar.append(str(m.number) + "\t" + ts.ratioString)
 
     for n in score.flatten().notes:
-        solo.append(
-            "{:<15}\t{}\t{}\t{}\t{}".format(
-                "{}+{}/{}".format(
-                    n.measureNumber,
-                    *((n.beat - 1.0) / n.beatDuration.quarterLength).as_integer_ratio(),
-                ),
-                "{}/{}".format(*(n.offset / 4.0).as_integer_ratio()),
-                n.volume.velocity if n.volume.velocity is not None else 90,
-                n.pitch.midi,
-                1,  # note on
+        for p in n.pitches:
+            solo.append(
+                "{:<15}\t{}\t{}\t{}\t{}".format(
+                    "{}+{}/{}".format(
+                        n.measureNumber,
+                        *((n.beat - 1.0) / n.beatDuration.quarterLength).as_integer_ratio(),
+                    ),
+                    "{}/{}".format(*(n.offset / 4.0).as_integer_ratio()),
+                    n.volume.velocity if n.volume.velocity is not None else 90,
+                    p.midi,
+                    1,  # note on
+                )
             )
-        )
-        solo.append(
-            "{:<15}\t{}\t{}\t{}\t{}".format(
-                "{}+{}/{}".format(
-                    n.measureNumber,
-                    *(
-                        ((n.beat - 1.0) / n.beatDuration.quarterLength)
-                        + n.quarterLength / 4.0
-                    ).as_integer_ratio(),
-                ),
-                "{}/{}".format(
-                    *((n.offset + n.quarterLength) / 4.0).as_integer_ratio()
-                ),
-                n.volume.velocity if n.volume.velocity is not None else 90,
-                n.pitch.midi,
-                0,  # note off
+            solo.append(
+                "{:<15}\t{}\t{}\t{}\t{}".format(
+                    "{}+{}/{}".format(
+                        n.measureNumber,
+                        *(
+                            ((n.beat - 1.0) / n.beatDuration.quarterLength)
+                            + n.quarterLength / 4.0
+                        ).as_integer_ratio(),
+                    ),
+                    "{}/{}".format(
+                        *((n.offset + n.quarterLength) / 4.0).as_integer_ratio()
+                    ),
+                    n.volume.velocity if n.volume.velocity is not None else 90,
+                    p.midi,
+                    0,  # note off
+                )
             )
-        )
 
     bar_path = Path(name).with_suffix(".bar")
     solo_path = Path(name).with_suffix(".solo")
