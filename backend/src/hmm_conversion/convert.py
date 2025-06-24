@@ -61,3 +61,12 @@ def convert(filepath: Path):
 
 # TODO
 # - chords
+
+import sys
+
+if __name__ == '__main__':
+    for filename in sys.argv[1:]:
+        s = converter.parse(filename)
+        s.show()
+        convert(Path(filename))
+
