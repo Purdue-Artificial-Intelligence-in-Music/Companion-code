@@ -155,11 +155,11 @@ def step(data) -> int:
     )  # get estimated time in soloist audio in seconds
 
     ref_index, live_index = score_follower.path[-1]
-    print(f"Alignment path (indicies, ref vs. live): ({ref_index}, {live_index})")
+    print(f"Alignment path (indices, ref vs. live): ({ref_index}, {live_index})")
 
-    ref_beat = ref_index * STEP_SIZE * REF_TEMPO / 60
-    live_beat = live_index * STEP_SIZE * REF_TEMPO / 60
-    print(f"Alignment path (beats): ({ref_beat:.2f}, {live_beat:.2f})")
+    # ref_beat = ref_index * STEP_SIZE * REF_TEMPO / 60
+    # live_beat = live_index * STEP_SIZE * REF_TEMPO / 60
+    # print(f"Alignment path (beats): ({ref_beat:.2f}, {live_beat:.2f})")
 
     soloist_times.append(
         source_index / SAMPLE_RATE
