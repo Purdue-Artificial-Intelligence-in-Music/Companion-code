@@ -9,7 +9,6 @@ from src.phase_vocoder import PhaseVocoder  # import your modified PhaseVocoder 
 
 
 class TestPhaseVocoder(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         """
@@ -43,13 +42,15 @@ class TestPhaseVocoder(unittest.TestCase):
         `get_time()` to end up ~1.0 seconds, and the output length
         ~ num_samples.
         """
-        pv = PhaseVocoder(path=self.test_wav.name,
-                          sample_rate=self.sample_rate,
-                          channels=1,
-                          n_fft=1024,
-                          win_length=1024,
-                          hop_length=256,
-                          playback_rate=1.0)
+        pv = PhaseVocoder(
+            path=self.test_wav.name,
+            sample_rate=self.sample_rate,
+            channels=1,
+            n_fft=1024,
+            win_length=1024,
+            hop_length=256,
+            playback_rate=1.0,
+        )
 
         all_frames = []
         frames_per_call = 512
@@ -63,13 +64,19 @@ class TestPhaseVocoder(unittest.TestCase):
         total_out = output_audio.shape[1]
 
         # Check the output length is ~ the original sample count
-        self.assertTrue(abs(total_out - self.num_samples) < 2048,
-                        msg=f"Default speed output length off by more than 2048. Got {total_out}, expected ~ {self.num_samples}")
+        self.assertTrue(
+            abs(total_out - self.num_samples) < 2048,
+            msg=f"Default speed output length off by more than 2048. Got {total_out}, expected ~ {self.num_samples}",
+        )
 
         # Now check get_time() ~ 1.0 second
         final_time = pv.get_time()
-        self.assertAlmostEqual(final_time, 1.0, delta=0.1,
-                               msg=f"get_time() should be near 1.0s for default speed, got {final_time}")
+        self.assertAlmostEqual(
+            final_time,
+            1.0,
+            delta=0.1,
+            msg=f"get_time() should be near 1.0s for default speed, got {final_time}",
+        )
 
     def test_vocoder_slow_speed(self):
         """
@@ -77,13 +84,15 @@ class TestPhaseVocoder(unittest.TestCase):
         We expect ~2x the output samples (time-stretched), but _audio_index
         should still end up ~44100 in the original domain => ~1.0 second of input.
         """
-        pv = PhaseVocoder(path=self.test_wav.name,
-                          sample_rate=self.sample_rate,
-                          channels=1,
-                          n_fft=1024,
-                          win_length=1024,
-                          hop_length=256,
-                          playback_rate=0.5)
+        pv = PhaseVocoder(
+            path=self.test_wav.name,
+            sample_rate=self.sample_rate,
+            channels=1,
+            n_fft=1024,
+            win_length=1024,
+            hop_length=256,
+            playback_rate=0.5,
+        )
 
         all_frames = []
         frames_per_call = 512
@@ -98,26 +107,34 @@ class TestPhaseVocoder(unittest.TestCase):
 
         # Expect about double the original length
         expected_out = 2 * self.num_samples
-        self.assertTrue(abs(total_out - expected_out) < 2048,
-                        msg=f"Half-speed output length off. Got {total_out}, expected ~ {expected_out}")
+        self.assertTrue(
+            abs(total_out - expected_out) < 2048,
+            msg=f"Half-speed output length off. Got {total_out}, expected ~ {expected_out}",
+        )
 
         # get_time() in *original* domain => should be ~1.0s
         final_time = pv.get_time()
-        self.assertAlmostEqual(final_time, 1.0, delta=0.1,
-                               msg=f"get_time() should be near 1.0s for half speed, got {final_time}")
+        self.assertAlmostEqual(
+            final_time,
+            1.0,
+            delta=0.1,
+            msg=f"get_time() should be near 1.0s for half speed, got {final_time}",
+        )
 
     def test_vocoder_fast_speed(self):
         """
         Test reading the entire file at 2.0 playback rate (double-speed).
         We expect ~0.5x the output samples, but still get_time() ~1.0 second.
         """
-        pv = PhaseVocoder(path=self.test_wav.name,
-                          sample_rate=self.sample_rate,
-                          channels=1,
-                          n_fft=1024,
-                          win_length=1024,
-                          hop_length=256,
-                          playback_rate=2.0)
+        pv = PhaseVocoder(
+            path=self.test_wav.name,
+            sample_rate=self.sample_rate,
+            channels=1,
+            n_fft=1024,
+            win_length=1024,
+            hop_length=256,
+            playback_rate=2.0,
+        )
 
         all_frames = []
         frames_per_call = 512
@@ -132,26 +149,34 @@ class TestPhaseVocoder(unittest.TestCase):
 
         # Expect about half the original length
         expected_out = self.num_samples // 2
-        self.assertTrue(abs(total_out - expected_out) < 1024,
-                        msg=f"Double-speed output length off. Got {total_out}, expected ~ {expected_out}")
+        self.assertTrue(
+            abs(total_out - expected_out) < 1024,
+            msg=f"Double-speed output length off. Got {total_out}, expected ~ {expected_out}",
+        )
 
         # get_time() in *original* domain => ~1.0s
         final_time = pv.get_time()
-        self.assertAlmostEqual(final_time, 1.0, delta=0.1,
-                               msg=f"get_time() should be near 1.0s for double speed, got {final_time}")
+        self.assertAlmostEqual(
+            final_time,
+            1.0,
+            delta=0.1,
+            msg=f"get_time() should be near 1.0s for double speed, got {final_time}",
+        )
 
     def test_vocoder_end_of_file(self):
         """
         Make sure that once we've exhausted the STFT frames, get_next_frames returns None
         and that we indeed got some data out before that happened.
         """
-        pv = PhaseVocoder(path=self.test_wav.name,
-                          sample_rate=self.sample_rate,
-                          channels=1,
-                          n_fft=1024,
-                          win_length=1024,
-                          hop_length=256,
-                          playback_rate=1.0)
+        pv = PhaseVocoder(
+            path=self.test_wav.name,
+            sample_rate=self.sample_rate,
+            channels=1,
+            n_fft=1024,
+            win_length=1024,
+            hop_length=256,
+            playback_rate=1.0,
+        )
 
         frames_per_call = 1024
 
@@ -167,8 +192,10 @@ class TestPhaseVocoder(unittest.TestCase):
         self.assertTrue(got_data, "Never received any frames from the PhaseVocoder.")
         # By now, we expect repeated calls to also give None
         frames_after_eof = pv.get_next_frames(frames_per_call)
-        self.assertIsNone(frames_after_eof, "Should still return None after end of file.")
+        self.assertIsNone(
+            frames_after_eof, "Should still return None after end of file."
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

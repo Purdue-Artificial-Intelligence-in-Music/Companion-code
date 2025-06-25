@@ -32,8 +32,9 @@ class AudioBuffer:
         Number of unread frames in the buffer
     """
 
-    def __init__(self, sample_rate: int = 44100, channels: int = 1, max_duration: int = 600):
-
+    def __init__(
+        self, sample_rate: int = 44100, channels: int = 1, max_duration: int = 600
+    ):
         # Params
         self.sample_rate = sample_rate
         self.length = max_duration * self.sample_rate
@@ -65,10 +66,10 @@ class AudioBuffer:
 
         # If the buffer will exceed its length, raise exception
         if self.write_index + num_frames > self.length:
-            raise Exception('Error: Not enough space left in buffer')
+            raise Exception("Error: Not enough space left in buffer")
 
         # Write frames
-        self.buffer[:, self.write_index:self.write_index + num_frames] = frames
+        self.buffer[:, self.write_index : self.write_index + num_frames] = frames
 
         # Increment the write index
         self.write_index += num_frames
@@ -95,12 +96,13 @@ class AudioBuffer:
 
         # If the number of frames to read exceeds the number of unread frames, raise exception
         if num_frames > self.unread_frames:
-            print('AudioBuffer read error')
+            print("AudioBuffer read error")
             raise Exception(
-                f'Error: Attempted to read {num_frames} frames but count is {self.unread_frames}')
+                f"Error: Attempted to read {num_frames} frames but count is {self.unread_frames}"
+            )
 
         # Read frames
-        frames = self.buffer[:, self.read_index:self.read_index+num_frames]
+        frames = self.buffer[:, self.read_index : self.read_index + num_frames]
 
         self.read_index += num_frames
         self.unread_frames -= num_frames
@@ -108,12 +110,12 @@ class AudioBuffer:
         return frames
 
     def get_time(self) -> int:
-        """Get the length of the audio written to the buffer in seconds. """
+        """Get the length of the audio written to the buffer in seconds."""
         return self.write_index / self.sample_rate
 
     def get_audio(self) -> np.ndarray:
-        """Get all the audio written to the buffer so far. """
-        return self.buffer[:, :self.write_index]
+        """Get all the audio written to the buffer so far."""
+        return self.buffer[:, : self.write_index]
 
     def save(self, path):
         """
@@ -127,24 +129,22 @@ class AudioBuffer:
             None
         """
         audio = self.get_audio()
-        audio = audio.reshape((-1, ))
+        audio = audio.reshape((-1,))
         soundfile.write(path, audio, self.sample_rate)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import librosa
 
-    source = 'data/audio/bach/live/variable_tempo.wav'
+    source = "data/audio/bach/live/variable_tempo.wav"
     audio = librosa.load(source, sr=44100)
     audio = audio[0].reshape((1, -1))
     audio = audio.astype(np.float32)
 
-    buffer = AudioBuffer(sample_rate=44100,
-                         channels=1,
-                         max_duration=600)
+    buffer = AudioBuffer(sample_rate=44100, channels=1, max_duration=600)
 
     for i in range(0, audio.shape[-1], 2048):
-        frames = audio[:, i:i+2048]
+        frames = audio[:, i : i + 2048]
         buffer.write(frames)
 
-    buffer.save('buffer_audio.wav')
+    buffer.save("buffer_audio.wav")

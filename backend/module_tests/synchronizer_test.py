@@ -3,11 +3,12 @@ from unittest.mock import patch, MagicMock
 import numpy as np
 from src.synchronizer import Synchronizer
 
+
 class TestSynchronizer(unittest.TestCase):
-    @patch('src.synchronizer.ScoreFollower')
-    @patch('src.audio_buffer.AudioBuffer')
-    @patch('simple_pid.PID')
-    @patch('librosa.load')
+    @patch("src.synchronizer.ScoreFollower")
+    @patch("src.audio_buffer.AudioBuffer")
+    @patch("simple_pid.PID")
+    @patch("librosa.load")
     def setUp(self, MockLibrosaLoad, MockPID, MockAudioBuffer, MockScoreFollower):
         # Mock librosa.load to avoid loading an actual file
         MockLibrosaLoad.return_value = (np.random.random(44100), 44100)
@@ -18,7 +19,7 @@ class TestSynchronizer(unittest.TestCase):
         self.mock_pid = MockPID.return_value
 
         # Instantiate Synchronizer
-        self.synchronizer = Synchronizer(reference='path/to/score')
+        self.synchronizer = Synchronizer(reference="path/to/score")
 
     def test_synchronizer_initialization(self):
         self.assertEqual(self.synchronizer.sample_rate, 44100)
@@ -31,7 +32,7 @@ class TestSynchronizer(unittest.TestCase):
 
         # Ensure that score_follower.step returns the correct soloist_time
         self.synchronizer.score_follower.step = MagicMock(return_value=soloist_time)
-        
+
         # Spy on the live_buffer.write method
         self.synchronizer.live_buffer.write = MagicMock()
 
@@ -54,5 +55,6 @@ class TestSynchronizer(unittest.TestCase):
         # Assert that live_buffer.save was called with the correct arguments
         self.synchronizer.live_buffer.save.assert_called_once_with(path)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

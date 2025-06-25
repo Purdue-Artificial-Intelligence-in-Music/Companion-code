@@ -25,20 +25,21 @@ def load_data(filepath: str) -> pd.DataFrame:
     df = pd.read_csv(filepath)
 
     # Ensure the required columns are present
-    required_columns = ['measure', 'live', 'ref']
+    required_columns = ["measure", "live", "ref"]
     if not all(col in df.columns for col in required_columns):
-        raise ValueError(
-            f"Missing one or more required columns: {required_columns}")
+        raise ValueError(f"Missing one or more required columns: {required_columns}")
 
     # Return the dataframe with the required columns
     return df[required_columns]
 
 
-def calculate_alignment_error(df: pd.DataFrame, warping_path: np.ndarray) -> pd.DataFrame:
+def calculate_alignment_error(
+    df: pd.DataFrame, warping_path: np.ndarray
+) -> pd.DataFrame:
     """
     Add estimated_ref and alignment_error columns to a pandas DataFrame.
 
-    This function takes in a DataFrame with columns 'measure', 'live', and 'ref', 
+    This function takes in a DataFrame with columns 'measure', 'live', and 'ref',
     and returns a DataFrame with two additional columns: 'estimated_ref' and 'alignment_error'.
 
     Parameters
@@ -48,9 +49,9 @@ def calculate_alignment_error(df: pd.DataFrame, warping_path: np.ndarray) -> pd.
         Each row represents a measure in music, 'live' and 'ref' are the times in seconds when the measure starts
         in the live recording and reference recording, respectively.
     warping_path : numpy.ndarray
-        The warping path calculated by the OTW algorithm. 
-        It is a 2D array with shape (n, 2), where n is the number of points in the warping path. 
-        The first column represents the estimated time in the reference recording. 
+        The warping path calculated by the OTW algorithm.
+        It is a 2D array with shape (n, 2), where n is the number of points in the warping path.
+        The first column represents the estimated time in the reference recording.
         The second column represents the time in the live recording.
         n is greater than the number of measures in the DataFrame.
 
@@ -71,8 +72,8 @@ def calculate_alignment_error(df: pd.DataFrame, warping_path: np.ndarray) -> pd.
     # Add the estimated_ref and alignment_error columns to the DataFrame
 
     # I convert the live and ref columns of the passed dataframe to numpy arrays
-    live_times = df['live'].to_numpy()
-    ref_times = df['ref'].to_numpy()
+    live_times = df["live"].to_numpy()
+    ref_times = df["ref"].to_numpy()
 
     # Below, we convert the columns from the 2D warping_path array to 1D numpy arrays
     estimated_ref_times = warping_path[:, 0]
@@ -90,39 +91,57 @@ def calculate_alignment_error(df: pd.DataFrame, warping_path: np.ndarray) -> pd.
 
     alignment_error = estimated_ref - ref_times
 
-    df['estimated_ref'] = estimated_ref
-    df['alignment_error'] = alignment_error
+    df["estimated_ref"] = estimated_ref
+    df["alignment_error"] = alignment_error
 
     return df
 
-def calculate_align_err_beats(score_follower, soloist_times, estimated_times, REF_TEMPO):
+
+def calculate_align_err_beats(
+    score_follower, soloist_times, estimated_times, REF_TEMPO
+):
     # Build the DataFrame
-    df_alignment = pd.DataFrame({
-        'measure': list(range(len(soloist_times))),
-        'live': soloist_times,
-        'ref': estimated_times
-    })
+    df_alignment = pd.DataFrame(
+        {
+            "measure": list(range(len(soloist_times))),
+            "live": soloist_times,
+            "ref": estimated_times,
+        }
+    )
 
     warping_path = np.asarray(score_follower.path, dtype=np.float32)
     df_alignment = calculate_alignment_error(df_alignment, warping_path)
 
     # Convert to beats and round
-    df_alignment['ref_beats'] = (df_alignment['ref'] * REF_TEMPO / 60).round(2)
-    df_alignment['live_beats'] = (df_alignment['live'] * REF_TEMPO / 60).round(2)
-    df_alignment['alignment_error'] = df_alignment['alignment_error'].round(2)
+    df_alignment["ref_beats"] = (df_alignment["ref"] * REF_TEMPO / 60).round(2)
+    df_alignment["live_beats"] = (df_alignment["live"] * REF_TEMPO / 60).round(2)
+    df_alignment["alignment_error"] = df_alignment["alignment_error"].round(2)
 
     # Clean column names for CSV
-    df_alignment_final = df_alignment.rename(columns={
-        'ref_beats': 'Ref Audio (Beats)',
-        'live_beats': 'Live Audio (Beats)',
-        'alignment_error': 'Alignment Error (Seconds)'
-    })[['measure', 'Ref Audio (Beats)', 'Live Audio (Beats)', 'Alignment Error (Seconds)']]
+    df_alignment_final = df_alignment.rename(
+        columns={
+            "ref_beats": "Ref Audio (Beats)",
+            "live_beats": "Live Audio (Beats)",
+            "alignment_error": "Alignment Error (Seconds)",
+        }
+    )[
+        [
+            "measure",
+            "Ref Audio (Beats)",
+            "Live Audio (Beats)",
+            "Alignment Error (Seconds)",
+        ]
+    ]
 
     # Print results to terminal
-    print(f"{'Ref Audio (Beats)':>18} | {'Live Audio (Beats)':>18} | {'Alignment Error (Seconds)':>27}")
+    print(
+        f"{'Ref Audio (Beats)':>18} | {'Live Audio (Beats)':>18} | {'Alignment Error (Seconds)':>27}"
+    )
     print("-" * 70)
     for _, row in df_alignment_final.iterrows():
-        print(f"{row['Ref Audio (Beats)']:18.2f} | {row['Live Audio (Beats)']:18.2f} | {row['Alignment Error (Seconds)']:27.2f}")
+        print(
+            f"{row['Ref Audio (Beats)']:18.2f} | {row['Live Audio (Beats)']:18.2f} | {row['Alignment Error (Seconds)']:27.2f}"
+        )
 
     # Save to CSV
     # df_alignment_final.to_csv("alignment_error_results.csv", index=False)
