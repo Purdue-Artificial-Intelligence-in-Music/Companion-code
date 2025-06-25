@@ -134,25 +134,16 @@ def plot_eval_df(eval_df):
     plt.xlabel('Alignment Error (seconds)')
     plt.ylabel('Frequency')
 
+    # Alignment error over notes (using positive and negative instances)
+    plt.subplot(2, 2, 2)
+    plt.plot(eval_df['live deviation'])
+    plt.title('Alignment Error')
+    plt.xlabel('Note No.')
+    plt.ylabel('Alignment Error (seconds)')
+    plt.axhline(y=0, color='r', linestyle='--')
+
     plt.tight_layout()
     plt.savefig('error_analysis.png')
     plt.show()
 
-    # Identify measures with largest errors
-    worst_alignment = eval_df.loc[eval_df['abs_alignment_error'].idxmax()]
-
-    print("\nMeasure with largest alignment error:")
-    print(worst_alignment[['measure', 'alignment_error']])
-
-    # plot these progressions over time
-    plt.figure(figsize=(12, 6))
-    plt.plot(df['measure'][1:], df['alignment_error_diff']
-            [1:], label='Alignment Error')
-    plt.plot(df['measure'][1:], df['accompaniment_error_diff']
-            [1:], label='Accompaniment Error')
-    plt.title('Error Progression Over Measures')
-    plt.xlabel('Measure')
-    plt.ylabel('Error Difference (seconds)')
-    plt.legend()
-    plt.savefig('error_progression.png')
-    plt.show()
+ 

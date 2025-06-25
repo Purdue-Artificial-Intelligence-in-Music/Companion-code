@@ -135,7 +135,7 @@ def step(data) -> int:
 
     ref_beat = ref_index * STEP_SIZE * REF_TEMPO / 60
     live_beat = live_index * STEP_SIZE * REF_TEMPO / 60
-    # print(f"Alignment path (beats): ({ref_beat:.2f}, {live_beat:.2f})")
+    print(f"Alignment path (beats): ({ref_beat:.2f}, {live_beat:.2f})")
 
     soloist_times.append(source_index / SAMPLE_RATE)  # log soloist time for error analysis
     estimated_times.append(estimated_time)  # log estimated time for error analysis
@@ -217,5 +217,5 @@ else:
 if PATH_ALIGNMENT_CSV:
     eval_df = evaluate_alignment(score_follower, PATH_ALIGNMENT_CSV, ALIGN_COL_NOTE, ALIGN_COL_REF, ALIGN_COL_LIVE, ALIGN_USE_DIAG)
     analyze_eval_df(eval_df)
-    # plot_eval_df(eval_df)
+    plot_eval_df(eval_df)
     evaluate_intonation(live_audio, eval_df)

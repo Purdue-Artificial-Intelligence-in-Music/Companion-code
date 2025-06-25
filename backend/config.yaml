@@ -59,11 +59,14 @@ path_ref_wav: data/audio/ode_to_joy_baseline/300bpm.wav
 path_live_midi: data/midi/ode_to_joy_altered.mid
 path_live_wav: data/audio/ode_to_joy_altered/300bpm.wav
 
-# Evaluation Metrics
-path_alignment_csv: data/alignments/ode_to_joy_300bpm.csv 
+# Evaluation CSV - if provided, enable evaluation metrics
+# path_alignment_csv: data/alignments/ode_to_joy_300bpm.csv
+
+# Column names of Evaluation CSV
 align_col_note: "note pitch"
 align_col_ref: "baseline_time"
 align_col_live: "altered_time"
+
 # Override the warping path and use a pure diagonal for testing
 align_use_diag: false
 
