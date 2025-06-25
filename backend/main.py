@@ -1,7 +1,8 @@
 import numpy as np
 from src.alignment_error import load_data, calculate_alignment_error, calculate_align_err_beats
 # from src.accompaniment_error import calculate_accompaniment_error
-from src.evaluate_alignment import evaluate_alignment, analyze_eval_df
+from src.evaluate_alignment import evaluate_alignment, analyze_eval_df, plot_eval_df
+from src.infer_performance_errors import evaluate_intonation
 import os
 import yaml
 import librosa
@@ -68,6 +69,7 @@ PATH_LIVE_WAV = config.get("path_live_wav")
 
 # Evaluation Metrics
 PATH_ALIGNMENT_CSV = config.get("path_alignment_csv")
+ALIGN_COL_NOTE = config.get("align_col_note", "note pitch")
 ALIGN_COL_REF = config.get("align_col_ref", "baseline_time")
 ALIGN_COL_LIVE = config.get("align_col_live", "altered_time")
 ALIGN_USE_DIAG = config.get("align_use_diag", False)
@@ -103,12 +105,14 @@ if not os.path.isfile(PATH_LIVE_WAV):
     generator = AudioGenerator(score_path=PATH_LIVE_MIDI, soundfont_path=PATH_SOUNDFONT)
     generator.generate_solo(output_file=PATH_LIVE_WAV, tempo=LIVE_TEMPO, instrument_index=0)
 
-source_audio, _ = librosa.load(PATH_LIVE_WAV, sr=SAMPLE_RATE)  # load soloist audio
-source_audio = source_audio.reshape((CHANNELS, -1))  # reshape soloist audio to 2D array
+STEP_SIZE = (WIN_LENGTH / SAMPLE_RATE) # * (REF_TEMPO / 60) for beats
+
+live_audio, _ = librosa.load(PATH_LIVE_WAV, sr=SAMPLE_RATE)  # load soloist audio
+live_audio = live_audio.reshape((CHANNELS, -1))  # reshape soloist audio to 2D array
 source_index = 0  # index to keep track of soloist audio
 
 # Create an audio buffer to store the soloist audio
-solo_buffer = AudioBuffer(max_duration=MAX_DURATION, sample_rate=SAMPLE_RATE, channels=1)
+live_buffer = AudioBuffer(max_duration=MAX_DURATION, sample_rate=SAMPLE_RATE, channels=1)
 
 # Create a ScoreFollower instance to track the soloist
 score_follower = ScoreFollower(ref_filename=PATH_REF_WAV, 
@@ -127,9 +131,11 @@ def step(data) -> int:
     estimated_time = score_follower.step(data)  # get estimated time in soloist audio in seconds
 
     ref_index, live_index = score_follower.path[-1]
-    ref_beat = ref_index * WIN_LENGTH / SAMPLE_RATE * REF_TEMPO / 60
-    live_beat = live_index * WIN_LENGTH / SAMPLE_RATE * REF_TEMPO / 60
-    print(f"Alignment path (beats): ({ref_beat:.2f}, {live_beat:.2f})")
+    print(f"Alignment path (indicies, ref vs. live): ({ref_index}, {live_index})")
+
+    ref_beat = ref_index * STEP_SIZE * REF_TEMPO / 60
+    live_beat = live_index * STEP_SIZE * REF_TEMPO / 60
+    # print(f"Alignment path (beats): ({ref_beat:.2f}, {live_beat:.2f})")
 
     soloist_times.append(source_index / SAMPLE_RATE)  # log soloist time for error analysis
     estimated_times.append(estimated_time)  # log estimated time for error analysis
@@ -145,10 +151,10 @@ def callback(in_data, frame_count, time_info, status):
         data = np.frombuffer(in_data, dtype=np.float32)  # convert data to numpy array
         data = data.reshape((1, -1))  # reshape data to 2D array
     else:  # If using prerecorded soloist audio
-        data = source_audio[:, source_index:source_index + frame_count]  # get audio data from source audio
+        data = live_audio[:, source_index:source_index + frame_count]  # get audio data from source audio
         source_index += frame_count  # update source index
 
-    solo_buffer.write(data)  # write soloist audio to buffer so it can be saved to a WAV file later
+    live_buffer.write(data)  # write soloist audio to buffer so it can be saved to a WAV file later
     position = step(data)
 
     # Tell the MidiPerformance instance to update the score position.
@@ -159,8 +165,8 @@ def callback(in_data, frame_count, time_info, status):
 
 if SKIP_PLAYBACK:
     source_index = 0
-    while source_index < source_audio.shape[-1]:
-        data = source_audio[:, source_index:source_index + WIN_LENGTH]  # get audio data from source audio
+    while source_index < live_audio.shape[-1]:
+        data = live_audio[:, source_index:source_index + WIN_LENGTH]  # get audio data from source audio
         source_index += WIN_LENGTH  # update source index
         step(data)
 else: 
@@ -203,11 +209,13 @@ else:
     p.terminate()
 
     # Save the soloist audio to a WAV file
-    solo_audio = solo_buffer.get_audio()
-    solo_audio = normalize_audio(solo_audio)
-    solo_audio = solo_audio.reshape(-1)
-    sf.write('solo.wav', solo_audio, SAMPLE_RATE)
+    live_audio = live_buffer.get_audio()
+    live_audio = normalize_audio(live_audio)
+    live_audio = live_audio.reshape(-1)
+    sf.write('live.wav', live_audio, SAMPLE_RATE)
 
 if PATH_ALIGNMENT_CSV:
-    eval_df = evaluate_alignment(score_follower, PATH_ALIGNMENT_CSV, ALIGN_COL_REF, ALIGN_COL_LIVE, ALIGN_USE_DIAG)
+    eval_df = evaluate_alignment(score_follower, PATH_ALIGNMENT_CSV, ALIGN_COL_NOTE, ALIGN_COL_REF, ALIGN_COL_LIVE, ALIGN_USE_DIAG)
     analyze_eval_df(eval_df)
+    # plot_eval_df(eval_df)
+    evaluate_intonation(live_audio, eval_df)

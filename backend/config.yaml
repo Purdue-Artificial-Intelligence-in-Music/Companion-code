@@ -61,6 +61,7 @@ path_live_wav: data/audio/ode_to_joy_altered/300bpm.wav
 
 # Evaluation Metrics
 path_alignment_csv: data/alignments/ode_to_joy_300bpm.csv 
+align_col_note: "note pitch"
 align_col_ref: "baseline_time"
 align_col_live: "altered_time"
 # Override the warping path and use a pure diagonal for testing

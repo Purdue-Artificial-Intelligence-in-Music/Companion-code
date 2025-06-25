@@ -1,5 +1,6 @@
 import pretty_midi
 import pandas as pd
+import matplotlib.pyplot as plt
 import numpy as np
 import yaml
 from .score_follower import ScoreFollower
@@ -84,8 +85,8 @@ def calculate_warped_times(warping_path, ref_times):
     
     return warped_times
 
-def evaluate_alignment(score_follower: ScoreFollower, path_alignment_csv, align_col_ref, align_col_live, force_diagonal=False):
-    source_times_df = pd.read_csv(path_alignment_csv)
+def evaluate_alignment(score_follower: ScoreFollower, path_alignment_csv, align_col_note, align_col_ref, align_col_live, force_diagonal=False):
+    source_df = pd.read_csv(path_alignment_csv)
 
     warping_path = np.array(score_follower.path)
 
@@ -93,12 +94,13 @@ def evaluate_alignment(score_follower: ScoreFollower, path_alignment_csv, align_
         warping_path = np.array([(i, i) for i in range(len(score_follower.path))])
   
     # map each baseline note time to live time
-    predicted_times = calculate_warped_times(warping_path, source_times_df[align_col_ref])
+    predicted_times = calculate_warped_times(warping_path, source_df[align_col_ref])
  
     eval_df = pd.DataFrame({
-        'baseline': source_times_df[align_col_ref],
+        'note': source_df[align_col_note],
+        'baseline': source_df[align_col_ref],
         'predicted live time': predicted_times,
-        'actual live time': source_times_df[align_col_live]
+        'actual live time': source_df[align_col_live]
     })
 
     eval_df['live deviation'] = eval_df['predicted live time'] - eval_df['actual live time']
@@ -106,7 +108,7 @@ def evaluate_alignment(score_follower: ScoreFollower, path_alignment_csv, align_
 
 def analyze_eval_df(eval_df):
     pd.set_option('display.max_rows', None)
-    print(eval_df)
+    # print(eval_df)
 
     # get smallest deviation
     min_idx = eval_df['live deviation'].abs().argmin()
@@ -121,3 +123,36 @@ def analyze_eval_df(eval_df):
     print(f"mean deviation: ", {eval_df['live deviation'].mean()})
     print(f"median deviation: ", {eval_df['live deviation'].median()})
     print(f"variance deviation: ", {eval_df['live deviation'].var()})
+
+def plot_eval_df(eval_df):
+    plt.figure(figsize=(15, 10))
+
+    # Histogram of alignment errors
+    plt.subplot(2, 2, 1)
+    plt.hist(eval_df['live deviation'], bins=20, edgecolor='black')
+    plt.title('Histogram of Alignment Errors')
+    plt.xlabel('Alignment Error (seconds)')
+    plt.ylabel('Frequency')
+
+    plt.tight_layout()
+    plt.savefig('error_analysis.png')
+    plt.show()
+
+    # Identify measures with largest errors
+    worst_alignment = eval_df.loc[eval_df['abs_alignment_error'].idxmax()]
+
+    print("\nMeasure with largest alignment error:")
+    print(worst_alignment[['measure', 'alignment_error']])
+
+    # plot these progressions over time
+    plt.figure(figsize=(12, 6))
+    plt.plot(df['measure'][1:], df['alignment_error_diff']
+            [1:], label='Alignment Error')
+    plt.plot(df['measure'][1:], df['accompaniment_error_diff']
+            [1:], label='Accompaniment Error')
+    plt.title('Error Progression Over Measures')
+    plt.xlabel('Measure')
+    plt.ylabel('Error Difference (seconds)')
+    plt.legend()
+    plt.savefig('error_progression.png')
+    plt.show()
