@@ -94,3 +94,36 @@ def calculate_alignment_error(df: pd.DataFrame, warping_path: np.ndarray) -> pd.
     df['alignment_error'] = alignment_error
 
     return df
+
+def calculate_align_err_beats(score_follower, soloist_times, estimated_times, REF_TEMPO):
+    # Build the DataFrame
+    df_alignment = pd.DataFrame({
+        'measure': list(range(len(soloist_times))),
+        'live': soloist_times,
+        'ref': estimated_times
+    })
+
+    warping_path = np.asarray(score_follower.path, dtype=np.float32)
+    df_alignment = calculate_alignment_error(df_alignment, warping_path)
+
+    # Convert to beats and round
+    df_alignment['ref_beats'] = (df_alignment['ref'] * REF_TEMPO / 60).round(2)
+    df_alignment['live_beats'] = (df_alignment['live'] * REF_TEMPO / 60).round(2)
+    df_alignment['alignment_error'] = df_alignment['alignment_error'].round(2)
+
+    # Clean column names for CSV
+    df_alignment_final = df_alignment.rename(columns={
+        'ref_beats': 'Ref Audio (Beats)',
+        'live_beats': 'Live Audio (Beats)',
+        'alignment_error': 'Alignment Error (Seconds)'
+    })[['measure', 'Ref Audio (Beats)', 'Live Audio (Beats)', 'Alignment Error (Seconds)']]
+
+    # Print results to terminal
+    print(f"{'Ref Audio (Beats)':>18} | {'Live Audio (Beats)':>18} | {'Alignment Error (Seconds)':>27}")
+    print("-" * 70)
+    for _, row in df_alignment_final.iterrows():
+        print(f"{row['Ref Audio (Beats)']:18.2f} | {row['Live Audio (Beats)']:18.2f} | {row['Alignment Error (Seconds)']:27.2f}")
+
+    # Save to CSV
+    # df_alignment_final.to_csv("alignment_error_results.csv", index=False)
+    return df_alignment_final

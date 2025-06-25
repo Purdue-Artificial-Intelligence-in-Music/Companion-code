@@ -31,28 +31,44 @@ feature_type: "CENS"
 solo_volume_multiplier: 1.05
 
 # Instrument number in MIDI score of accompaniment part (set to 0 to copy solo)
-accomp_instr_index: 1
+accomp_instr_index: 0
 
 # Instrument sound (MIDI program number, 1=piano, 43=cello) for accompaniment part
-accomp_program_num: 43
+accomp_program_num: 1
 
 # Tempo at which the user plans to play in BPM
-ref_tempo: 100
+ref_tempo: 300
 
 # Tempo at which the user actually plays in BPM
-live_tempo: 110
+live_tempo: 300
 
 # Set to true to use microphone input, false to use prerecorded soloist audio
 use_mic: false
 
+# Set to true to only compute alignment w/o playback, not compatible with use_mic
+skip_playback: true
+
 # Name of piece - if provided, paths will be auto-generated from this
-piece_name: ode_to_joy
+# piece_name: ode_to_joy
 # Otherwise, supply all three paths below manually
 
 # Uncomment and set these paths if piece_name is not provided
-# path_midi_score: data/midi/your_piece.mid
-# path_ref_wav: data/audio/your_piece/ref_100bpm.wav
-# path_live_wav: data/audio/your_piece/live_110bpm.wav
+path_ref_midi: data/midi/ode_to_joy_baseline.mid
+path_ref_wav: data/audio/ode_to_joy_baseline/300bpm.wav
+
+path_live_midi: data/midi/ode_to_joy_altered.mid
+path_live_wav: data/audio/ode_to_joy_altered/300bpm.wav
+
+# Evaluation CSV - if provided, enable evaluation metrics
+# path_alignment_csv: data/alignments/ode_to_joy_300bpm.csv
+
+# Column names of Evaluation CSV
+align_col_note: "note pitch"
+align_col_ref: "baseline_time"
+align_col_live: "altered_time"
+
+# Override the warping path and use a pure diagonal for testing
+align_use_diag: false
 
 # Soundfont (looks for a soundfont under the 'soundfonts' folder)
 soundfont_filename: FluidR3_GM.sf2
