@@ -85,14 +85,18 @@ def get_cresc_desc(part):
             if len(n) > 2:
                 raise Exception("Cresc has too many objects")
             elif len(n) == 1:
-                span_dyn_list.append((n[0].offset, n[0].offset + n[0].duration.quarterLength, "cresc"))
+                span_dyn_list.append(
+                    (n[0].offset, n[0].offset + n[0].duration.quarterLength, "cresc")
+                )
             else:
                 span_dyn_list.append((n[0].offset, n[1].offset, "cresc"))
         if type(n) == dynamics.Diminuendo:
             if len(n) > 2:
                 raise Exception("Dim has too many objects")
             elif len(n) == 1:
-                span_dyn_list.append((n[0].offset, n[0].offset + n[0].duration.quarterLength, "dim"))
+                span_dyn_list.append(
+                    (n[0].offset, n[0].offset + n[0].duration.quarterLength, "dim")
+                )
             else:
                 span_dyn_list.append((n[0].offset, n[1].offset, "dim"))
     span_dyn_list.sort(key=(lambda x: x[0]))
@@ -110,7 +114,9 @@ def get_artic(part):
         if type(n) == note.Note:
             for art in n.articulations:
                 artic_list.append((n.offset, art.name, 1))
-                artic_list.append((float(n.offset + n.duration.quarterLength), art.name, -1))
+                artic_list.append(
+                    (float(n.offset + n.duration.quarterLength), art.name, -1)
+                )
     artic_list.sort(key=(lambda x: x[0]))
     return artic_list
 
@@ -120,7 +126,9 @@ def randomize_note_times(midi, mean_shift, stdev_shift, mean_dur, stdev_dur):
         # Shift note times
         for note in inst.notes:
             shift = rn().normal(loc=mean_shift, scale=(stdev_shift * stdev_shift))
-            dur_var = rn().gamma(shape=mean_dur / (stdev_dur * stdev_dur), scale=stdev_dur * stdev_dur)
+            dur_var = rn().gamma(
+                shape=mean_dur / (stdev_dur * stdev_dur), scale=stdev_dur * stdev_dur
+            )
             dur = note.end - note.start
             start = note.start - shift
             end = start + max(0, (dur * dur_var))
@@ -144,7 +152,9 @@ def add_screwups(midi, lambda_occur, stdev_pitch_delta):
         # Make sure note times are normalized
         inst.notes.sort(key=(lambda x: x.start))
 
-        occurrences = rn().poisson(lam=lambda_occur * inst.notes[len(inst.notes) - 1].end)
+        occurrences = rn().poisson(
+            lam=lambda_occur * inst.notes[len(inst.notes) - 1].end
+        )
         for iter in range(occurrences):
             if len(inst.notes) == 0:
                 break
@@ -154,11 +164,11 @@ def add_screwups(midi, lambda_occur, stdev_pitch_delta):
             screwup_type = int(rn().uniform(low=0, high=2))
             # Didn't play notes
             if screwup_type == 0:
-                del inst.notes[idx: end_screwup_idx]
+                del inst.notes[idx:end_screwup_idx]
             # Messed up pitches
             elif screwup_type == 1:
                 pitch_delta = int(rn().normal(loc=0, scale=stdev_pitch_delta))
-                for note in inst.notes[idx: end_screwup_idx]:
+                for note in inst.notes[idx:end_screwup_idx]:
                     note.pitch = note.pitch + pitch_delta
                     if note.pitch < 0:
                         note.pitch = 0
@@ -205,7 +215,10 @@ def add_pitch_bends(midi, lambda_occur, mean_delta, stdev_delta, step_size):
             n_points_to_add = int(np.floor((r_pb.time - l_pb.time) / step_size))
             for j in range(1, n_points_to_add + 1):
                 time = l_pb.time + j * step_size
-                bend = int(l_pb.pitch + ((r_pb.pitch - l_pb.pitch) * (j / (n_points_to_add + 1))))
+                bend = int(
+                    l_pb.pitch
+                    + ((r_pb.pitch - l_pb.pitch) * (j / (n_points_to_add + 1)))
+                )
                 if bend > 8191:
                     bend = 8191
                 elif bend < -8192:
@@ -229,7 +242,8 @@ def randomize_velocity(midi, stdev_vel):
             if note.velocity < 1:
                 note.velocity = 1
 
-def find_closest_marking(markings, time, key=(lambda x : x.start)):
+
+def find_closest_marking(markings, time, key=(lambda x: x.start)):
     if len(markings) < 1:
         return None
     closest = markings[0]
@@ -240,7 +254,6 @@ def find_closest_marking(markings, time, key=(lambda x : x.start)):
             closest = marking
             min_t = dt
     return closest
-
 
 
 def get_closest_prev_time(markings, i_time, idx):
@@ -287,7 +300,9 @@ def update_dynamics(score_part, midi_part, beat_cdf, bad_dir_delta=0.15):
             end_dyn = max(start_dyn - bad_dir_delta, 0)
             dyn_markings.append((x[1], end_dyn))
         elif end_dyn_obj[0] > x[1]:
-            end_dyn = start_dyn + (end_dyn_obj[1] - start_dyn) * (x[1] - x[0]) / (end_dyn_obj[0] - x[0])
+            end_dyn = start_dyn + (end_dyn_obj[1] - start_dyn) * (x[1] - x[0]) / (
+                end_dyn_obj[0] - x[0]
+            )
             dyn_markings.append((x[1], end_dyn))
     dyn_markings.sort(key=(lambda x: x[0]))
     event_delta = 0.05
@@ -296,8 +311,12 @@ def update_dynamics(score_part, midi_part, beat_cdf, bad_dir_delta=0.15):
         start_val = get_closest_prev_time(dyn_markings, 0, pair[0])[1]
         end_val = get_closest_next_time(dyn_markings, 0, pair[1])[1]
         for j in range(1, int(num_points)):
-            dyn_markings.append((pair[0] + (pair[1] - pair[0]) * j / num_points,
-                                 start_val + (end_val - start_val) * j / num_points))
+            dyn_markings.append(
+                (
+                    pair[0] + (pair[1] - pair[0]) * j / num_points,
+                    start_val + (end_val - start_val) * j / num_points,
+                )
+            )
     midi_part.control_changes.clear()
 
     # 4.5. Convert to velocity values
@@ -328,7 +347,7 @@ def update_artics(score_part, midi_part, beat_cdf):
         track_ar[ar[1]] += ar[2]
         cc_num = 0
         if ar[1] == "staccato":
-                cc_num = 20
+            cc_num = 20
         elif ar[1] == "tenuto":
             cc_num = 21
         elif ar[1] == "strong accent":
@@ -336,7 +355,7 @@ def update_artics(score_part, midi_part, beat_cdf):
         elif ar[1] == "accent":
             cc_num = 23
         elif ar[1] == "slur":
-                cc_num = 24
+            cc_num = 24
         if track_ar[ar[1]] > 0:
             midi_part.control_changes.append(pm.ControlChange(cc_num, 127, ar[0]))
         else:
@@ -344,13 +363,13 @@ def update_artics(score_part, midi_part, beat_cdf):
 
 
 def process_score(input_path, output_path):
-    if not input_path.endswith('.musicxml'):
+    if not input_path.endswith(".musicxml"):
         return
-    
+
     score = converter.parse(input_path)
-    with score.write('midi') as f:
+    with score.write("midi") as f:
         midi = pm.PrettyMIDI(str(f))
-    
+
     tempo_markings = get_tempo_markings(score)
     beat_cdf = get_beat_cdf(tempo_markings)
 
@@ -361,13 +380,20 @@ def process_score(input_path, output_path):
         # Dynamics
         update_dynamics(score_part, midi_part, beat_cdf)
         update_artics(score_part, midi_part, beat_cdf)
-        
-    #randomize_note_times(midi=midi, mean_shift=0, stdev_shift=0.04, mean_dur=1, stdev_dur=0.02)
-    add_pitch_bends(midi=midi, lambda_occur=2, mean_delta=0, stdev_delta=np.sqrt(500), step_size=0.01)
-    #add_screwups(midi=midi, lambda_occur=0.03, stdev_pitch_delta=1)
+
+    # randomize_note_times(midi=midi, mean_shift=0, stdev_shift=0.04, mean_dur=1, stdev_dur=0.02)
+    add_pitch_bends(
+        midi=midi,
+        lambda_occur=2,
+        mean_delta=0,
+        stdev_delta=np.sqrt(500),
+        step_size=0.01,
+    )
+    # add_screwups(midi=midi, lambda_occur=0.03, stdev_pitch_delta=1)
     midi.write(output_path)
-    
+
     return output_path
+
 
 def remove_notes(midi, time, delta):
     for inst in midi.instruments:
@@ -375,12 +401,13 @@ def remove_notes(midi, time, delta):
             if abs(note.start - time) < delta or abs(note.end - time) < delta:
                 inst.notes.remove(note)
 
+
 def add_extra_notes(midi, time, lambda_occur, stdev_pitch_delta, stdev_dur):
     for inst in midi.instruments:
         notes = inst.notes
         if len(notes) < 1:
             continue
-        notes.sort(key=(lambda x : x.start))
+        notes.sort(key=(lambda x: x.start))
         closest_idx = 0
         min_t = abs(notes[closest_idx].start - time)
         for i in range(len(notes)):
@@ -389,13 +416,24 @@ def add_extra_notes(midi, time, lambda_occur, stdev_pitch_delta, stdev_dur):
                 closest_idx = i
                 min_t = dt
         time_before = 0.0 if closest_idx == 0 else notes[closest_idx - 1].end
-        time_after = time if closest_idx == len(notes) - 1 else notes[closest_idx + 1].start
+        time_after = (
+            time if closest_idx == len(notes) - 1 else notes[closest_idx + 1].start
+        )
         note = notes[closest_idx]
         notes.remove(note)
-        occurrences = rn().poisson(lam=lambda_occur * inst.notes[len(inst.notes) - 1].end)
-        
+        occurrences = rn().poisson(
+            lam=lambda_occur * inst.notes[len(inst.notes) - 1].end
+        )
+
         for iter in range(occurrences):
             dur = abs(min(rn().normal(loc=0, scale=stdev_dur)))
-            time = rn().uniform(low=time_before, high=time_after-dur)
+            time = rn().uniform(low=time_before, high=time_after - dur)
             pitch_delta = int(np.round(rn().normal(loc=0, scale=stdev_pitch_delta)))
-            inst.notes.append(pm.Note(velocity=note.velocity, pitch=note.pitch+pitch_delta, start = time, end=time+dur))
+            inst.notes.append(
+                pm.Note(
+                    velocity=note.velocity,
+                    pitch=note.pitch + pitch_delta,
+                    start=time,
+                    end=time + dur,
+                )
+            )

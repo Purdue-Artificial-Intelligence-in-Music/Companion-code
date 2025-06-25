@@ -43,29 +43,48 @@ class Synchronizer:
         PID controller to adjust playback rate
     """
 
-    def __init__(self, reference: str, Kp: int = 0.2, Ki: int = 0.00, Kd=0.0,
-                 sample_rate: int = 44100, channels: int = 1, win_length: int = 8192, hop_length: int = 2048, c: int = 10, max_run_count: int = 3, diag_weight: int = 0.4):
-
+    def __init__(
+        self,
+        reference: str,
+        Kp: int = 0.2,
+        Ki: int = 0.00,
+        Kd=0.0,
+        sample_rate: int = 44100,
+        channels: int = 1,
+        win_length: int = 8192,
+        hop_length: int = 2048,
+        c: int = 10,
+        max_run_count: int = 3,
+        diag_weight: int = 0.4,
+    ):
         self.sample_rate = sample_rate
         self.c = c
 
         # Create a score follower to track the soloist
-        self.score_follower = ScoreFollower(reference=reference,
-                                            c=c,
-                                            max_run_count=max_run_count,
-                                            diag_weight=diag_weight,
-                                            sample_rate=sample_rate,
-                                            win_length=win_length)
-        
+        self.score_follower = ScoreFollower(
+            reference=reference,
+            c=c,
+            max_run_count=max_run_count,
+            diag_weight=diag_weight,
+            sample_rate=sample_rate,
+            win_length=win_length,
+        )
+
         # Create an audio buffer to store the live soloist audio
-        self.live_buffer = AudioBuffer(max_duration=600,
-                                          sample_rate=sample_rate,
-                                          channels=channels)
+        self.live_buffer = AudioBuffer(
+            max_duration=600, sample_rate=sample_rate, channels=channels
+        )
 
         # PID Controller to adjust playback rate
-        self.PID = PID(Kp=Kp, Ki=Ki, Kd=Kd, setpoint=0, starting_output=1.0,
-                       output_limits=(1 / max_run_count, max_run_count),
-                       sample_time=win_length / sample_rate)
+        self.PID = PID(
+            Kp=Kp,
+            Ki=Ki,
+            Kd=Kd,
+            setpoint=0,
+            starting_output=1.0,
+            output_limits=(1 / max_run_count, max_run_count),
+            sample_time=win_length / sample_rate,
+        )
 
     def step(self, frames, accompanist_time):
         """
@@ -82,12 +101,14 @@ class Synchronizer:
         playback_rate : float
             Playback rate for the accompanist audio
         estimated_time : float
-            Estimated time in the soloist audio 
-        
+            Estimated time in the soloist audio
+
         """
         self.live_buffer.write(frames)  # Save the live soloist audio
-        estimated_time = self.score_follower.step(frames)  # Perform OTW on the live soloist audio
-        
+        estimated_time = self.score_follower.step(
+            frames
+        )  # Perform OTW on the live soloist audio
+
         error = accompanist_time - estimated_time
         playback_rate = self.PID(error)
 

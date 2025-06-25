@@ -22,7 +22,7 @@ class VoiceAnalyzerThread(threading.Thread):
         # Initialize whatever stuff you need here
         self.canHear = True
 
-        #The following are all related to the use of Vosk and voice commanding
+        # The following are all related to the use of Vosk and voice commanding
         self.q = queue.Queue()
 
         # Define the list of possible commands along with hypothesis templates
@@ -34,15 +34,17 @@ class VoiceAnalyzerThread(threading.Thread):
             "stop": "The action involves bringing something to a halt.",
             "start": "The action involves beginning something.",
             "exit": "The action involves the termination of something.",
-            #"edit": "The action involves changing something."
+            # "edit": "The action involves changing something."
             "deafen": "The action involves the termination of listening",
         }
 
         # Initialize the zero-shot classification pipeline with the Roberta model
-        self.classifier = pipeline('zero-shot-classification', model='roberta-large-mnli')
+        self.classifier = pipeline(
+            "zero-shot-classification", model="roberta-large-mnli"
+        )
 
     def int_or_str(self, text):
-    #Helper function for argument parsing, it allows for numbers to be converted into ints
+        # Helper function for argument parsing, it allows for numbers to be converted into ints
         try:
             return int(text)
         except ValueError:
@@ -71,7 +73,7 @@ class VoiceAnalyzerThread(threading.Thread):
             "never go": "stop",
             "do not listen": "deafen",
             "don't listen": "deafen",
-            "never listen": "deafen"
+            "never listen": "deafen",
         }
         # Action phrases that directly map to commands
         action_phrases = {
@@ -82,11 +84,11 @@ class VoiceAnalyzerThread(threading.Thread):
             "go": "start",
             "halt": "stop",
             "be quiet": "volume down",
-            "stop playing": "stop",  
-            "pause": "stop", 
+            "stop playing": "stop",
+            "pause": "stop",
             "I can't hear": "volume up",
             "it's noisy": "volume down",
-            "return": "deafen", #Thinking of using it as a toggle
+            "return": "deafen",  # Thinking of using it as a toggle
         }
 
         # First check for any negation adjustments
@@ -101,11 +103,18 @@ class VoiceAnalyzerThread(threading.Thread):
 
         # If no special cases, proceed with model classification
         hypotheses = [f"The action is: {desc}" for desc in self.commands.values()]
-        result = self.classifier(user_input, hypotheses, multi_label=True) # Changed multi_class to multi_label
-        highest_score = max(result['scores'])
-        highest_scoring_command = [cmd for cmd, desc in self.commands.items() if f"The action is: {desc}" == result['labels'][result['scores'].index(highest_score)]][0]
+        result = self.classifier(
+            user_input, hypotheses, multi_label=True
+        )  # Changed multi_class to multi_label
+        highest_score = max(result["scores"])
+        highest_scoring_command = [
+            cmd
+            for cmd, desc in self.commands.items()
+            if f"The action is: {desc}"
+            == result["labels"][result["scores"].index(highest_score)]
+        ][0]
         return highest_scoring_command
-    
+
     def run_command(self, command):
         """
         This function is called after classify_command is called upon and uses the highest scoring command
@@ -114,42 +123,36 @@ class VoiceAnalyzerThread(threading.Thread):
         Returns: Nothing, but acts upon the AudioBuffer to do various actions
         """
         if command == "deafen":
-
-            #Reverse whatever if its allowed to process a command
+            # Reverse whatever if its allowed to process a command
             self.canHear = not self.canHear
 
         elif command == "start":
-
-            #If audio is not playing from the AudioBuffer, then start playing audio
+            # If audio is not playing from the AudioBuffer, then start playing audio
             print("start")
 
         elif command == "stop":
-
             print("stop")
-            #Still run Buffer in the background, but don't play audio
+            # Still run Buffer in the background, but don't play audio
 
         elif command == "exit":
-
             print("Detected interrupt")
-            #Stop both voice and buffer
+            # Stop both voice and buffer
             self.stop_request = True
 
-        #TODO: Capture the % wanted for speed up and slow down
+        # TODO: Capture the % wanted for speed up and slow down
         elif command == "speed up":
-
             print("now 10 percent faster")
 
         elif command == "slow down":
-
             print("now 10 percent slower")
 
         else:
-            #TODO: Look into ways to use LLM to create commands and have the code be able to run them
-                #Maybe have the user provide smaller step by step requests to gain a better chance of the command working
-                #^ like the idea provided by ()
+            # TODO: Look into ways to use LLM to create commands and have the code be able to run them
+            # Maybe have the user provide smaller step by step requests to gain a better chance of the command working
+            # ^ like the idea provided by ()
 
-                #Also possibly add an "Undo" command that can just reverse the last command sent?
-                #But only for custom commands?
+            # Also possibly add an "Undo" command that can just reverse the last command sent?
+            # But only for custom commands?
             print("Run the user's defined command")
 
     def run(self):
@@ -161,13 +164,16 @@ class VoiceAnalyzerThread(threading.Thread):
         """
         time.sleep(0.5)
 
-        #TODO: Trim down the arg parser portion to what's needed to minimize faults
+        # TODO: Trim down the arg parser portion to what's needed to minimize faults
 
-        #Activates the arguement parser so that Vosk can collect the spoken words using the SoundDevice library
+        # Activates the arguement parser so that Vosk can collect the spoken words using the SoundDevice library
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument(
-            "-l", "--list-devices", action="store_true",
-            help="show list of audio devices and exit")
+            "-l",
+            "--list-devices",
+            action="store_true",
+            help="show list of audio devices and exit",
+        )
         args, remaining = parser.parse_known_args()
         if args.list_devices:
             print(sd.query_devices())
@@ -175,17 +181,28 @@ class VoiceAnalyzerThread(threading.Thread):
         parser = argparse.ArgumentParser(
             description=__doc__,
             formatter_class=argparse.RawDescriptionHelpFormatter,
-            parents=[parser])
+            parents=[parser],
+        )
         parser.add_argument(
-            "-f", "--filename", type=str, metavar="FILENAME",
-            help="audio file to store recording to")
+            "-f",
+            "--filename",
+            type=str,
+            metavar="FILENAME",
+            help="audio file to store recording to",
+        )
         parser.add_argument(
-            "-d", "--device", type=self.int_or_str,
-            help="input device (numeric ID or substring)")
+            "-d",
+            "--device",
+            type=self.int_or_str,
+            help="input device (numeric ID or substring)",
+        )
+        parser.add_argument("-r", "--samplerate", type=int, help="sampling rate")
         parser.add_argument(
-            "-r", "--samplerate", type=int, help="sampling rate")
-        parser.add_argument(
-            "-m", "--model", type=str, help="language model; e.g. en-us, fr, nl; default is en-us")
+            "-m",
+            "--model",
+            type=str,
+            help="language model; e.g. en-us, fr, nl; default is en-us",
+        )
         args = parser.parse_args(remaining)
 
         try:
@@ -193,9 +210,9 @@ class VoiceAnalyzerThread(threading.Thread):
                 device_info = sd.query_devices(args.device, "input")
                 # soundfile expects an int, sounddevice provides a float:
                 args.samplerate = int(device_info["default_samplerate"])
-                
+
             if args.model is None:
-                #Using a specific model to improve correctness
+                # Using a specific model to improve correctness
                 model = Model(model_name="vosk-model-en-us-0.22-lgraph")
             else:
                 model = Model(lang=args.model)
@@ -205,8 +222,14 @@ class VoiceAnalyzerThread(threading.Thread):
             else:
                 dump_fn = None
 
-            with sd.RawInputStream(samplerate=args.samplerate, blocksize = 8000, device=args.device,
-                    dtype="int16", channels=1, callback=self.callback):
+            with sd.RawInputStream(
+                samplerate=args.samplerate,
+                blocksize=8000,
+                device=args.device,
+                dtype="int16",
+                channels=1,
+                callback=self.callback,
+            ):
                 print("#" * 80)
                 print("Press Ctrl+C or say exit to stop the recording")
                 print("#" * 80)
@@ -216,39 +239,39 @@ class VoiceAnalyzerThread(threading.Thread):
                     data = self.q.get()
 
                     if rec.AcceptWaveform(data):
-                        #Print the result
+                        # Print the result
                         print(rec.Result())
 
-                        #Parse the json text and find the command
+                        # Parse the json text and find the command
                         res = json.loads(rec.Result())
                         print(res["text"])
                         if res["text"] != "":
-                            #print(toParse)                
-                            toParse = self.classify_command(res['text'])
+                            # print(toParse)
+                            toParse = self.classify_command(res["text"])
 
-                            #As long as the thread is allowed to hear, run any command
+                            # As long as the thread is allowed to hear, run any command
                             if self.canHear:
                                 self.run_command(toParse)
-                            #As an elif canHear is false here, so only allow deafen to run
+                            # As an elif canHear is false here, so only allow deafen to run
                             elif toParse == "deafen":
                                 self.run_command(toParse)
 
                     else:
                         print(rec.PartialResult())
-                        #print()
+                        # print()
 
-                        #Possible optimization by using partials rather than whole
-                        #Parse the json text and find the command
+                        # Possible optimization by using partials rather than whole
+                        # Parse the json text and find the command
                         res = json.loads(rec.PartialResult())
                         print(res["partial"])
                         if res["partial"] != "":
-                            #print(toParse)
+                            # print(toParse)
                             toParse = self.classify_command(res["partial"])
-                            
-                            #As long as the thread is allowed to hear, run any command
+
+                            # As long as the thread is allowed to hear, run any command
                             if self.canHear:
                                 self.run_command(toParse)
-                            #As an elif canHear is false here, so only allow deafen to run
+                            # As an elif canHear is false here, so only allow deafen to run
                             elif toParse == "deafen":
                                 self.run_command(toParse)
 
@@ -259,13 +282,16 @@ class VoiceAnalyzerThread(threading.Thread):
             print("\nDone")
             self.stop_request = True
             parser.exit(0)
-            
+
         except Exception as e:
             parser.exit(type(e).__name__ + ": " + str(e))
 
-#Mini Main for demo reasons
-if __name__ == '__main__':
-    #Change this to any wav file you want
 
-    voice_commands = VoiceAnalyzerThread(sample_rate=44100, channels=1, max_duration=600)
+# Mini Main for demo reasons
+if __name__ == "__main__":
+    # Change this to any wav file you want
+
+    voice_commands = VoiceAnalyzerThread(
+        sample_rate=44100, channels=1, max_duration=600
+    )
     voice_commands.start()

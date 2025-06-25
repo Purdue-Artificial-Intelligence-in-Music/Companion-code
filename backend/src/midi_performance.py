@@ -38,7 +38,14 @@ class MidiPerformance:
         Current position (in beats) of the soloist as estimated by the score follower.
     """
 
-    def __init__(self, midi_file_path: str, tempo: float, instrument_index: int = 0, program_number: int = 43, soundfont_path=None):
+    def __init__(
+        self,
+        midi_file_path: str,
+        tempo: float,
+        instrument_index: int = 0,
+        program_number: int = 43,
+        soundfont_path=None,
+    ):
         """
         Initialize the MidiPerformance with a MIDI file and an initial tempo.
 
@@ -64,12 +71,14 @@ class MidiPerformance:
         self.fs = fluidsynth.Synth(samplerate=44100)
         self.fs.start()
         if soundfont_path is None:
-            soundfont_path = os.path.join('soundfonts', 'FluidR3_GM.sf2')
+            soundfont_path = os.path.join("soundfonts", "FluidR3_GM.sf2")
         sfid = self.fs.sfload(soundfont_path)
         self.fs.program_select(0, sfid, 0, program_number)
 
         # Extract note info in quarter-note units.
-        self.notes = self._midi_to_notes_quarter(self.midi_file_path, self.instrument_index)
+        self.notes = self._midi_to_notes_quarter(
+            self.midi_file_path, self.instrument_index
+        )
         self.notes.sort(key=lambda n: n[2])
 
         # Threading and note playback management.
@@ -107,7 +116,7 @@ class MidiPerformance:
         parts = midi_stream.parts
         if instrument_index < 0 or instrument_index >= len(parts):
             raise IndexError(
-                f"Instrument index {instrument_index} is out of range. Please choose between 0 and {len(parts)-1}."
+                f"Instrument index {instrument_index} is out of range. Please choose between 0 and {len(parts) - 1}."
             )
 
         selected_part = parts[instrument_index]
@@ -217,10 +226,17 @@ class MidiPerformance:
         """
         while not self._stop_event.is_set() and self._next_note_index < len(self.notes):
             # Launch all notes whose scheduled beat is reached.
-            while (self._next_note_index < len(self.notes) and
-                   self.score_position >= self.notes[self._next_note_index][2]):
-                frequency, quarter_duration, quarter_offset = self.notes[self._next_note_index]
-                if (self.score_position - quarter_offset < 1 and self.last_beat is not quarter_offset):
+            while (
+                self._next_note_index < len(self.notes)
+                and self.score_position >= self.notes[self._next_note_index][2]
+            ):
+                frequency, quarter_duration, quarter_offset = self.notes[
+                    self._next_note_index
+                ]
+                if (
+                    self.score_position - quarter_offset < 1
+                    and self.last_beat is not quarter_offset
+                ):
                     print(
                         f"Playing note at beat {quarter_offset}: {frequency:.2f} Hz, "
                         f"duration {quarter_duration} beats"
@@ -274,7 +290,10 @@ if __name__ == "__main__":
 
     # Create a MidiPerformance instance with a MIDI file and an initial tempo (BPM).
     performance = MidiPerformance(
-        midi_file_path=r"data/midi/twinkle_twinkle.mid", tempo=180, instrument_index=0, program_number=25
+        midi_file_path=r"data/midi/twinkle_twinkle.mid",
+        tempo=180,
+        instrument_index=0,
+        program_number=25,
     )
 
     # Start the performance.

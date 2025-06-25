@@ -3,6 +3,7 @@ import numpy as np
 from unittest.mock import patch, MagicMock
 from src.audio_buffer import AudioBuffer
 
+
 class TestAudioBuffer(unittest.TestCase):
     def setUp(self):
         # Instantiate AudioBuffer with default parameters
@@ -36,7 +37,7 @@ class TestAudioBuffer(unittest.TestCase):
         # Verify that writing frames beyond the buffer length raises an exception
         with self.assertRaises(Exception) as context:
             self.buffer.write(frames)
-        self.assertTrue('Not enough space left in buffer' in str(context.exception))
+        self.assertTrue("Not enough space left in buffer" in str(context.exception))
 
     def test_read_from_buffer(self):
         # Write some frames to the buffer
@@ -55,27 +56,32 @@ class TestAudioBuffer(unittest.TestCase):
         # Attempt to read more frames than are available
         with self.assertRaises(Exception) as context:
             self.buffer.read(2048)
-        self.assertTrue('Attempted to read 2048 frames but count is 0' in str(context.exception))
+        self.assertTrue(
+            "Attempted to read 2048 frames but count is 0" in str(context.exception)
+        )
 
     def test_get_time(self):
         # Write some frames to the buffer
-        frames = np.random.random((1, 44100)).astype(np.float32)  # 1 second worth of frames
+        frames = np.random.random((1, 44100)).astype(
+            np.float32
+        )  # 1 second worth of frames
         self.buffer.write(frames)
 
         # Verify that get_time returns the correct duration
         self.assertEqual(self.buffer.get_time(), 1.0)
 
-    @patch('soundfile.write')
+    @patch("soundfile.write")
     def test_save_audio(self, mock_write):
         # Write some frames to the buffer
         frames = np.random.random((1, 2048)).astype(np.float32)
         self.buffer.write(frames)
 
         # Save the buffer to a file
-        self.buffer.save('dummy_path.wav')
+        self.buffer.save("dummy_path.wav")
 
         # Verify that soundfile.write was called with the correct parameters
         mock_write.assert_called_once()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -3,19 +3,23 @@ import librosa
 from librosa import core
 from librosa.core import convert
 
+
 def normalize_audio(audio: np.ndarray) -> np.ndarray:
     """Normalize audio data to the range [-1, 1]."""
     return audio / np.max(np.abs(audio))
 
 
 class PhaseVocoder:
-    def __init__(self, path: str,
-                 playback_rate: float = 1.0,
-                 sample_rate: int = 44100,
-                 channels: int = 1,
-                 n_fft: int = 8192,
-                 win_length: int = 8192,
-                 hop_length: int = 2048):
+    def __init__(
+        self,
+        path: str,
+        playback_rate: float = 1.0,
+        sample_rate: int = 44100,
+        channels: int = 1,
+        n_fft: int = 8192,
+        win_length: int = 8192,
+        hop_length: int = 2048,
+    ):
         """
         A streaming phase vocoder that can produce variable-speed audio in real time.
 
@@ -45,7 +49,7 @@ class PhaseVocoder:
         self.hop_length = hop_length
 
         # Load and normalize
-        mono = (channels == 1)
+        mono = channels == 1
         audio, self.sample_rate = librosa.load(path, sr=sample_rate, mono=mono)
         audio = normalize_audio(audio)
 
@@ -57,13 +61,19 @@ class PhaseVocoder:
         # stft: shape = (channels, freq_bins, time_frames)
         stft_list = []
         for ch in range(self.channels):
-            stft_ch = core.stft(audio[ch],
-                                n_fft=self.n_fft,
-                                hop_length=self.hop_length,
-                                win_length=self.win_length,
-                                window='hann')
-            stft_list.append(stft_ch[np.newaxis, ...])  # shape -> (1, freq_bins, time_frames)
-        self.stft = np.concatenate(stft_list, axis=0)  # shape -> (channels, freq_bins, time_frames)
+            stft_ch = core.stft(
+                audio[ch],
+                n_fft=self.n_fft,
+                hop_length=self.hop_length,
+                win_length=self.win_length,
+                window="hann",
+            )
+            stft_list.append(
+                stft_ch[np.newaxis, ...]
+            )  # shape -> (1, freq_bins, time_frames)
+        self.stft = np.concatenate(
+            stft_list, axis=0
+        )  # shape -> (channels, freq_bins, time_frames)
 
         # Total frames in STFT
         self.num_stft_frames = self.stft.shape[-1]
@@ -72,7 +82,9 @@ class PhaseVocoder:
         self._stft_index = 0.0
 
         # Expected phase advance in each bin per hop
-        self._phi_advance = hop_length * convert.fft_frequencies(sr=self.sample_rate, n_fft=self.n_fft)
+        self._phi_advance = hop_length * convert.fft_frequencies(
+            sr=self.sample_rate, n_fft=self.n_fft
+        )
 
         # Phase accumulator, per channel and frequency bin
         # Initialize to the phase of the first STFT frame
@@ -102,7 +114,7 @@ class PhaseVocoder:
         """
         Synthesize more time-domain audio by processing a chunk of STFT frames
         and appending them to `_output_buffer`.
-        
+
         Parameters
         ----------
         num_cols : int
@@ -128,7 +140,7 @@ class PhaseVocoder:
             alpha = self._stft_index - i0
 
             # Magnitude interpolation for each channel, freq bin
-            mag0 = np.abs(self.stft[..., i0])   # shape: (channels, freq_bins)
+            mag0 = np.abs(self.stft[..., i0])  # shape: (channels, freq_bins)
             mag1 = np.abs(self.stft[..., i1])
             mag = (1.0 - alpha) * mag0 + alpha * mag1
 
@@ -169,13 +181,13 @@ class PhaseVocoder:
         #
         # Below is a simplified approach: we keep track of the "previous columns"
         # in a buffer so that `istft` can do the correct overlap. Then we append
-        # the new block and do a partial ISTFT.  
+        # the new block and do a partial ISTFT.
 
         # 1) If `_prev_stft_buffer` doesn’t exist, create it.
-        if not hasattr(self, '_prev_stft_buffer'):
-            self._prev_stft_buffer = np.zeros((self.channels,
-                                               self.stft.shape[1], 0),
-                                              dtype=np.complex64)
+        if not hasattr(self, "_prev_stft_buffer"):
+            self._prev_stft_buffer = np.zeros(
+                (self.channels, self.stft.shape[1], 0), dtype=np.complex64
+            )
 
         # 2) Concatenate the old leftover + new block
         combined = np.concatenate([self._prev_stft_buffer, stft_block], axis=-1)
@@ -188,10 +200,12 @@ class PhaseVocoder:
         # For multi-channel, we do iSTFT channel by channel:
         time_blocks = []
         for ch in range(self.channels):
-            tb = librosa.istft(combined[ch],
-                               hop_length=self.hop_length,
-                               win_length=self.win_length,
-                               window='hann')
+            tb = librosa.istft(
+                combined[ch],
+                hop_length=self.hop_length,
+                win_length=self.win_length,
+                window="hann",
+            )
             time_blocks.append(tb[np.newaxis, :])  # shape: (1, samples)
 
         # shape => (channels, samples)
@@ -200,9 +214,9 @@ class PhaseVocoder:
         # 4) We need to figure out how many STFT frames from `combined` were “new”.
         #    That many frames is “valid” at the end of the iSTFT, but
         #    the earliest frames might have partial overlap with the old buffer.
-        #    A simpler approach is: 
+        #    A simpler approach is:
         #    - Keep the last (win_length // hop_length) frames in `_prev_stft_buffer`
-        #      so the next call can do a correct overlap-add.  
+        #      so the next call can do a correct overlap-add.
         #    - Then the portion of the time-domain signal that extends beyond that
         #      is the new “valid” samples we can append to `_output_buffer`.
 
@@ -210,7 +224,7 @@ class PhaseVocoder:
         total_cols = combined.shape[-1]
         # We'll keep the last some frames in `_prev_stft_buffer`.
         # Typically, we want enough overlap to cover the window length fully.
-        # Let's pick `win_length // hop_length * 2` or something. 
+        # Let's pick `win_length // hop_length * 2` or something.
         # But a simpler approach is just keep all columns from the new block
         # so that next iteration we do not break continuity.
         leftover_cols = stft_block.shape[-1]
@@ -244,7 +258,7 @@ class PhaseVocoder:
         """
         Return exactly `num_frames` of audio from the internal ring buffer.
         If we don’t have enough, we generate more via `_fill_output_buffer()`.
-        
+
         Parameters
         ----------
         num_frames : int
@@ -320,20 +334,23 @@ class PhaseVocoder:
 #              output_array.T,  # Librosa writes (samples, channels), so transpose
 #              samplerate=44100)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import os
     from audio_buffer import AudioBuffer
 
-    reference = os.path.join('data', 'audio', 'air_on_the_g_string',
-                             'synthesized', 'solo.wav')
+    reference = os.path.join(
+        "data", "audio", "air_on_the_g_string", "synthesized", "solo.wav"
+    )
 
-    phase_vocoder = PhaseVocoder(path=reference,
-                                 sample_rate=44100,
-                                 channels=1,
-                                 playback_rate=2,
-                                 n_fft=8192,
-                                 win_length=8192,
-                                 hop_length=2048)
+    phase_vocoder = PhaseVocoder(
+        path=reference,
+        sample_rate=44100,
+        channels=1,
+        playback_rate=2,
+        n_fft=8192,
+        win_length=8192,
+        hop_length=2048,
+    )
 
     buffer = AudioBuffer(sample_rate=44100, channels=1)
     frames_per_buffer = 1024
@@ -346,4 +363,4 @@ if __name__ == '__main__':
         print(phase_vocoder.get_time())
         buffer.write(frames)
 
-    buffer.save('phase_vocoder_output.wav')
+    buffer.save("phase_vocoder_output.wav")
