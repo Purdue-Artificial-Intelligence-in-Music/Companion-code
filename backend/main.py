@@ -80,6 +80,7 @@ ALIGN_COL_NOTE = config.get("align_col_note", "note pitch")
 ALIGN_COL_REF = config.get("align_col_ref", "baseline_time")
 ALIGN_COL_LIVE = config.get("align_col_live", "altered_time")
 ALIGN_USE_DIAG = config.get("align_use_diag", False)
+EVAL_FIG_PREFIX = config.get("eval_fig_prefix", "eval_align")
 
 # Soundfont
 SOUNDFONT_FILENAME = config.get("soundfont_filename")
@@ -263,7 +264,7 @@ else:
 
 if PATH_ALIGNMENT_CSV:
     eval_df = evaluate_alignment(
-        score_follower,
+        score_follower.path,
         PATH_ALIGNMENT_CSV,
         ALIGN_COL_NOTE,
         ALIGN_COL_REF,
@@ -271,5 +272,12 @@ if PATH_ALIGNMENT_CSV:
         ALIGN_USE_DIAG,
     )
     analyze_eval_df(eval_df)
-    plot_eval_df(eval_df)
+    plot_eval_df(
+        eval_df,
+        score_follower.path,
+        score_follower.otw.accumulated_cost,
+        PATH_REF_WAV,
+        PATH_LIVE_WAV,
+        EVAL_FIG_PREFIX,
+    )
     evaluate_intonation(live_audio, eval_df)

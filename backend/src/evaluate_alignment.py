@@ -1,6 +1,7 @@
 import pretty_midi
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import numpy as np
 import yaml
 from .score_follower import ScoreFollower
@@ -12,6 +13,8 @@ with open("config.yaml", "r") as f:
 SAMPLE_RATE = config.get("sample_rate")
 WIN_LENGTH = config.get("win_length")
 REF_TEMPO = config.get("ref_tempo")
+
+FEATURE_NAME = config.get("feature_type", "CENS")
 
 STEP_SIZE = WIN_LENGTH / SAMPLE_RATE  # * (REF_TEMPO / 60) for beats
 
@@ -91,7 +94,7 @@ def calculate_warped_times(warping_path, ref_times):
 
 
 def evaluate_alignment(
-    score_follower: ScoreFollower,
+    warping_path,
     path_alignment_csv,
     align_col_note,
     align_col_ref,
@@ -100,10 +103,10 @@ def evaluate_alignment(
 ):
     source_df = pd.read_csv(path_alignment_csv)
 
-    warping_path = np.array(score_follower.path)
+    warping_path = np.array(warping_path)
 
     if force_diagonal:
-        warping_path = np.array([(i, i) for i in range(len(score_follower.path))])
+        warping_path = np.array([(i, i) for i in range(len(warping_path))])
 
     # map each baseline note time to live time
     predicted_times = calculate_warped_times(warping_path, source_df[align_col_ref])
@@ -111,15 +114,14 @@ def evaluate_alignment(
     eval_df = pd.DataFrame(
         {
             "note": source_df[align_col_note],
-            "baseline": source_df[align_col_ref],
+            "baseline time": source_df[align_col_ref],
             "predicted live time": predicted_times,
-            "actual live time": source_df[align_col_live],
+            "live time": source_df[align_col_live],
         }
     )
 
-    eval_df["live deviation"] = (
-        eval_df["predicted live time"] - eval_df["actual live time"]
-    )
+    eval_df["alignment error"] = eval_df["predicted live time"] - eval_df["live time"]
+    eval_df["live deviation"] = eval_df["live time"] - eval_df["baseline time"]
     return eval_df
 
 
@@ -127,39 +129,92 @@ def analyze_eval_df(eval_df):
     pd.set_option("display.max_rows", None)
     # print(eval_df)
 
-    # get smallest deviation
-    min_idx = eval_df["live deviation"].abs().argmin()
-    min_dev = eval_df.loc[min_idx, "live deviation"]
+    # get smallest error
+    min_idx = eval_df["alignment error"].abs().argmin()
+    min_dev = eval_df.loc[min_idx, "alignment error"]
 
-    # get largest deviation
-    max_idx = eval_df["live deviation"].abs().argmax()
-    max_dev = eval_df.loc[max_idx, "live deviation"]
+    # get largest error
+    max_idx = eval_df["alignment error"].abs().argmax()
+    max_dev = eval_df.loc[max_idx, "alignment error"]
 
-    print(f"min deviation: ", {min_dev})
-    print(f"max deviation: ", {max_dev})
-    print(f"mean deviation: ", {eval_df["live deviation"].mean()})
-    print(f"median deviation: ", {eval_df["live deviation"].median()})
-    print(f"variance deviation: ", {eval_df["live deviation"].var()})
+    print(f"min error: ", {min_dev})
+    print(f"max error: ", {max_dev})
+    print(f"mean error: ", {eval_df["alignment error"].mean()})
+    print(f"median error: ", {eval_df["alignment error"].median()})
+    print(f"variance error: ", {eval_df["alignment error"].var()})
 
 
-def plot_eval_df(eval_df):
-    plt.figure(figsize=(15, 10))
+def plot_eval_df(
+    eval_df, warping_path, acc_cost_matrix, ref_filename, live_filename, figout_prefix
+):
+    fig = plt.figure(figsize=(15, 12))
+    fig.suptitle(
+        f"Alignment with {FEATURE_NAME} Features:\n{ref_filename} VS {live_filename}",
+        fontsize=14,
+    )
 
-    # Histogram of alignment errors
-    plt.subplot(2, 2, 1)
-    plt.hist(eval_df["live deviation"], bins=20, edgecolor="black")
-    plt.title("Histogram of Alignment Errors")
-    plt.xlabel("Alignment Error (seconds)")
-    plt.ylabel("Frequency")
+    gs = gridspec.GridSpec(3, 2, figure=fig)
 
-    # Alignment error over notes (using positive and negative instances)
-    plt.subplot(2, 2, 2)
-    plt.plot(eval_df["live deviation"])
-    plt.title("Alignment Error")
-    plt.xlabel("Note No.")
-    plt.ylabel("Alignment Error (seconds)")
-    plt.axhline(y=0, color="r", linestyle="--")
+    # Subplot 1: Alignment Error
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax1.plot(eval_df["alignment error"], label="Alignment Error (s)", color="blue")
+    ax1.axhline(y=0, color="r", linestyle="--")
+    ax1.set_title("Alignment Error")
+    ax1.set_ylabel("Alignment Error (s)")
+    ax1.grid(True)
 
-    plt.tight_layout()
-    plt.savefig("error_analysis.png")
+    # Subplot 2: Histogram
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax2.hist(eval_df["alignment error"], bins=20, edgecolor="black")
+    ax2.set_title("Histogram of Alignment Errors")
+    ax2.set_ylabel("Frequency")
+
+    # Subplot 3: Baseline vs Live Time
+    ax3 = fig.add_subplot(gs[1, 0])
+    ax3.plot(eval_df["live deviation"], label="Live Deviation", color="green")
+    ax3.set_title("Live Time - Baseline Time")
+    ax3.set_ylabel("Time (s)")
+    ax3.grid(True)
+
+    # Subplot 4: Note Pitch
+    ax4 = fig.add_subplot(gs[2, 0])
+    ax4.plot(
+        eval_df["note"],
+        label="Note Pitch (MIDI)",
+        color="orange",
+        drawstyle="steps-post",
+    )
+    ax4.set_title("Note Pitch")
+    ax4.set_xlabel("Note No.")
+    ax4.set_ylabel("Note Pitch (MIDI)")
+    ax4.grid(True)
+
+    # Subplot 5+6 (Right middle and bottom merged): Accumulated Cost Matrix with Warping Path
+    ax5 = fig.add_subplot(gs[1:, 1])
+    im = ax5.imshow(acc_cost_matrix, origin="lower", cmap="viridis", aspect="equal")
+    print(len(warping_path))
+    ref_indices, live_indices = zip(*warping_path)  # unzip into two lists
+    ax5.plot(
+        live_indices,
+        ref_indices,
+        marker="o",
+        color="red",
+        linestyle="-",
+        linewidth=1.5,
+        markersize=2,
+        label="Warping Path",
+    )
+    ax5.set_xlim(0, max(live_indices))
+    ax5.set_ylim(0, max(ref_indices))
+    ax5.set_title("Accumulated Cost Matrix with Warping Path")
+    ax5.set_xlabel("Live Time Index")
+    ax5.set_ylabel("Reference Time Index")
+    ax5.legend()
+    ax5.grid(False)
+
+    plt.colorbar(im, ax=ax5, fraction=0.046, pad=0.04)
+
+    # Final layout
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig(f"{figout_prefix}_{FEATURE_NAME}.png")
     plt.show()
