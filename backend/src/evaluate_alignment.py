@@ -37,14 +37,14 @@ def create_alignment_csv(baseline_file, altered_file, csv_out_path):
 
     df = pd.DataFrame(
         {
-            "note pitch": pitch,
+            "note_pitch": pitch,
             "baseline_time": baseline_time,
             "altered_time": altered_time,
         }
     )
 
     df["Serial No."] = df.index
-    df = df[["Serial No.", "note pitch", "baseline_time", "altered_time"]]
+    df = df[["Serial No.", "note_pitch", "baseline_time", "altered_time"]]
 
     print(df.head(n=10))
 
@@ -126,7 +126,7 @@ def evaluate_alignment(
 
 
 def analyze_eval_df(eval_df):
-    pd.set_option("display.max_rows", None)
+    # pd.set_option("display.max_rows", None)
     # print(eval_df)
 
     # get smallest error
@@ -216,5 +216,5 @@ def plot_eval_df(
 
     # Final layout
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig(f"{figout_prefix}_{FEATURE_NAME}.png")
+    plt.savefig(f"{figout_prefix}_{FEATURE_NAME}_align.png")
     plt.show()
