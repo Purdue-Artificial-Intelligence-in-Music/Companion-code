@@ -172,3 +172,4 @@ node_modules/
 *.mp4
 reinforcement_learning/frames/
 backend/error_analysis.png
+*.png
