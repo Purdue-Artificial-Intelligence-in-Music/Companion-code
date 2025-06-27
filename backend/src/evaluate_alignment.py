@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import yaml
-from .score_follower import ScoreFollower
+import os
+from datetime import datetime
 
 # Load config
 with open("config.yaml", "r") as f:
@@ -145,7 +146,7 @@ def analyze_eval_df(eval_df):
 
 
 def plot_eval_df(
-    eval_df, warping_path, acc_cost_matrix, ref_filename, live_filename, figout_prefix
+    eval_df, warping_path, acc_cost_matrix, ref_filename, live_filename, fig_out_folder
 ):
     fig = plt.figure(figsize=(15, 12))
     fig.suptitle(
@@ -214,7 +215,16 @@ def plot_eval_df(
 
     plt.colorbar(im, ax=ax5, fraction=0.046, pad=0.04)
 
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    fig.text(
+        0.5, 0.01, f"Generated on {timestamp}", ha="center", fontsize=9, color="gray"
+    )
+
     # Final layout
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig(f"{figout_prefix}_{FEATURE_NAME}_align.png")
+    save_path = os.path.join(
+        "data", "figures", fig_out_folder, f"eval_{FEATURE_NAME}_align.png"
+    )
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.savefig(save_path)
     plt.show()

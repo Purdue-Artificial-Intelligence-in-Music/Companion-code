@@ -80,7 +80,7 @@ ALIGN_COL_NOTE = config.get("align_col_note", "note_pitch")
 ALIGN_COL_REF = config.get("align_col_ref", "baseline_time")
 ALIGN_COL_LIVE = config.get("align_col_live", "altered_time")
 ALIGN_USE_DIAG = config.get("align_use_diag", False)
-EVAL_FIG_PREFIX = config.get("eval_fig_prefix", "eval")
+FIG_OUT_FOLDER = config.get("fig_out_folder", PIECE_NAME)
 
 # Soundfont
 SOUNDFONT_FILENAME = config.get("soundfont_filename")
@@ -278,6 +278,6 @@ if PATH_ALIGNMENT_CSV:
         score_follower.otw.accumulated_cost,
         PATH_REF_WAV,
         PATH_LIVE_WAV,
-        EVAL_FIG_PREFIX,
+        FIG_OUT_FOLDER,
     )
-    evaluate_intonation(eval_df, PATH_REF_WAV, PATH_LIVE_WAV, True, EVAL_FIG_PREFIX)
+    evaluate_intonation(eval_df, PATH_REF_WAV, PATH_LIVE_WAV, True, FIG_OUT_FOLDER)

@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 import yaml
 import matplotlib.ticker as ticker
+import os
+from datetime import datetime
 
 # Load config
 with open("config.yaml", "r") as f:
@@ -26,7 +28,7 @@ def evaluate_intonation(
     path_ref_wav: str,
     path_live_wav: str,
     plot: bool,
-    figout_prefix: str,
+    fig_out_folder: str,
 ):
     def extract_yin_and_pyin(waveform):
         f0_yin = librosa.yin(
@@ -189,8 +191,22 @@ def evaluate_intonation(
         ax3.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{int(x)}"))
         ax3.xaxis.set_major_locator(ticker.MultipleLocator(HOP_LENGTH * 5))
 
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        fig.text(
+            0.5,
+            0.01,
+            f"Generated on {timestamp}",
+            ha="center",
+            fontsize=9,
+            color="gray",
+        )
+
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        plt.savefig(f"{figout_prefix}_{FEATURE_NAME}_pitch.png")
+        save_path = os.path.join(
+            "data", "figures", fig_out_folder, f"eval_{FEATURE_NAME}_pitch.png"
+        )
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path)
         plt.show()
 
     return eval_df, ref_pitch, live_pitch

@@ -25,7 +25,7 @@ diag_weight: 0.75
 max_duration: 600
 
 # Type of feature to use for alignment
-feature_type: "CENS"
+feature_type: "Mel Spec"
 
 # Volume multiplier for solo instrument
 solo_volume_multiplier: 1.05
@@ -70,8 +70,8 @@ align_col_live: "altered_time"
 # Override the warping path and use a pure diagonal for testing
 align_use_diag: false
 
-# Prefix for generated evaluation figures 
-eval_fig_prefix: "eval"
+# Folder for generated evaluation figures (data/figures/FOLDER), if eval metrics enabled
+fig_out_folder: "ode_to_joy"
 
 # Soundfont (looks for a soundfont under the 'soundfonts' folder)
 soundfont_filename: FluidR3_GM.sf2
