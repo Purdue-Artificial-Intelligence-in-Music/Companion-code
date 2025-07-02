@@ -157,73 +157,72 @@ def plot_eval_df(
     gs = gridspec.GridSpec(3, 2, figure=fig)
 
     # Subplot 1: Alignment Error
-    ax1 = fig.add_subplot(gs[0, 0])
+    ax1 = fig.add_subplot(gs[0, :])
     ax1.plot(eval_df["alignment error"], label="Alignment Error (s)", color="blue")
     ax1.axhline(y=0, color="r", linestyle="--")
-    ax1.set_title("Alignment Error")
+    # ax1.set_title("Alignment Error")
     ax1.set_ylabel("Alignment Error (s)")
     ax1.grid(True)
 
-    # Subplot 2: Histogram
-    ax2 = fig.add_subplot(gs[0, 1])
-    ax2.hist(eval_df["alignment error"], bins=20, edgecolor="black")
-    ax2.set_title("Histogram of Alignment Errors")
-    ax2.set_ylabel("Frequency")
+    # # Subplot 2: Histogram
+    # ax2 = fig.add_subplot(gs[0, 1])
+    # ax2.hist(eval_df["alignment error"], bins=20, edgecolor="black")
+    # ax2.set_title("Histogram of Alignment Errors")
+    # ax2.set_ylabel("Frequency")
 
     # Subplot 3: Baseline vs Live Time
-    ax3 = fig.add_subplot(gs[1, 0])
+    ax3 = fig.add_subplot(gs[1, :])
     ax3.plot(eval_df["live deviation"], label="Live Deviation", color="green")
-    ax3.set_title("Live Time - Baseline Time")
-    ax3.set_ylabel("Time (s)")
+    # ax3.set_title("Live Time - Baseline Time")
+    ax3.set_ylabel(r"Sequence Difference (s)")
     ax3.grid(True)
 
     # Subplot 4: Note Pitch
-    ax4 = fig.add_subplot(gs[2, 0])
+    ax4 = fig.add_subplot(gs[2, :])
     ax4.plot(
         eval_df["note"],
         label="Note Pitch (MIDI)",
         color="orange",
         drawstyle="steps-post",
     )
-    ax4.set_title("Note Pitch")
+    # ax4.set_title("Note Pitch")
     ax4.set_xlabel("Note No.")
-    ax4.set_ylabel("Note Pitch (MIDI)")
+    ax4.set_ylabel("Score Note Pitch (MIDI)")
     ax4.grid(True)
 
-    # Subplot 5+6 (Right middle and bottom merged): Accumulated Cost Matrix with Warping Path
-    ax5 = fig.add_subplot(gs[1:, 1])
-    im = ax5.imshow(acc_cost_matrix, origin="lower", cmap="viridis", aspect="equal")
-    print(len(warping_path))
-    ref_indices, live_indices = zip(*warping_path)  # unzip into two lists
-    ax5.plot(
-        live_indices,
-        ref_indices,
-        marker="o",
-        color="red",
-        linestyle="-",
-        linewidth=1.5,
-        markersize=2,
-        label="Warping Path",
-    )
-    ax5.set_xlim(0, max(live_indices))
-    ax5.set_ylim(0, max(ref_indices))
-    ax5.set_title("Accumulated Cost Matrix with Warping Path")
-    ax5.set_xlabel("Live Time Index")
-    ax5.set_ylabel("Reference Time Index")
-    ax5.legend()
-    ax5.grid(False)
+    # # Subplot 5+6 (Right middle and bottom merged): Accumulated Cost Matrix with Warping Path
+    # ax5 = fig.add_subplot(gs[1:, 1])
+    # im = ax5.imshow(acc_cost_matrix, origin="lower", cmap="viridis", aspect="equal")
+    # print(len(warping_path))
+    # ref_indices, live_indices = zip(*warping_path)  # unzip into two lists
+    # ax5.plot(
+    #     live_indices,
+    #     ref_indices,
+    #     marker="o",
+    #     color="red",
+    #     linestyle="-",
+    #     linewidth=1.5,
+    #     markersize=2,
+    #     label="Warping Path",
+    # )
+    # ax5.set_xlim(0, max(live_indices))
+    # ax5.set_ylim(0, max(ref_indices))
+    # ax5.set_title("Accumulated Cost Matrix with Warping Path")
+    # ax5.set_xlabel("Live Time Index")
+    # ax5.set_ylabel("Reference Time Index")
+    # ax5.legend()
+    # ax5.grid(False)
+    # plt.colorbar(im, ax=ax5, fraction=0.046, pad=0.04)
 
-    plt.colorbar(im, ax=ax5, fraction=0.046, pad=0.04)
-
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    fig.text(
-        0.5, 0.01, f"Generated on {timestamp}", ha="center", fontsize=9, color="gray"
-    )
+    # timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # fig.text(
+    #     0.5, 0.01, f"Generated on {timestamp}", ha="center", fontsize=9, color="gray"
+    # )
 
     # Final layout
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     save_path = os.path.join(
-        "data", "figures", fig_out_folder, f"eval_{FEATURE_NAME}_align.png"
+        "data", "figures", fig_out_folder, f"eval_{FEATURE_NAME}_align.svg"
     )
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.savefig(save_path)
