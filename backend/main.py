@@ -20,6 +20,7 @@ from src.features_mel_spec import MelSpecFeatures
 from src.features_f0 import F0Features
 import soundfile as sf
 import pyaudio
+import json
 import pandas as pd
 from time import time, sleep
 
@@ -74,12 +75,18 @@ PATH_REF_WAV = config.get("path_ref_wav")
 PATH_LIVE_MIDI = config.get("path_live_midi")
 PATH_LIVE_WAV = config.get("path_live_wav")
 
+# Logging
+LOG_OUT_FOLDER = config.get("log_out_folder")
+SAVE_REF_FT = config.get("save_ref_ft", False)
+SAVE_LIVE_FT = config.get("save_live_ft", False)
+SAVE_WARP = config.get("save_warp", False)
+
 # Evaluation Metrics
 PATH_ALIGNMENT_CSV = config.get("path_alignment_csv")
 ALIGN_COL_NOTE = config.get("align_col_note", "note_pitch")
 ALIGN_COL_REF = config.get("align_col_ref", "baseline_time")
 ALIGN_COL_LIVE = config.get("align_col_live", "altered_time")
-ALIGN_USE_DIAG = config.get("align_use_diag", False)
+
 FIG_OUT_FOLDER = config.get("fig_out_folder", PIECE_NAME)
 
 # Soundfont
@@ -99,6 +106,11 @@ if PIECE_NAME:
 elif not (PATH_REF_MIDI and PATH_REF_WAV and PATH_REF_MIDI and PATH_LIVE_WAV):
     raise ValueError(
         "Must specify either 'piece_name' or all of 'path_ref_midi', 'path_ref_wav', 'path_live_midi', and 'path_live_wav'."
+    )
+
+if not LOG_OUT_FOLDER and (SAVE_REF_FT or SAVE_LIVE_FT or SAVE_WARP):
+    raise ValueError(
+        "Must specifiy 'log_out_folder' to use 'save_ref_ft', 'safe_live_ft', or 'save_warp'."
     )
 
 if PATH_ALIGNMENT_CSV and (not ALIGN_COL_LIVE or not ALIGN_COL_REF):
@@ -262,22 +274,41 @@ else:
     live_audio = live_audio.reshape(-1)
     sf.write("live.wav", live_audio, SAMPLE_RATE)
 
+if LOG_OUT_FOLDER:
+    os.makedirs(LOG_OUT_FOLDER, exist_ok=True)
+    ref_ft_out_path = os.path.join(LOG_OUT_FOLDER, "py_ref_ft.json")
+    live_ft_out_path = os.path.join(LOG_OUT_FOLDER, "py_live_ft.json")
+    align_out_path = os.path.join(LOG_OUT_FOLDER, "py_warping_path.json")
+
+    if SAVE_REF_FT:
+        with open(ref_ft_out_path, 'w', encoding='utf-8') as f:
+            serialized_featuregram = score_follower.ref_features.get_featuregram().tolist()
+            json.dump(serialized_featuregram, f, ensure_ascii=False, indent=4)
+    if SAVE_LIVE_FT:
+        with open(live_ft_out_path, 'w', encoding='utf-8') as f:
+            serialized_featuregram = score_follower.otw.live.get_featuregram().tolist()
+            json.dump(serialized_featuregram, f, ensure_ascii=False, indent=4)
+    if SAVE_WARP:
+        with open(align_out_path, 'w', encoding='utf-8') as f:
+            serialized_path = [[int(y) for y in x] for x in score_follower.path]
+            json.dump(serialized_path, f, ensure_ascii=False, indent=4)
+
 if PATH_ALIGNMENT_CSV:
+    warping_path = score_follower.path
     eval_df = evaluate_alignment(
-        score_follower.path,
+        warping_path,
         PATH_ALIGNMENT_CSV,
         ALIGN_COL_NOTE,
         ALIGN_COL_REF,
-        ALIGN_COL_LIVE,
-        ALIGN_USE_DIAG,
+        ALIGN_COL_LIVE
     )
     analyze_eval_df(eval_df)
     plot_eval_df(
         eval_df,
-        score_follower.path,
+        warping_path,
         score_follower.otw.accumulated_cost,
         PATH_REF_WAV,
         PATH_LIVE_WAV,
         FIG_OUT_FOLDER,
     )
-    evaluate_intonation(eval_df, PATH_REF_WAV, PATH_LIVE_WAV, True, FIG_OUT_FOLDER)
+    # evaluate_intonation(eval_df, PATH_REF_WAV, PATH_LIVE_WAV, True, FIG_OUT_FOLDER)

@@ -100,14 +100,10 @@ def evaluate_alignment(
     align_col_note,
     align_col_ref,
     align_col_live,
-    force_diagonal=False,
 ):
     source_df = pd.read_csv(path_alignment_csv)
 
     warping_path = np.array(warping_path)
-
-    if force_diagonal:
-        warping_path = np.array([(i, i) for i in range(len(warping_path))])
 
     # map each baseline note time to live time
     predicted_times = calculate_warped_times(warping_path, source_df[align_col_ref])
