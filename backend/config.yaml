@@ -60,7 +60,7 @@ path_live_midi: data/midi/ode_to_joy_altered.mid
 path_live_wav: data/audio/ode_to_joy_altered/300bpm.wav
 
 # Logging
-log_out_folder: data/alignments/ode_to_joy
+path_log_folder: data/alignments/ode_to_joy
 save_ref_ft: True
 save_live_ft: True
 save_warp: True
@@ -73,8 +73,8 @@ align_col_note: "note_pitch"
 align_col_ref: "baseline_time"
 align_col_live: "altered_time"
 
-# Folder for generated evaluation figures (data/figures/FOLDER), if eval metrics enabled
-fig_out_folder: "ode_to_joy"
+# Generate evaluation figures to path_log_folder/figures, if eval metrics enabled
+generate_figures: True
 
 # Soundfont (looks for a soundfont under the 'soundfonts' folder)
 soundfont_filename: FluidR3_GM.sf2

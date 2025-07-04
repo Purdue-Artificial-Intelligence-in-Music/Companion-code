@@ -76,7 +76,7 @@ PATH_LIVE_MIDI = config.get("path_live_midi")
 PATH_LIVE_WAV = config.get("path_live_wav")
 
 # Logging
-LOG_OUT_FOLDER = config.get("log_out_folder")
+PATH_LOG_FOLDER = config.get("path_log_folder")
 SAVE_REF_FT = config.get("save_ref_ft", False)
 SAVE_LIVE_FT = config.get("save_live_ft", False)
 SAVE_WARP = config.get("save_warp", False)
@@ -87,7 +87,7 @@ ALIGN_COL_NOTE = config.get("align_col_note", "note_pitch")
 ALIGN_COL_REF = config.get("align_col_ref", "baseline_time")
 ALIGN_COL_LIVE = config.get("align_col_live", "altered_time")
 
-FIG_OUT_FOLDER = config.get("fig_out_folder", PIECE_NAME)
+GENERATE_FIGURES = config.get("generate_figures", False)
 
 # Soundfont
 SOUNDFONT_FILENAME = config.get("soundfont_filename")
@@ -108,7 +108,7 @@ elif not (PATH_REF_MIDI and PATH_REF_WAV and PATH_REF_MIDI and PATH_LIVE_WAV):
         "Must specify either 'piece_name' or all of 'path_ref_midi', 'path_ref_wav', 'path_live_midi', and 'path_live_wav'."
     )
 
-if not LOG_OUT_FOLDER and (SAVE_REF_FT or SAVE_LIVE_FT or SAVE_WARP):
+if not PATH_LOG_FOLDER and (SAVE_REF_FT or SAVE_LIVE_FT or SAVE_WARP):
     raise ValueError(
         "Must specifiy 'log_out_folder' to use 'save_ref_ft', 'safe_live_ft', or 'save_warp'."
     )
@@ -274,11 +274,11 @@ else:
     live_audio = live_audio.reshape(-1)
     sf.write("live.wav", live_audio, SAMPLE_RATE)
 
-if LOG_OUT_FOLDER:
-    os.makedirs(LOG_OUT_FOLDER, exist_ok=True)
-    ref_ft_out_path = os.path.join(LOG_OUT_FOLDER, "py_ref_ft.json")
-    live_ft_out_path = os.path.join(LOG_OUT_FOLDER, "py_live_ft.json")
-    align_out_path = os.path.join(LOG_OUT_FOLDER, "py_warping_path.json")
+if PATH_LOG_FOLDER:
+    os.makedirs(PATH_LOG_FOLDER, exist_ok=True)
+    ref_ft_out_path = os.path.join(PATH_LOG_FOLDER, f"py_{feature_name}_ref_ft.json")
+    live_ft_out_path = os.path.join(PATH_LOG_FOLDER, f"py_{feature_name}_live_ft.json")
+    align_out_path = os.path.join(PATH_LOG_FOLDER, f"py_{feature_name}_warping_path.json")
 
     if SAVE_REF_FT:
         with open(ref_ft_out_path, 'w', encoding='utf-8') as f:
@@ -303,12 +303,14 @@ if PATH_ALIGNMENT_CSV:
         ALIGN_COL_LIVE
     )
     analyze_eval_df(eval_df)
-    plot_eval_df(
-        eval_df,
-        warping_path,
-        score_follower.otw.accumulated_cost,
-        PATH_REF_WAV,
-        PATH_LIVE_WAV,
-        FIG_OUT_FOLDER,
-    )
-    # evaluate_intonation(eval_df, PATH_REF_WAV, PATH_LIVE_WAV, True, FIG_OUT_FOLDER)
+    if GENERATE_FIGURES:
+        plot_eval_df(
+            eval_df,
+            score_follower.path,
+            score_follower.otw.accumulated_cost,
+            PATH_REF_WAV,
+            PATH_LIVE_WAV,
+            feature_name,
+            PATH_LOG_FOLDER,
+        )
+        evaluate_intonation(eval_df, PATH_REF_WAV, PATH_LIVE_WAV, True, PATH_LOG_FOLDER)
