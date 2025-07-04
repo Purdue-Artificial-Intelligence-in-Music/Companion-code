@@ -36,10 +36,10 @@ accomp_instr_index: 0
 # Instrument sound (MIDI program number, 1=piano, 43=cello) for accompaniment part
 accomp_program_num: 1
 
-# Tempo at which the user plans to play in BPM
+# Tempo at which the user plans to play in BPM (Comment out to infer from ref file)
 ref_tempo: 300
 
-# Tempo at which the user actually plays in BPM
+# Tempo at which the user actually plays in BPM (Comment out to infer from ref_tempo)
 live_tempo: 300
 
 # Set to true to use microphone input, false to use prerecorded soloist audio

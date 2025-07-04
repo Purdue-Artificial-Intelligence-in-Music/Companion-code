@@ -63,8 +63,8 @@ SOLO_VOLUME_MULTIPLIER = config.get("solo_volume_multiplier", 0.75)
 ACCOMP_INSTR_INDEX = config.get("accomp_instr_index", 1)
 ACCOMP_PROGAM_NUMBER = config.get("accomp_program_num", 42)
 
-REF_TEMPO = config.get("ref_tempo", 100)
-LIVE_TEMPO = config.get("live_tempo", 110)
+REF_TEMPO = config.get("ref_tempo")
+LIVE_TEMPO = config.get("live_tempo", REF_TEMPO)
 USE_MIC = config.get("use_mic", False)
 SKIP_PLAYBACK = config.get("skip_playback", False)
 
@@ -97,6 +97,8 @@ if USE_MIC and SKIP_PLAYBACK:
     raise ValueError("Cannot specify 'skip_playback' and 'use_mic' simultaneously")
 
 if PIECE_NAME:
+    if not (REF_TEMPO and LIVE_TEMPO):
+        raise ValueError("Must specify 'ref_tempo' and 'live_tempo' when using 'piece_name'")
     PATH_REF_MIDI = os.path.join("data", "midi", f"{PIECE_NAME}.mid")
     PATH_LIVE_MIDI = os.path.join("data", "midi", f"{PIECE_NAME}.mid")
     PATH_REF_WAV = os.path.join("data", "audio", PIECE_NAME, f"ref_{REF_TEMPO}bpm.wav")
@@ -125,11 +127,25 @@ elif PATH_SOUNDFONT is None:
 
 # Generate missing files
 if not os.path.isfile(PATH_REF_WAV):
+    if not REF_TEMPO:
+        raise ValueError("Must specify 'ref_tempo' if file at 'path_ref_wav' doesn't exist")
+
     generator = AudioGenerator(score_path=PATH_REF_MIDI, soundfont_path=PATH_SOUNDFONT)
     generator.generate_solo(
         output_file=PATH_REF_WAV, tempo=REF_TEMPO, instrument_index=0
     )
+elif not REF_TEMPO:  # Infer missing tempo
+    ref_audio, _ = librosa.load(PATH_REF_WAV, sr=SAMPLE_RATE)  # load soloist audio
+    ref_tempo_est, _ = librosa.beat.beat_track(y=ref_audio, sr=SAMPLE_RATE)
+    REF_TEMPO = int(ref_tempo_est)
+
+    if not LIVE_TEMPO:
+        LIVE_TEMPO = REF_TEMPO
+
 if not os.path.isfile(PATH_LIVE_WAV):
+    if not LIVE_TEMPO:
+        raise ValueError("Must specify 'live_tempo' if file at 'path_live_wav' doesn't exist")
+
     generator = AudioGenerator(score_path=PATH_LIVE_MIDI, soundfont_path=PATH_SOUNDFONT)
     generator.generate_solo(
         output_file=PATH_LIVE_WAV, tempo=LIVE_TEMPO, instrument_index=0
@@ -162,7 +178,7 @@ estimated_times = []
 accompanist_times = []
 
 
-def step(data) -> int:
+def step(data) -> float:
     estimated_time = score_follower.step(
         data
     )  # get estimated time in soloist audio in seconds
