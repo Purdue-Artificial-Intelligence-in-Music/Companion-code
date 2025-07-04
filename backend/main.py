@@ -20,6 +20,7 @@ from src.features_mel_spec import MelSpecFeatures
 from src.features_f0 import F0Features
 import soundfile as sf
 import pyaudio
+import json
 import pandas as pd
 from time import time, sleep
 
@@ -62,8 +63,8 @@ SOLO_VOLUME_MULTIPLIER = config.get("solo_volume_multiplier", 0.75)
 ACCOMP_INSTR_INDEX = config.get("accomp_instr_index", 1)
 ACCOMP_PROGAM_NUMBER = config.get("accomp_program_num", 42)
 
-REF_TEMPO = config.get("ref_tempo", 100)
-LIVE_TEMPO = config.get("live_tempo", 110)
+REF_TEMPO = config.get("ref_tempo")
+LIVE_TEMPO = config.get("live_tempo", REF_TEMPO)
 USE_MIC = config.get("use_mic", False)
 SKIP_PLAYBACK = config.get("skip_playback", False)
 
@@ -74,13 +75,19 @@ PATH_REF_WAV = config.get("path_ref_wav")
 PATH_LIVE_MIDI = config.get("path_live_midi")
 PATH_LIVE_WAV = config.get("path_live_wav")
 
+# Logging
+PATH_LOG_FOLDER = config.get("path_log_folder")
+SAVE_REF_FT = config.get("save_ref_ft", False)
+SAVE_LIVE_FT = config.get("save_live_ft", False)
+SAVE_WARP = config.get("save_warp", False)
+
 # Evaluation Metrics
 PATH_ALIGNMENT_CSV = config.get("path_alignment_csv")
 ALIGN_COL_NOTE = config.get("align_col_note", "note_pitch")
 ALIGN_COL_REF = config.get("align_col_ref", "baseline_time")
 ALIGN_COL_LIVE = config.get("align_col_live", "altered_time")
-ALIGN_USE_DIAG = config.get("align_use_diag", False)
-FIG_OUT_FOLDER = config.get("fig_out_folder", PIECE_NAME)
+
+GENERATE_FIGURES = config.get("generate_figures", False)
 
 # Soundfont
 SOUNDFONT_FILENAME = config.get("soundfont_filename")
@@ -90,6 +97,8 @@ if USE_MIC and SKIP_PLAYBACK:
     raise ValueError("Cannot specify 'skip_playback' and 'use_mic' simultaneously")
 
 if PIECE_NAME:
+    if not (REF_TEMPO and LIVE_TEMPO):
+        raise ValueError("Must specify 'ref_tempo' and 'live_tempo' when using 'piece_name'")
     PATH_REF_MIDI = os.path.join("data", "midi", f"{PIECE_NAME}.mid")
     PATH_LIVE_MIDI = os.path.join("data", "midi", f"{PIECE_NAME}.mid")
     PATH_REF_WAV = os.path.join("data", "audio", PIECE_NAME, f"ref_{REF_TEMPO}bpm.wav")
@@ -99,6 +108,11 @@ if PIECE_NAME:
 elif not (PATH_REF_MIDI and PATH_REF_WAV and PATH_REF_MIDI and PATH_LIVE_WAV):
     raise ValueError(
         "Must specify either 'piece_name' or all of 'path_ref_midi', 'path_ref_wav', 'path_live_midi', and 'path_live_wav'."
+    )
+
+if not PATH_LOG_FOLDER and (SAVE_REF_FT or SAVE_LIVE_FT or SAVE_WARP):
+    raise ValueError(
+        "Must specifiy 'log_out_folder' to use 'save_ref_ft', 'safe_live_ft', or 'save_warp'."
     )
 
 if PATH_ALIGNMENT_CSV and (not ALIGN_COL_LIVE or not ALIGN_COL_REF):
@@ -113,11 +127,25 @@ elif PATH_SOUNDFONT is None:
 
 # Generate missing files
 if not os.path.isfile(PATH_REF_WAV):
+    if not REF_TEMPO:
+        raise ValueError("Must specify 'ref_tempo' if file at 'path_ref_wav' doesn't exist")
+
     generator = AudioGenerator(score_path=PATH_REF_MIDI, soundfont_path=PATH_SOUNDFONT)
     generator.generate_solo(
         output_file=PATH_REF_WAV, tempo=REF_TEMPO, instrument_index=0
     )
+elif not REF_TEMPO:  # Infer missing tempo
+    ref_audio, _ = librosa.load(PATH_REF_WAV, sr=SAMPLE_RATE)  # load soloist audio
+    ref_tempo_est, _ = librosa.beat.beat_track(y=ref_audio, sr=SAMPLE_RATE)
+    REF_TEMPO = int(ref_tempo_est)
+
+    if not LIVE_TEMPO:
+        LIVE_TEMPO = REF_TEMPO
+
 if not os.path.isfile(PATH_LIVE_WAV):
+    if not LIVE_TEMPO:
+        raise ValueError("Must specify 'live_tempo' if file at 'path_live_wav' doesn't exist")
+
     generator = AudioGenerator(score_path=PATH_LIVE_MIDI, soundfont_path=PATH_SOUNDFONT)
     generator.generate_solo(
         output_file=PATH_LIVE_WAV, tempo=LIVE_TEMPO, instrument_index=0
@@ -150,7 +178,7 @@ estimated_times = []
 accompanist_times = []
 
 
-def step(data) -> int:
+def step(data) -> float:
     estimated_time = score_follower.step(
         data
     )  # get estimated time in soloist audio in seconds
@@ -262,22 +290,43 @@ else:
     live_audio = live_audio.reshape(-1)
     sf.write("live.wav", live_audio, SAMPLE_RATE)
 
+if PATH_LOG_FOLDER:
+    os.makedirs(PATH_LOG_FOLDER, exist_ok=True)
+    ref_ft_out_path = os.path.join(PATH_LOG_FOLDER, f"py_{feature_name}_ref_ft.json")
+    live_ft_out_path = os.path.join(PATH_LOG_FOLDER, f"py_{feature_name}_live_ft.json")
+    align_out_path = os.path.join(PATH_LOG_FOLDER, f"py_{feature_name}_warping_path.json")
+
+    if SAVE_REF_FT:
+        with open(ref_ft_out_path, 'w', encoding='utf-8') as f:
+            serialized_featuregram = score_follower.ref_features.get_featuregram().tolist()
+            json.dump(serialized_featuregram, f, ensure_ascii=False, indent=4)
+    if SAVE_LIVE_FT:
+        with open(live_ft_out_path, 'w', encoding='utf-8') as f:
+            serialized_featuregram = score_follower.otw.live.get_featuregram().tolist()
+            json.dump(serialized_featuregram, f, ensure_ascii=False, indent=4)
+    if SAVE_WARP:
+        with open(align_out_path, 'w', encoding='utf-8') as f:
+            serialized_path = [[int(y) for y in x] for x in score_follower.path]
+            json.dump(serialized_path, f, ensure_ascii=False, indent=4)
+
 if PATH_ALIGNMENT_CSV:
+    warping_path = score_follower.path
     eval_df = evaluate_alignment(
-        score_follower.path,
+        warping_path,
         PATH_ALIGNMENT_CSV,
         ALIGN_COL_NOTE,
         ALIGN_COL_REF,
-        ALIGN_COL_LIVE,
-        ALIGN_USE_DIAG,
+        ALIGN_COL_LIVE
     )
     analyze_eval_df(eval_df)
-    plot_eval_df(
-        eval_df,
-        score_follower.path,
-        score_follower.otw.accumulated_cost,
-        PATH_REF_WAV,
-        PATH_LIVE_WAV,
-        FIG_OUT_FOLDER,
-    )
-    evaluate_intonation(eval_df, PATH_REF_WAV, PATH_LIVE_WAV, True, FIG_OUT_FOLDER)
+    if GENERATE_FIGURES:
+        plot_eval_df(
+            eval_df,
+            score_follower.path,
+            score_follower.otw.accumulated_cost,
+            PATH_REF_WAV,
+            PATH_LIVE_WAV,
+            feature_name,
+            PATH_LOG_FOLDER,
+        )
+        evaluate_intonation(eval_df, PATH_REF_WAV, PATH_LIVE_WAV, True, PATH_LOG_FOLDER)

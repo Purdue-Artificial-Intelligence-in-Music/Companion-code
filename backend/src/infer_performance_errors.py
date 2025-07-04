@@ -28,7 +28,7 @@ def evaluate_intonation(
     path_ref_wav: str,
     path_live_wav: str,
     plot: bool,
-    fig_out_folder: str,
+    path_log_folder: str,
 ):
     def extract_yin_and_pyin(waveform):
         f0_yin = librosa.yin(
@@ -203,7 +203,7 @@ def evaluate_intonation(
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         save_path = os.path.join(
-            "data", "figures", fig_out_folder, f"eval_{FEATURE_NAME}_pitch.png"
+            path_log_folder, "figures", f"eval_{FEATURE_NAME}_pitch.png"
         )
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path)
