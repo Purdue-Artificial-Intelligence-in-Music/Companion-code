@@ -5,6 +5,7 @@ import matplotlib.gridspec as gridspec
 import numpy as np
 import yaml
 import os
+import json
 from datetime import datetime
 
 # Load config
@@ -100,14 +101,10 @@ def evaluate_alignment(
     align_col_note,
     align_col_ref,
     align_col_live,
-    force_diagonal=False,
 ):
     source_df = pd.read_csv(path_alignment_csv)
 
     warping_path = np.array(warping_path)
-
-    if force_diagonal:
-        warping_path = np.array([(i, i) for i in range(len(warping_path))])
 
     # map each baseline note time to live time
     predicted_times = calculate_warped_times(warping_path, source_df[align_col_ref])
@@ -146,11 +143,12 @@ def analyze_eval_df(eval_df):
 
 
 def plot_eval_df(
-    eval_df, warping_path, acc_cost_matrix, ref_filename, live_filename, fig_out_folder
+    eval_df, warping_path, acc_cost_matrix, ref_filename, live_filename, feature_name, path_log_folder, 
+    override_filename=None
 ):
     fig = plt.figure(figsize=(15, 12))
     fig.suptitle(
-        f"Alignment with {FEATURE_NAME} Features:\n{ref_filename} VS {live_filename}",
+        f"Alignment with {feature_name} Features:\n{ref_filename} VS {live_filename}",
         fontsize=14,
     )
 
@@ -222,9 +220,41 @@ def plot_eval_df(
 
     # Final layout
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    if not override_filename:
+        override_filename = feature_name
     save_path = os.path.join(
-        "data", "figures", fig_out_folder, f"eval_{FEATURE_NAME}_align.png"
+        path_log_folder, "figures", f"eval_{override_filename}_align.png"
     )
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.savefig(save_path)
     plt.show()
+
+if __name__ == "__main__":
+    warping_path_path = "data/alignments/ode_to_joy/typescript_o2j_warping_path.json"
+    alignment_csv_path = config.get("path_alignment_csv")
+    
+    with open(warping_path_path, 'r') as file:
+        warping_path = json.load(file)
+    
+    print("Checkpoint", config.get("path_align_csv"))
+
+    eval_df = evaluate_alignment(warping_path,
+                                 path_alignment_csv=alignment_csv_path,
+                                 align_col_note="note_pitch",
+                                 align_col_ref="baseline_time",
+                                 align_col_live="altered_time")
+
+    filename = os.path.splitext(os.path.basename(warping_path_path))[0]
+    
+    plot_eval_df(eval_df,
+                 warping_path=warping_path,
+                 acc_cost_matrix=np.zeros(shape=warping_path[-1], dtype=float),
+                 ref_filename=f"[UNKNOWN] {filename}",
+                 live_filename=f"[UNKNOWN] {filename}",
+                 feature_name=f"[UNKNOWN] {filename}",
+                 path_log_folder=config.get("path_log_folder"),
+                 override_filename=filename)
+
+    
+
