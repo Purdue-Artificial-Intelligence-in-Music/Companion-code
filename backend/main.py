@@ -1,12 +1,5 @@
 import numpy as np
-from src.alignment_error import (
-    load_data,
-    calculate_alignment_error,
-    calculate_align_err_beats,
-)
-
-# from src.accompaniment_error import calculate_accompaniment_error
-from src.evaluate_alignment import evaluate_alignment, analyze_eval_df, plot_eval_df
+from backend.src.alignment_eval_tools import evaluate_alignment, analyze_eval_df, plot_eval_df
 from src.infer_performance_errors import evaluate_intonation
 import os
 import yaml
