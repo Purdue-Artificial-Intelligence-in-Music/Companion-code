@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
-import matplotlib.ticker as ticker
 import os
 from datetime import datetime
 
@@ -14,14 +13,37 @@ with open("config.yaml", "r") as f:
 
 SAMPLE_RATE = config.get("sample_rate")
 CHANNELS = config.get("channels", 1)
-WIN_LENGTH = config.get("win_length")
-HOP_LENGTH = config.get("hop_length", WIN_LENGTH)
 REF_TEMPO = config.get("ref_tempo")
+
+YIN_FRAME_LEN = 512
+HOP_LENGTH = 512
 
 FEATURE_NAME = config.get("feature_type", "CENS")
 
-YIN_FRAME_LEN = HOP_LENGTH * 2
+def extract_pyin(waveform):
+    f0_pyin, _, _ = librosa.pyin(
+        waveform,
+        sr=SAMPLE_RATE,
+        fmin=librosa.note_to_hz("C2"), # type: ignore
+        fmax=librosa.note_to_hz("C7"), # type: ignore
+        frame_length=YIN_FRAME_LEN,
+        hop_length=HOP_LENGTH,
+        center=False,
+    )
+    f0_pyin_midi = librosa.hz_to_midi(f0_pyin)[0]
+    valid_pyin = ~np.isnan(f0_pyin_midi)
+    sample_idx_pyin = np.arange(len(f0_pyin_midi)) * HOP_LENGTH
 
+    return {
+        "pyin_midi": f0_pyin_midi,
+        "pyin_valid": valid_pyin,
+        "pyin_idx": sample_idx_pyin,
+    }
+
+def pitch_at_sample(pitches: list, sample: int):
+    window_idx = sample // HOP_LENGTH
+    print(len(pitches), window_idx, pitches[window_idx])
+    return pitches[window_idx]
 
 def evaluate_intonation(
     eval_df: pd.DataFrame,
@@ -30,97 +52,39 @@ def evaluate_intonation(
     plot: bool,
     path_log_folder: str,
 ):
-    def extract_yin_and_pyin(waveform):
-        f0_yin = librosa.yin(
-            waveform,
-            sr=SAMPLE_RATE,
-            fmin=librosa.note_to_hz("C2"),
-            fmax=librosa.note_to_hz("C7"),
-            frame_length=YIN_FRAME_LEN,
-            hop_length=HOP_LENGTH,
-            center=False,
-        )
-        f0_yin_midi = librosa.hz_to_midi(f0_yin)[0]
-        valid_yin = ~np.isnan(f0_yin_midi)
-        sample_idx_yin = np.arange(len(f0_yin_midi)) * HOP_LENGTH
-
-        f0_pyin, _, _ = librosa.pyin(
-            waveform,
-            sr=SAMPLE_RATE,
-            fmin=librosa.note_to_hz("C2"),
-            fmax=librosa.note_to_hz("C7"),
-            frame_length=YIN_FRAME_LEN,
-            hop_length=HOP_LENGTH,
-            center=False,
-        )
-        f0_pyin_midi = librosa.hz_to_midi(f0_pyin)[0]
-        valid_pyin = ~np.isnan(f0_pyin_midi)
-        sample_idx_pyin = np.arange(len(f0_pyin_midi)) * HOP_LENGTH
-
-        return {
-            "yin_midi": f0_yin_midi,
-            "yin_valid": valid_yin,
-            "yin_idx": sample_idx_yin,
-            "pyin_midi": f0_pyin_midi,
-            "pyin_valid": valid_pyin,
-            "pyin_idx": sample_idx_pyin,
-        }
-
-    def extract_pitch_at_samples(waveform, sample_list):
-        pitches = []
-        for sample in sample_list:
-            segment = waveform[:, sample : sample + YIN_FRAME_LEN]
-            f0_vec = librosa.yin(
-                segment,
-                sr=SAMPLE_RATE,
-                fmin=librosa.note_to_hz("C2"),
-                fmax=librosa.note_to_hz("C7"),
-                frame_length=YIN_FRAME_LEN,
-                hop_length=HOP_LENGTH,
-                center=False,
-            )
-            pitch = librosa.hz_to_midi(f0_vec[0][0])
-            pitches.append(pitch)
-        return pitches
 
     ref_waveform, _ = librosa.load(path_ref_wav, sr=SAMPLE_RATE)
     ref_waveform = ref_waveform.reshape((CHANNELS, -1))  # reshape audio to 2D array
     live_waveform, _ = librosa.load(path_live_wav, sr=SAMPLE_RATE)
     live_waveform = live_waveform.reshape((CHANNELS, -1))  # reshape audio to 2D array
 
-    ref_pitch = extract_yin_and_pyin(ref_waveform)
-    live_pitch = extract_yin_and_pyin(live_waveform)
+    ref_pyin = extract_pyin(ref_waveform)
+    live_pyin = extract_pyin(live_waveform)
 
     ref_samples = (eval_df["baseline time"] * SAMPLE_RATE).astype(int)
-    live_samples = (eval_df["predicted live time"] * SAMPLE_RATE).astype(int)
-
-    eval_df["ref note"] = extract_pitch_at_samples(ref_waveform, ref_samples)
-    eval_df["predicted live note"] = extract_pitch_at_samples(
-        live_waveform, live_samples
-    )
+    warp_samples = (eval_df["predicted live time"] * SAMPLE_RATE).astype(int)
+    live_samples = (eval_df["live time"] * SAMPLE_RATE).astype(int)
+    
+    eval_df["ref note"] = list(map(lambda x: pitch_at_sample(ref_pyin["pyin_midi"], x), ref_samples))
+    eval_df["warp note"] = list(map(lambda x: pitch_at_sample(live_pyin["pyin_midi"], x), warp_samples))
+    eval_df["live note"] = list(map(lambda x: pitch_at_sample(live_pyin["pyin_midi"], x), live_samples))
 
     pd.set_option("display.max_rows", None)
     print(eval_df)
 
     if plot:
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(14, 10), sharex=True)
-        fig.suptitle("YIN vs pYIN Pitch Estimation (Live vs Reference)", fontsize=16)
+        fig.suptitle("pYIN Pitch Estimation (Live vs Reference)", fontsize=16)
         fig.suptitle(
-            f"YIN vs pYIN Pitch Estimation + Points from {FEATURE_NAME} Alignment:\n{path_ref_wav} VS {path_live_wav}",
+            f"pYIN Pitch Estimation + Points from {FEATURE_NAME} Alignment:\n{path_ref_wav} VS {path_live_wav}\n"
+            + f"Frame length: {YIN_FRAME_LEN}, hop length: {HOP_LENGTH}",
             fontsize=14,
         )
 
         # Top: Reference waveform pitch
         ax1.plot(
-            ref_pitch["yin_idx"][ref_pitch["yin_valid"]],
-            ref_pitch["yin_midi"][ref_pitch["yin_valid"]],
-            color="orange",
-            linewidth=1,
-            label="Ref YIN $f_0$",
-        )
-        ax1.plot(
-            ref_pitch["pyin_idx"][ref_pitch["pyin_valid"]],
-            ref_pitch["pyin_midi"][ref_pitch["pyin_valid"]],
+            ref_pyin["pyin_idx"][ref_pyin["pyin_valid"]],
+            ref_pyin["pyin_midi"][ref_pyin["pyin_valid"]],
             color="purple",
             linestyle="--",
             linewidth=1,
@@ -142,15 +106,8 @@ def evaluate_intonation(
 
         # Middle: Live waveform pitch
         ax2.plot(
-            live_pitch["yin_idx"][live_pitch["yin_valid"]],
-            live_pitch["yin_midi"][live_pitch["yin_valid"]],
-            color="orange",
-            linewidth=1,
-            label="Live YIN $f_0$",
-        )
-        ax2.plot(
-            live_pitch["pyin_idx"][live_pitch["pyin_valid"]],
-            live_pitch["pyin_midi"][live_pitch["pyin_valid"]],
+            live_pyin["pyin_idx"][live_pyin["pyin_valid"]],
+            live_pyin["pyin_midi"][live_pyin["pyin_valid"]],
             color="purple",
             linestyle="--",
             linewidth=1,
@@ -159,7 +116,7 @@ def evaluate_intonation(
         )
         ax2.scatter(
             live_samples,
-            eval_df["predicted live note"],
+            eval_df["warp note"],
             color="black",
             s=5,
             label="DTW Live Points",
@@ -187,10 +144,6 @@ def evaluate_intonation(
         ax3.grid(True, linestyle="--", alpha=0.6)
         ax3.legend()
 
-        # Format shared x-axis
-        ax3.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{int(x)}"))
-        ax3.xaxis.set_major_locator(ticker.MultipleLocator(HOP_LENGTH * 5))
-
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         fig.text(
             0.5,
@@ -209,4 +162,4 @@ def evaluate_intonation(
         plt.savefig(save_path)
         plt.show()
 
-    return eval_df, ref_pitch, live_pitch
+    return eval_df, ref_pyin, live_pyin

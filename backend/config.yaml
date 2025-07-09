@@ -25,7 +25,7 @@ diag_weight: 0.75
 max_duration: 600
 
 # Type of feature to use for alignment
-feature_type: "CENS"
+feature_type: "Mel Spec"
 
 # Volume multiplier for solo instrument
 solo_volume_multiplier: 1.05
@@ -53,20 +53,20 @@ skip_playback: true
 # Otherwise, supply all three paths below manually
 
 # Uncomment and set these paths if piece_name is not provided
-path_ref_midi: data/midi/ode_to_joy_baseline.mid
-path_ref_wav: data/audio/ode_to_joy_baseline/300bpm.wav
+path_ref_midi: data/midi/schumann_melody.mid
+path_ref_wav: data/audio/schumann_melody/standard/regular.wav
 
-path_live_midi: data/midi/ode_to_joy_altered.mid
-path_live_wav: data/audio/ode_to_joy_altered/300bpm.wav
+path_live_midi: data/midi/schumann_melody.mid
+path_live_wav: data/audio/schumann_melody/standard/slowing_down.wav
 
 # Logging
-path_log_folder: data/alignments/ode_to_joy
+path_log_folder: data/alignments/schumann_melody
 save_ref_ft: True
 save_live_ft: True
 save_warp: True
 
 # Evaluation CSV - if provided, enable evaluation metrics
-path_alignment_csv: data/alignments/ode_to_joy_300bpm.csv
+path_alignment_csv: data/alignments/schumann_melody.csv
 
 # Column names of evaluation CSV
 align_col_note: "note_pitch"
