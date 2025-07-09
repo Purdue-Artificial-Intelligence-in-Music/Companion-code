@@ -13,9 +13,12 @@ def create_alignment_csv(csv_out_path, ref_mxml_uri):
     tie = []
     midi = []
 
+    ref_ts = []
+    live_ts = []
+
     mxml_parts = _extract_all_parts(mxml_baseline)
     for part in mxml_parts:
-        part_notes = part.flatten().notesAndRests
+        part_notes = part.flatten().notes
         for n in part_notes:
             tie_type = n.tie.type if n.tie else "no"
 
@@ -24,6 +27,9 @@ def create_alignment_csv(csv_out_path, ref_mxml_uri):
             duration.append(n.quarterLength)
             tie.append(tie_type)
             midi.append(n.pitch.midi)
+            ref_ts.append(None)
+            live_ts.append(None)
+
 
     df = pd.DataFrame(
         {
@@ -31,7 +37,9 @@ def create_alignment_csv(csv_out_path, ref_mxml_uri):
             "duration": duration,
             "pitch": pitch,
             "tie": tie,
-            "midi": midi
+            "midi": midi,
+            "ref_ts": ref_ts,
+            "live_ts": live_ts,
         }
     )
 
@@ -106,7 +114,7 @@ def _align_midi_mxml(mxml_df: pd.DataFrame, midi_pm: pretty_midi.PrettyMIDI):
     return midi_ts_seq
 
 if __name__ == "__main__":
-    mxl = "data/musicxml/ode_to_joy_baseline.musicxml"
-    out = "data/alignments/o2j_test.csv"
+    mxl = "data/musicxml/schumann_melody.musicxml"
+    out = "data/alignments/schumann_melody_100bpm.csv"
     create_alignment_csv(out, mxl)
-    populate_alignment_csv(out, "data/midi/ode_to_joy_baseline.mid", "data/midi/ode_to_joy_altered.mid")
+    # populate_alignment_csv(out, "data/midi/ode_to_joy_baseline.mid", "data/midi/ode_to_joy_altered.mid")
