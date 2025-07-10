@@ -1,4 +1,3 @@
-import pretty_midi
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -19,40 +18,6 @@ REF_TEMPO = config.get("ref_tempo")
 FEATURE_NAME = config.get("feature_type", "CENS")
 
 STEP_SIZE = WIN_LENGTH / SAMPLE_RATE  # * (REF_TEMPO / 60) for beats
-
-
-def create_alignment_csv(baseline_file, altered_file, csv_out_path):
-    midi_baseline = pretty_midi.PrettyMIDI(baseline_file)
-    midi_altered = pretty_midi.PrettyMIDI(altered_file)
-    pitch = []
-    baseline_time = []
-
-    for instruments in midi_baseline.instruments:
-        for note in instruments.notes:
-            pitch.append(note.pitch)
-            baseline_time.append(note.start)
-
-    altered_time = []
-    for instruments in midi_altered.instruments:
-        for note in instruments.notes:
-            altered_time.append(note.start)
-
-    df = pd.DataFrame(
-        {
-            "note_pitch": pitch,
-            "baseline_time": baseline_time,
-            "altered_time": altered_time,
-        }
-    )
-
-    df["Serial No."] = df.index
-    df = df[["Serial No.", "note_pitch", "baseline_time", "altered_time"]]
-
-    print(df.head(n=10))
-
-    df.to_csv(csv_out_path, sep=",", index=False)
-    # df.to_csv(midi_out, sep=';', quoting=2, float_format='%.3f', index=False)
-
 
 def calculate_warped_times(warping_path, ref_times):
     # map each baseline note time to live time
