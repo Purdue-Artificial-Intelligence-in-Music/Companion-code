@@ -69,9 +69,9 @@ save_warp: True
 path_alignment_csv: data/alignments/ode_to_joy_300bpm.csv
 
 # Column names of evaluation CSV
-align_col_note: "note_pitch"
-align_col_ref: "baseline_time"
-align_col_live: "altered_time"
+align_col_note: "midi"
+align_col_ref: "ref_ts"
+align_col_live: "live_ts"
 
 # Generate evaluation figures to path_log_folder/figures, if eval metrics enabled
 generate_figures: True

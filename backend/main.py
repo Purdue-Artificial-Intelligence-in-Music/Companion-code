@@ -1,5 +1,5 @@
 import numpy as np
-from backend.src.alignment_eval_tools import evaluate_alignment, analyze_eval_df, plot_eval_df
+from src.alignment_eval_tools import evaluate_alignment, analyze_eval_df, plot_eval_df
 from src.infer_performance_errors import evaluate_intonation
 import os
 import yaml

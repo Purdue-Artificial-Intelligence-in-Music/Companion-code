@@ -56,8 +56,15 @@ def populate_alignment_csv(csv_uri, ref_midi_uri, live_midi_uri=None):
         df["live_ts"] = _align_midi_mxml(df, midi_live)
 
     df.to_csv(csv_uri, sep=",", index=False)
-    #float_format='%.5f'
+
+def mirror_alignment_csv(csv_uri):    
+    df = pd.read_csv(csv_uri)
+    if "ref_ts" not in df:
+        raise ValueError("No ref_ts column to mirror!")
+    df["live_ts"] = df["ref_ts"]
     
+    df.to_csv(csv_uri, sep=",", index=False)
+
 def _extract_all_parts(m21obj):
     parts = []
 
@@ -117,4 +124,9 @@ if __name__ == "__main__":
     mxl = "data/musicxml/schumann_melody.musicxml"
     out = "data/alignments/schumann_melody_100bpm.csv"
     create_alignment_csv(out, mxl)
-    # populate_alignment_csv(out, "data/midi/ode_to_joy_baseline.mid", "data/midi/ode_to_joy_altered.mid")
+
+    # mxl = "data/musicxml/schumann_melody.musicxml"
+    # out = "data/alignments/schumann_melody_new_excerpt.csv"
+    # mirror_alignment_csv(out)
+
+    populate_alignment_csv(out, "data/midi/ode_to_joy_baseline.mid", "data/midi/ode_to_joy_altered.mid")
