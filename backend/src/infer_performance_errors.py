@@ -1,4 +1,4 @@
-from .evaluate_alignment import calculate_warped_times
+from .alignment_eval_tools import calculate_warped_times
 import librosa
 import matplotlib.pyplot as plt
 import numpy as np
