@@ -20,6 +20,23 @@ def convert(filepath: Path):
             ts = m.timeSignature
         bar.append(str(m.number) + "\t" + ts.ratioString)
 
+    # DEALING WITH RESTS
+    index = 0
+    sI = score.flatten().notesAndRests
+    length = len(sI)
+    for n in sI:
+        for p in n.pitches:
+            if index >= length-1:
+                break
+            buffer = index
+            # change all the rests to be absorbed into the previous note
+            while sI[buffer+1].isRest:
+                n.duration.quarterLength = n.duration.quarterLength + sI[buffer+1].duration.quarterLength
+                buffer = buffer + 1
+                if buffer==length-1: 
+                    break
+        index = index + 1
+
     for n in score.flatten().notes:
         for p in n.pitches:
             # if tie type = stop (end of tie) --> skip onset
