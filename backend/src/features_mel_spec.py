@@ -7,8 +7,13 @@ import librosa
 class MelSpecFeatures(Features):
     FEATURE_LEN = 128
 
-    def __init__(self, sr, win_len, num_features=0):
-        super().__init__(sr=sr, win_len=win_len, num_features=num_features)
+    def __init__(self, sr, win_length, hop_length, num_features=0):
+        super().__init__(
+            sr=sr,
+            hop_length=hop_length,
+            win_length=win_length,
+            num_features=num_features,
+        )
 
     def compare_features(self, other, i, j):
         return np.dot(self.get_feature(i), other.get_feature(j))
@@ -18,12 +23,9 @@ class MelSpecFeatures(Features):
         S = librosa.feature.melspectrogram(
             y=y,
             sr=self.sr,
-            S=None,
-            n_fft=self.win_len,
-            hop_length=self.win_len,
-            win_length=self.win_len,
-            window="hann",
-            center=False,
+            n_fft=self.win_length,
+            hop_length=self.win_length,
+            win_length=self.win_length,
             power=1.0,
             n_mels=self.FEATURE_LEN,
         )

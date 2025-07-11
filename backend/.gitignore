@@ -184,3 +184,7 @@ soundfonts/
 
 # output folder
 output/
+
+# debug folder
+data/debug
+data/debug.old

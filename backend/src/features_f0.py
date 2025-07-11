@@ -8,8 +8,13 @@ class F0Features(Features):
     # By defualt, librosa splits y into 5 sections
     FEATURE_LEN = 5
 
-    def __init__(self, sr, win_len, num_features=0):
-        super().__init__(sr=sr, win_len=win_len, num_features=num_features)
+    def __init__(self, sr, hop_length, win_length, num_features=0):
+        super().__init__(
+            sr=sr,
+            hop_length=hop_length,
+            win_length=win_length,
+            num_features=num_features,
+        )
 
     def compare_features(self, other, i, j):
         f1 = self.get_feature(i)
@@ -32,6 +37,8 @@ class F0Features(Features):
             y,
             fmin=librosa.note_to_hz("C2"),
             fmax=librosa.note_to_hz("C7"),
+            frame_length=512,
+            hop_length=256,
             sr=self.sr,
             center=False,
         )

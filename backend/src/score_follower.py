@@ -12,7 +12,7 @@ class ScoreFollower:
 
     Parameters
     ----------
-    reference : str
+    ref_filename : str
         Path to the reference audio file.
     c:  int, optional
         Width of the DTW search window (default: 10).
@@ -49,6 +49,7 @@ class ScoreFollower:
         diag_weight: float = 0.4,
         sample_rate: int = 44100,
         win_length: int = 8192,
+        hop_length: int = 4096,
         features_cls=CENSFeatures,
     ):
         self.sample_rate = sample_rate
@@ -57,8 +58,8 @@ class ScoreFollower:
         self.ref_features = features_cls.from_file(
             filepath=ref_filename,
             sr=sample_rate,
-            win_len=win_length,
-            hop_len=win_length,
+            win_length=win_length,
+            hop_length=hop_length,
         )
 
         # Initialize OTW object
@@ -168,7 +169,7 @@ if __name__ == "__main__":
     source_audio = source_audio[0].reshape((1, -1))
 
     score_follower = ScoreFollower(
-        reference=reference,
+        ref_filename=reference,
         c=50,
         max_run_count=3,
         diag_weight=0.5,

@@ -49,14 +49,18 @@ class CENSFeatures(Features):
 
     FEATURE_LEN = 12
 
-    def __init__(self, sr, n_fft, num_features=0):
+    def __init__(self, sr, win_length, hop_length, num_features=0):
         """Streaming implementation of wave to chroma. Initialize with parameters sr, n_fft. Then
         call cm.insert(y) to insert an audio buffer which must be of length n_fft"""
 
-        super().__init__(sr=sr, win_len=n_fft, num_features=num_features)
+        super().__init__(
+            sr=sr,
+            win_length=win_length,
+            hop_length=hop_length,
+            num_features=num_features,
+        )
 
-        self.sr = sr
-        self.n_fft = n_fft
+        self.n_fft = win_length
 
         # create one time parameters:
         tuning = 0
