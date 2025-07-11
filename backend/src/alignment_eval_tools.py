@@ -20,7 +20,7 @@ FEATURE_NAME = config.get("feature_type", "CENS")
 STEP_SIZE = WIN_LENGTH / SAMPLE_RATE  # * (REF_TEMPO / 60) for beats
 
 def calculate_warped_times(warping_path, ref_times):
-    # map each baseline note time to live time
+    # map each baseline note time to live_ts
     warped_times = []
 
     path_times = warping_path * STEP_SIZE
@@ -71,20 +71,20 @@ def evaluate_alignment(
 
     warping_path = np.array(warping_path)
 
-    # map each baseline note time to live time
+    # map each baseline note time to live_ts
     predicted_times = calculate_warped_times(warping_path, source_df[align_col_ref])
 
     eval_df = pd.DataFrame(
         {
             "note": source_df[align_col_note],
-            "baseline time": source_df[align_col_ref],
-            "predicted live time": predicted_times,
-            "live time": source_df[align_col_live],
+            "ref_ts": source_df[align_col_ref],
+            "warp_ts": predicted_times,
+            "live_ts": source_df[align_col_live],
         }
     )
 
-    eval_df["alignment error"] = eval_df["predicted live time"] - eval_df["live time"]
-    eval_df["live deviation"] = eval_df["live time"] - eval_df["baseline time"]
+    eval_df["alignment error"] = eval_df["warp_ts"] - eval_df["live_ts"]
+    eval_df["live deviation"] = eval_df["live_ts"] - eval_df["ref_ts"]
     return eval_df
 
 
@@ -133,10 +133,10 @@ def plot_eval_df(
     ax2.set_title("Histogram of Alignment Errors")
     ax2.set_ylabel("Frequency")
 
-    # Subplot 3: Baseline vs Live Time
+    # Subplot 3: Baseline vs live_ts
     ax3 = fig.add_subplot(gs[1, 0])
     ax3.plot(eval_df["live deviation"], label="Live Deviation", color="green")
-    ax3.set_title("Live Time - Baseline Time")
+    ax3.set_title("live_ts - ref_ts")
     ax3.set_ylabel("Time (s)")
     ax3.grid(True)
 
@@ -171,7 +171,7 @@ def plot_eval_df(
     ax5.set_xlim(0, max(live_indices))
     ax5.set_ylim(0, max(ref_indices))
     ax5.set_title("Accumulated Cost Matrix with Warping Path")
-    ax5.set_xlabel("Live Time Index")
+    ax5.set_xlabel("live_ts Index")
     ax5.set_ylabel("Reference Time Index")
     ax5.legend()
     ax5.grid(False)

@@ -6,6 +6,7 @@ import pandas as pd
 import yaml
 import os
 from datetime import datetime
+from typing import List
 
 # Load config
 with open("config.yaml", "r") as f:
@@ -20,7 +21,7 @@ HOP_LENGTH = 512
 
 FEATURE_NAME = config.get("feature_type", "CENS")
 
-def extract_pyin(waveform):
+def _extract_pyin(waveform):
     f0_pyin, _, _ = librosa.pyin(
         waveform,
         sr=SAMPLE_RATE,
@@ -40,10 +41,32 @@ def extract_pyin(waveform):
         "pyin_idx": sample_idx_pyin,
     }
 
-def pitch_at_sample(pitches: list, sample: int):
-    window_idx = sample // HOP_LENGTH
-    print(len(pitches), window_idx, pitches[window_idx])
-    return pitches[window_idx]
+def _pitches_at_timestamps(ts_list, pitch_per_window: List[float]):
+    # Convert timestamp -> sample no., sample no. -> window no. using hop len
+    _windows = [int(ts * SAMPLE_RATE) // HOP_LENGTH for ts in ts_list]
+    pitches = []
+
+    for idx in range(0, len(ts_list)):
+        window = _windows[idx]
+        aggregate_len = 10
+
+        if idx + 1 < len(_windows):
+            nxt_win_num = _windows[idx + 1]
+            aggregate_len = (nxt_win_num - window) // 2
+        if window + aggregate_len > len(pitch_per_window):
+            aggregate_len = len(pitch_per_window) - window
+        
+        aggregate = pitch_per_window[window:window+aggregate_len]
+        aggregate = [x for x in aggregate if x is not None and not np.isnan(x)]
+        
+        pitch = np.median(aggregate)
+        print(f"Pitch #{idx}: Window num: {window} -> Direct Pitch: {pitch_per_window[window]}")
+        print(f"Median {pitch}, Aggr {aggregate}")
+        # print(f"... Aggregate length {aggregate_len}, Median /{pitch}")
+
+        pitches.append(pitch)
+
+    return pitches
 
 def evaluate_intonation(
     eval_df: pd.DataFrame,
@@ -58,19 +81,18 @@ def evaluate_intonation(
     live_waveform, _ = librosa.load(path_live_wav, sr=SAMPLE_RATE)
     live_waveform = live_waveform.reshape((CHANNELS, -1))  # reshape audio to 2D array
 
-    ref_pyin = extract_pyin(ref_waveform)
-    live_pyin = extract_pyin(live_waveform)
-
-    ref_samples = (eval_df["baseline time"] * SAMPLE_RATE).astype(int)
-    warp_samples = (eval_df["predicted live time"] * SAMPLE_RATE).astype(int)
-    live_samples = (eval_df["live time"] * SAMPLE_RATE).astype(int)
+    ref_pyin = _extract_pyin(ref_waveform)
+    live_pyin = _extract_pyin(live_waveform)
     
-    eval_df["ref note"] = list(map(lambda x: pitch_at_sample(ref_pyin["pyin_midi"], x), ref_samples))
-    eval_df["warp note"] = list(map(lambda x: pitch_at_sample(live_pyin["pyin_midi"], x), warp_samples))
-    eval_df["live note"] = list(map(lambda x: pitch_at_sample(live_pyin["pyin_midi"], x), live_samples))
+    eval_df["ref note"] = _pitches_at_timestamps(eval_df["ref_ts"], ref_pyin["pyin_midi"])
+    eval_df["warp note"] = _pitches_at_timestamps(eval_df["warp_ts"], live_pyin["pyin_midi"])
+    eval_df["live note"] = _pitches_at_timestamps(eval_df["live_ts"], live_pyin["pyin_midi"])
 
     pd.set_option("display.max_rows", None)
     print(eval_df)
+
+    ref_samples = (eval_df["ref_ts"] * SAMPLE_RATE).astype(int)
+    live_samples = (eval_df["live_ts"] * SAMPLE_RATE).astype(int)
 
     if plot:
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(14, 10), sharex=True)
@@ -129,7 +151,7 @@ def evaluate_intonation(
 
         # Bottom: Note Pitch over Baseline Sample Time
         ax3.plot(
-            eval_df["baseline time"] * SAMPLE_RATE,
+            eval_df["ref_ts"] * SAMPLE_RATE,
             eval_df["note"],
             marker="o",
             linestyle="-",
@@ -140,7 +162,7 @@ def evaluate_intonation(
         )
         ax3.set_ylabel("MIDI Note (Score)")
         ax3.set_xlabel("Sample Index")
-        ax3.set_title("Score Notes over Baseline Time")
+        ax3.set_title("Score Notes over ref_ts")
         ax3.grid(True, linestyle="--", alpha=0.6)
         ax3.legend()
 
