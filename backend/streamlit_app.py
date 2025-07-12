@@ -63,14 +63,20 @@ def generate_plot(warping_path, acc_cost_matrix, save_path):
     # plt.show()
 
 
-results = get_results()
-
-selected_result = st.sidebar.selectbox("Select a result", results, index=None)
+selected_result = st.sidebar.selectbox("Select a result", get_results(), index=None)
 
 if selected_result is not None:
     st.header(f"Showing result: {selected_result}")
 
     result_dir = os.path.join(RESULTS_DIR, selected_result)
+
+    params_path = os.path.join(result_dir, "params.json")
+    if os.path.exists(params_path):
+        with open(params_path, "r") as f:
+            params = json.load(f)
+        st.write("Parameters:")
+        st.json(params)
+
     subfolders = [
         d for d in os.listdir(result_dir) if os.path.isdir(os.path.join(result_dir, d))
     ]
@@ -109,6 +115,20 @@ else:
     if st.button("Run"):
         timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         result_dir = os.path.join(RESULTS_DIR, timestamp)
+        os.makedirs(result_dir, exist_ok=True)
+
+        params = {
+            "ref_path": ref_path,
+            "live_path": live_path,
+            "sample_rate": sample_rate,
+            "win_length": win_length,
+            "hop_length": hop_length,
+            "max_run_count": max_run_count,
+            "diag_weight": diag_weight,
+        }
+        params_path = os.path.join(result_dir, "params.json")
+        with open(params_path, "w") as f:
+            json.dump(params, f, indent=4)
 
         live_audio, _ = librosa.load(live_path, sr=sample_rate)
         live_audio = live_audio.reshape((1, -1))  # reshape soloist audio to 2D array
