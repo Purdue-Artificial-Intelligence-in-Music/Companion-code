@@ -25,7 +25,7 @@ diag_weight: 0.75
 max_duration: 600
 
 # Type of feature to use for alignment
-feature_type: "Mel Spec"
+feature_type: "CENS"
 
 # Volume multiplier for solo instrument
 solo_volume_multiplier: 1.05
@@ -37,10 +37,10 @@ accomp_instr_index: 0
 accomp_program_num: 1
 
 # Tempo at which the user plans to play in BPM (Comment out to infer from ref file)
-ref_tempo: 300
+ref_tempo: 100
 
 # Tempo at which the user actually plays in BPM (Comment out to infer from ref_tempo)
-live_tempo: 300
+live_tempo: 100
 
 # Set to true to use microphone input, false to use prerecorded soloist audio
 use_mic: false
@@ -54,19 +54,19 @@ skip_playback: true
 
 # Uncomment and set these paths if piece_name is not provided
 path_ref_midi: data/midi/schumann_melody.mid
-path_ref_wav: data/audio/schumann_melody/standard/regular.wav
+path_ref_wav: data/audio/schumann_melody/4sec/ref.wav
 
 path_live_midi: data/midi/schumann_melody.mid
-path_live_wav: data/audio/schumann_melody/standard/slowing_down.wav
+path_live_wav: data/audio/schumann_melody/4sec/live.wav
 
 # Logging
-path_log_folder: data/alignments/schumann_melody
+path_log_folder: data/alignments/schumann_melody/4sec
 save_ref_ft: True
 save_live_ft: True
 save_warp: True
 
 # Evaluation CSV - if provided, enable evaluation metrics
-path_alignment_csv: data/alignments/schumann_melody.csv
+path_alignment_csv: data/alignments/schumann_melody_4sec.csv
 
 # Column names of evaluation CSV
 align_col_note: "midi"

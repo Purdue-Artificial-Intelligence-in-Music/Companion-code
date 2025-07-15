@@ -16,7 +16,7 @@ SAMPLE_RATE = config.get("sample_rate")
 CHANNELS = config.get("channels", 1)
 REF_TEMPO = config.get("ref_tempo")
 
-YIN_FRAME_LEN = 512
+YIN_FRAME_LEN = 1024
 HOP_LENGTH = 512
 
 FEATURE_NAME = config.get("feature_type", "CENS")
