@@ -4,7 +4,7 @@ import math
 import pandas as pd
 import pretty_midi
 
-def create_alignment_csv(csv_out_path, ref_mxml_uri):
+def create_alignment_csv(csv_out_uri, ref_mxml_uri):
     mxml_baseline = converter.parse(ref_mxml_uri)
     
     beat = []
@@ -43,7 +43,7 @@ def create_alignment_csv(csv_out_path, ref_mxml_uri):
         }
     )
 
-    df.to_csv(csv_out_path, sep=",", index=False)
+    df.to_csv(csv_out_uri, sep=",", index=False)
 
 def populate_alignment_csv(csv_uri, ref_midi_uri, live_midi_uri=None):
     df = pd.read_csv(csv_uri)
@@ -56,6 +56,21 @@ def populate_alignment_csv(csv_uri, ref_midi_uri, live_midi_uri=None):
         df["live_ts"] = _align_midi_mxml(df, midi_live)
 
     df.to_csv(csv_uri, sep=",", index=False)
+
+    
+def convert_old_csv(csv_uri, out_uri, ref_mxml_uri):
+    create_alignment_csv(out_uri, ref_mxml_uri)
+
+    df_old = pd.read_csv(csv_uri)
+    df_new = pd.read_csv(out_uri)
+
+    ref_ts = df_old["baseline_time"]
+    live_ts = df_old["altered_time"]
+
+    df_new["ref_ts"] = ref_ts
+    df_new["live_ts"] = live_ts
+
+    df_new.to_csv(out_uri, sep=",", index=False)
 
 def mirror_alignment_csv(csv_uri):    
     df = pd.read_csv(csv_uri)
@@ -119,6 +134,7 @@ def _align_midi_mxml(mxml_df: pd.DataFrame, midi_pm: pretty_midi.PrettyMIDI):
                 midi_ts_seq.append(note.start)
 
     return midi_ts_seq
+
 
 if __name__ == "__main__":
     mxl = "data/musicxml/schumann_melody.musicxml"
