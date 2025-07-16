@@ -93,15 +93,13 @@ def _align_midi_mxml(mxml_df: pd.DataFrame, midi_pm: pretty_midi.PrettyMIDI):
                 mxml_dur = 0.0
                 mxl_tie_durs = []
                 
-                while True:
+                while mxml_df["tie"][mxml_idx] in ["start", "continue", "stop"]:
                     mxml_dur += mxml_df["duration"][mxml_idx]
                     mxl_tie_durs.append(mxml_df["duration"][mxml_idx])
-                    if mxml_df["tie"][mxml_idx] == "stop":
-                        break
                     mxml_idx += 1
-
+                    
                 mxl_tie_ratios = [td / mxml_dur for td in mxl_tie_durs]
-                print(mxl_tie_ratios)
+                print("Splitting tied note according to ratios", mxl_tie_ratios)
                 nxt_note = instruments.notes[midi_idx + 1]
                 midi_dur = nxt_note.start - note.start
                 interp_start = note.start
