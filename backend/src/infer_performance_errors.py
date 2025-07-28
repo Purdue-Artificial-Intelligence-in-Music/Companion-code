@@ -1,5 +1,6 @@
 import librosa
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import yaml
@@ -106,10 +107,10 @@ def evaluate_intonation(
     path_log_folder: str,
 ):
 
-    ref_waveform, _ = librosa.load(path_ref_wav, sr=SAMPLE_RATE)
-    ref_waveform = ref_waveform.reshape((CHANNELS, -1))  # reshape audio to 2D array
-    live_waveform, _ = librosa.load(path_live_wav, sr=SAMPLE_RATE)
-    live_waveform = live_waveform.reshape((CHANNELS, -1))  # reshape audio to 2D array
+    ref_waveform_raw, _ = librosa.load(path_ref_wav, sr=SAMPLE_RATE)
+    ref_waveform = ref_waveform_raw.reshape((CHANNELS, -1))  # reshape audio to 2D array
+    live_waveform_raw, _ = librosa.load(path_live_wav, sr=SAMPLE_RATE)
+    live_waveform = live_waveform_raw.reshape((CHANNELS, -1))  # reshape audio to 2D array
 
     ref_pyin = extract_pyin(ref_waveform)
     live_pyin = extract_pyin(live_waveform)
@@ -133,12 +134,13 @@ def evaluate_intonation(
     live_samples = (eval_df["live_ts"] * SAMPLE_RATE).astype(int)
 
     if plot:
+        trim_df = eval_df[:-5].copy()
         # plot_f0_align(ref_pyin, live_pyin, ref_samples, live_samples, eval_df, path_ref_wav, path_live_wav, path_log_folder)
-        plot_intonation(eval_df, ref_waveform, "ref_ts", "note")
+        plot_intonation(trim_df, ref_waveform_raw, "ref_ts", "ref note deviation", "note")
  
     return eval_df, ref_pyin, live_pyin
 
-def plot_intonation(eval_df, ref_y, onset_col, pitch_col):
+def plot_intonation(eval_df, ref_y, onset_col, intonation_col, note_col):
     plot_df = eval_df.copy(deep=True)
 
     # === LOAD AUDIO ===
@@ -148,35 +150,63 @@ def plot_intonation(eval_df, ref_y, onset_col, pitch_col):
 
     # === INFER OFFSETS ===
     offsets = list(plot_df[onset_col].shift(-1))
-    offsets[-1] = duration
+    if len(offsets) > 1:
+        offsets[-1] = offsets[-2]  # Use second-to-last offset as final
+    else:
+        offsets[-1] = duration     # Fallback
     plot_df["offset"] = offsets
-    
-    # === PLOT SETUP: 3 vertical panels ===
-    fig, (ax0, ax1, ax2) = plt.subplots(3, 1, sharex=True, figsize=(14, 8),
-                                        gridspec_kw={'height_ratios': [1, 3, 1]})
 
-    # --- Top: Alignment Error and Sequence Difference  ---
-    # Stem plot for alignment error
-    ax0.stem(plot_df[onset_col], plot_df['alignment error'], basefmt=" ", linefmt='gray', markerfmt='ko', label='Alignment Error')
-    # Scatter plot for true alignment
-    ax0.scatter(plot_df['sequence diff'], [0]*len(plot_df), color='blue', marker='|', s=100, label='Sequence Difference')
-    ax0.axhline(0, color='black', linewidth=0.5, linestyle='--')
+    # === FIGURE SETUP: 5 equal-height subplots ===
+    fig, (ax0, ax1, ax2, ax3, ax4) = plt.subplots(
+        5, 1, sharex=True, figsize=(14, 10),
+        gridspec_kw={'height_ratios': [1, 1, 1, 1, 1]}
+    )
+
+    # Set 5-second ticks for all x-axes
+    for ax in [ax0, ax1, ax2, ax3, ax4]:
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
+        ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax.tick_params(labelbottom=True)
+        ax.grid(True)
+
+    # --- 1. Alignment Error ---
+    ax0.plot(plot_df[onset_col], plot_df['alignment error'], label='Alignment Error', color='red')
+    ax0.axhline(0, color='black', linestyle='--', linewidth=0.5)
     ax0.set_ylabel('Error (s)')
-    ax0.set_title('Alignment Error vs Sequence Difference')
+    ax0.set_title('Alignment Error')
     ax0.legend(loc='upper right')
 
-    # --- Middle: Spectrogram ---
-    librosa.display.specshow(S_dB, sr=SAMPLE_RATE, hop_length=HOP_LENGTH, x_axis='time', y_axis='log', ax=ax1)
-    ax1.set_title('Spectrogram (log scale)')
-    ax1.set_ylabel('Frequency (Hz)')
+    # --- 2. Sequence Difference ---
+    ax1.plot(plot_df[onset_col], plot_df['sequence diff'], label='ΔSeq (s)', color='blue')
+    ax1.axhline(0, color='black', linestyle='--', linewidth=0.5)
+    ax1.set_ylabel('ΔSeq (s)')
+    ax1.set_title('Sequence Difference')
+    ax1.legend(loc='upper right')
 
-    # --- Bottom: Piano Roll ---
+    # --- 3. Spectrogram ---
+    librosa.display.specshow(S_dB, sr=SAMPLE_RATE, hop_length=HOP_LENGTH,
+                             x_axis='time', y_axis='log', ax=ax2)
+    ax2.set_title('Performance Spectrogram')
+    ax2.set_ylabel('Freq (Hz)')
+    ax2.set_xlabel('')
+    ax2.set_yticks([])
+
+    # --- 4. Intonation Mistakes ---
+    ax3.plot(plot_df[onset_col], plot_df[intonation_col], color='green', label='ΔPitch')
+    ax3.axhline(0, color='black', linestyle='--', linewidth=0.5)
+    ax3.set_ylabel('ΔPitch')
+    ax3.set_title('Intonation Mistakes')
+    ax3.legend(loc='upper right')
+
+    # --- 5. Piano Roll (note_col) ---
+    note_min = plot_df[note_col].min() - 1
+    note_max = plot_df[note_col].max() + 1
     for _, row in plot_df.iterrows():
-        ax2.hlines(y=row[pitch_col], xmin=row[onset_col], xmax=row['offset'], color='red', linewidth=2)
-    ax2.set_ylabel('MIDI Pitch')
-    ax2.set_xlabel('Time (s)')
-    ax2.set_ylim(0, 128)
-    ax2.set_title('Inferred MIDI Piano Roll')
+        ax4.hlines(y=row[note_col], xmin=row[onset_col], xmax=row['offset'], color='red', linewidth=2)
+    ax4.set_ylabel('Note (pitch)')
+    ax4.set_xlabel('Time (s)')
+    ax4.set_ylim(note_min, note_max)
+    ax4.set_title('Expected Notes')
 
     plt.tight_layout()
     plt.show()
