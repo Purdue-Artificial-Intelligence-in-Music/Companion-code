@@ -16,8 +16,8 @@ SAMPLE_RATE = config.get("sample_rate")
 CHANNELS = config.get("channels", 1)
 REF_TEMPO = config.get("ref_tempo")
 
-YIN_FRAME_LEN = 1024
-HOP_LENGTH = 512
+YIN_FRAME_LEN = 1024 
+HOP_LENGTH = YIN_FRAME_LEN // 4 
 
 FEATURE_NAME = config.get("feature_type", "CENS")
 
@@ -41,7 +41,7 @@ def _extract_pyin(waveform):
         "pyin_idx": sample_idx_pyin,
     }
 
-def _pitches_at_timestamps(ts_list, pitch_per_window: List[float]):
+def _pitches_at_timestamps(ts_list, pitch_per_window: List[float], midi_pitch: List[float], logging: bool):
     # Convert timestamp -> sample no., sample no. -> window no. using hop len
     _windows = [int(ts * SAMPLE_RATE) // HOP_LENGTH for ts in ts_list]
     pitches = []
@@ -55,13 +55,24 @@ def _pitches_at_timestamps(ts_list, pitch_per_window: List[float]):
             aggregate_len = (nxt_win_num - window) // 2
         if window + aggregate_len > len(pitch_per_window):
             aggregate_len = len(pitch_per_window) - window
-        
+
+        # delay start only
+        # window_start = window + 2 # 2 as the offset?
+        # aggregate = pitch_per_window[window_start:window+aggregate_len]
+
+        # original aggregate
         aggregate = pitch_per_window[window:window+aggregate_len]
-        aggregate = [x for x in aggregate if x is not None and not np.isnan(x)]
+        # aggregate = [x for x in aggregate if x is not None and not np.isnan(x)]
+
+        # threshold of 2 semitones
+        aggregate = [x for x in aggregate if x is not None and not np.isnan(x) and abs(midi_pitch[idx] - x) <= 2]
         
         pitch = np.median(aggregate)
-        print(f"Pitch #{idx}: Window num: {window} -> Direct Pitch: {pitch_per_window[window]}")
-        print(f"Median {pitch}, Aggr {aggregate}")
+
+        if logging:
+            print(f"Pitch #{idx}: Window num: {window} -> Direct Pitch: {pitch_per_window[window]}")
+            print(f"Median {pitch}, Aggr {aggregate}")
+            print("Midi Pitch: ", midi_pitch[idx])
         # print(f"... Aggregate length {aggregate_len}, Median /{pitch}")
 
         pitches.append(pitch)
@@ -84,9 +95,17 @@ def evaluate_intonation(
     ref_pyin = _extract_pyin(ref_waveform)
     live_pyin = _extract_pyin(live_waveform)
     
-    eval_df["ref note"] = _pitches_at_timestamps(eval_df["ref_ts"], ref_pyin["pyin_midi"])
-    eval_df["warp note"] = _pitches_at_timestamps(eval_df["warp_ts"], live_pyin["pyin_midi"])
-    eval_df["live note"] = _pitches_at_timestamps(eval_df["live_ts"], live_pyin["pyin_midi"])
+    eval_df["ref note"] = _pitches_at_timestamps(eval_df["ref_ts"], ref_pyin["pyin_midi"], eval_df['note'], True)
+    eval_df["warp note"] = _pitches_at_timestamps(eval_df["warp_ts"], live_pyin["pyin_midi"], eval_df['note'], False)
+    eval_df["live note"] = _pitches_at_timestamps(eval_df["live_ts"], live_pyin["pyin_midi"], eval_df['note'], False)
+    eval_df["ref note deviation"] = eval_df["note"] - eval_df["ref note"]
+    eval_df['ref note deviation'] = eval_df['ref note deviation'].apply(lambda x: float("{:.5f}".format(x)))
+    #f'{a:.20f}'
+
+    print(f"mean: {np.mean(eval_df['ref note deviation'])} seconds")
+    print(f"median: {np.nanmedian(eval_df['ref note deviation'])} seconds")
+    print(f"standard deviation: {np.std(eval_df['ref note deviation'])} seconds")
+    print(f"variation: {np.var(eval_df['ref note deviation'])} seconds")
 
     pd.set_option("display.max_rows", None)
     print(eval_df)
