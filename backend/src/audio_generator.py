@@ -262,16 +262,31 @@ class AudioGenerator:
 
 if __name__ == "__main__":
     # Example usage:
-    base_dir = Path(__file__).parent
-    score = os.path.join("data", "midi", "twinkle_twinkle.mid")
-    output_dir = os.path.join("data", "audio", "twinkle_twinkle", "100bpm")
     SAMPLE_RATE = 44100
-    TEMPO = 100
+    base_dir = Path(__file__).parent
 
-    try:
-        generator = AudioGenerator(score_path=score)
-        generator.generate_audio(
-            output_dir=output_dir, tempo=TEMPO, sample_rate=SAMPLE_RATE
-        )
-    except Exception as e:
-        logger.error(e)
+    # try:
+    #     generator = AudioGenerator(score_path=score)
+    #     generator.generate_audio(
+    #         output_dir=output_dir, tempo=TEMPO, sample_rate=SAMPLE_RATE
+    #     )
+    # except Exception as e:
+    #     logger.error(e)
+
+    tempo = 100
+    score = "data/tmp/aotgs_solo_ref.mid"
+    out = "data/tmp/aotgs_solo_ref.wav"
+
+    generator = AudioGenerator(score_path=score)
+    generator.generate_solo(
+        output_file=out, tempo=tempo, instrument_index=0
+    )
+
+    tempo = 100
+    score = "data/tmp/aotgs_solo_live.mid"
+    out = "data/tmp/aotgs_solo_live.wav"
+
+    generator = AudioGenerator(score_path=score)
+    generator.generate_solo(
+        output_file=out, tempo=tempo, instrument_index=0
+    )

@@ -84,7 +84,7 @@ def evaluate_alignment(
     )
 
     eval_df["alignment error"] = eval_df["warp_ts"] - eval_df["live_ts"]
-    eval_df["live deviation"] = eval_df["live_ts"] - eval_df["ref_ts"]
+    eval_df["sequence diff"] = eval_df["live_ts"] - eval_df["ref_ts"]
     return eval_df
 
 
@@ -135,7 +135,7 @@ def plot_eval_df(
 
     # Subplot 3: Baseline vs live_ts
     ax3 = fig.add_subplot(gs[1, 0])
-    ax3.plot(eval_df["live deviation"], label="Live Deviation", color="green")
+    ax3.plot(eval_df["sequence diff"], label="sequence diff", color="green")
     ax3.set_title("live_ts - ref_ts")
     ax3.set_ylabel("Time (s)")
     ax3.grid(True)
@@ -196,19 +196,18 @@ def plot_eval_df(
     plt.show()
 
 if __name__ == "__main__":
-    warping_path_path = "data/alignments/ode_to_joy/typescript_o2j_warping_path.json"
-    alignment_csv_path = config.get("path_alignment_csv")
+    warping_path_path = "data/alignments/ode_to_joy/ts_CENS_warping_path.json"
+    alignment_csv_path = "data/alignments/ode_to_joy_300bpm.csv"
+    path_log_folder = "data/YOU_DECIDE"
     
     with open(warping_path_path, 'r') as file:
         warping_path = json.load(file)
     
-    print("Checkpoint", config.get("path_align_csv"))
-
     eval_df = evaluate_alignment(warping_path,
                                  path_alignment_csv=alignment_csv_path,
-                                 align_col_note="note_pitch",
-                                 align_col_ref="baseline_time",
-                                 align_col_live="altered_time")
+                                 align_col_note="midi",
+                                 align_col_ref="ref_ts",
+                                 align_col_live="live_ts")
 
     filename = os.path.splitext(os.path.basename(warping_path_path))[0]
     
@@ -220,6 +219,5 @@ if __name__ == "__main__":
                  feature_name=f"[UNKNOWN] {filename}",
                  path_log_folder=config.get("path_log_folder"),
                  override_filename=filename)
-
     
 
