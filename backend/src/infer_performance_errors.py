@@ -15,8 +15,8 @@ SAMPLE_RATE = config.get("sample_rate")
 CHANNELS = config.get("channels", 1)
 REF_TEMPO = config.get("ref_tempo")
 
-YIN_FRAME_LEN = 1024
-HOP_LENGTH = 512
+YIN_FRAME_LEN = 1024 
+HOP_LENGTH = YIN_FRAME_LEN // 4 
 
 FEATURE_NAME = config.get("feature_type", "CENS")
 
@@ -60,7 +60,7 @@ def extract_pyin(waveform):
         "pyin_idx": sample_idx_pyin,
     }
 
-def pitches_at_timestamps(ts_list, pitch_per_window: List[float]):
+def pitches_at_timestamps(ts_list, pitch_per_window: List[float], score_pitches: List[float],  logging: bool):
     # Convert timestamp -> sample no., sample no. -> window no. using hop len
     _windows = [int(ts * SAMPLE_RATE) // HOP_LENGTH for ts in ts_list]
     pitches = []
@@ -74,13 +74,24 @@ def pitches_at_timestamps(ts_list, pitch_per_window: List[float]):
             aggregate_len = (nxt_win_num - window) // 2
         if window + aggregate_len > len(pitch_per_window):
             aggregate_len = len(pitch_per_window) - window
-        
+
+        # delay start only
+        # window_start = window + 2 # 2 as the offset?
+        # aggregate = pitch_per_window[window_start:window+aggregate_len]
+
+        # original aggregate
         aggregate = pitch_per_window[window:window+aggregate_len]
-        aggregate = [x for x in aggregate if x is not None and not np.isnan(x)]
+        # aggregate = [x for x in aggregate if x is not None and not np.isnan(x)]
+
+        # threshold of 2 semitones
+        aggregate = [x for x in aggregate if x is not None and not np.isnan(x) and abs(score_pitches[idx] - x) <= 2]
         
         pitch = np.median(aggregate)
-        print(f"Pitch #{idx}: Window num: {window} -> Direct Pitch: {pitch_per_window[window]}")
-        print(f"Median {pitch}, Aggr {aggregate}")
+
+        if logging:
+            print(f"Pitch #{idx}: Window num: {window} -> Direct Pitch: {pitch_per_window[window]}")
+            print(f"Median {pitch}, Aggr {aggregate}")
+            print("Score Pitch: ", score_pitches[idx])
         # print(f"... Aggregate length {aggregate_len}, Median /{pitch}")
 
         pitches.append(pitch)
@@ -102,10 +113,18 @@ def evaluate_intonation(
 
     ref_pyin = extract_pyin(ref_waveform)
     live_pyin = extract_pyin(live_waveform)
+    
+    eval_df["ref note"] = pitches_at_timestamps(eval_df["ref_ts"], ref_pyin["pyin_midi"], eval_df['note'], True) # type: ignore
+    eval_df["warp note"] = pitches_at_timestamps(eval_df["warp_ts"], live_pyin["pyin_midi"], eval_df['note'], False) # type: ignore
+    eval_df["live note"] = pitches_at_timestamps(eval_df["live_ts"], live_pyin["pyin_midi"], eval_df['note'], False) # type: ignore
+    eval_df["ref note deviation"] = eval_df["note"] - eval_df["ref note"]
+    eval_df['ref note deviation'] = eval_df['ref note deviation'].apply(lambda x: float("{:.5f}".format(x)))
+    #f'{a:.20f}'
 
-    eval_df["ref note"] = pitches_at_timestamps(eval_df["ref_ts"], ref_pyin["pyin_midi"])
-    eval_df["warp note"] = pitches_at_timestamps(eval_df["warp_ts"], live_pyin["pyin_midi"])
-    eval_df["live note"] = pitches_at_timestamps(eval_df["live_ts"], live_pyin["pyin_midi"])
+    print(f"mean: {np.mean(eval_df['ref note deviation'])} seconds")
+    print(f"median: {np.nanmedian(eval_df['ref note deviation'])} seconds")
+    print(f"standard deviation: {np.std(eval_df['ref note deviation'])} seconds")
+    print(f"variation: {np.var(eval_df['ref note deviation'])} seconds")
 
     pd.set_option("display.max_rows", None)
     print(eval_df[['note', 'ref_ts', 'ref note']])
@@ -115,13 +134,11 @@ def evaluate_intonation(
 
     if plot:
         # plot_f0_align(ref_pyin, live_pyin, ref_samples, live_samples, eval_df, path_ref_wav, path_live_wav, path_log_folder)
-        plot_intonation(eval_df, ref_waveform)
+        plot_intonation(eval_df, ref_waveform, "ref_ts", "note")
  
     return eval_df, ref_pyin, live_pyin
 
-def plot_intonation(eval_df, ref_y):
-    onset_label = 'onset'
-    pitch_label = 'pitch'
+def plot_intonation(eval_df, ref_y, onset_col, pitch_col):
     plot_df = eval_df.copy(deep=True)
 
     # === LOAD AUDIO ===
@@ -130,7 +147,7 @@ def plot_intonation(eval_df, ref_y):
     S_dB = librosa.amplitude_to_db(np.abs(S), ref=np.max)
 
     # === INFER OFFSETS ===
-    offsets = list(plot_df[onset_label].shift(-1))
+    offsets = list(plot_df[onset_col].shift(-1))
     offsets[-1] = duration
     plot_df["offset"] = offsets
     
@@ -140,7 +157,7 @@ def plot_intonation(eval_df, ref_y):
 
     # --- Top: Alignment Error and Sequence Difference  ---
     # Stem plot for alignment error
-    ax0.stem(plot_df[onset_label], plot_df['alignment error'], basefmt=" ", linefmt='gray', markerfmt='ko', label='Alignment Error')
+    ax0.stem(plot_df[onset_col], plot_df['alignment error'], basefmt=" ", linefmt='gray', markerfmt='ko', label='Alignment Error')
     # Scatter plot for true alignment
     ax0.scatter(plot_df['sequence diff'], [0]*len(plot_df), color='blue', marker='|', s=100, label='Sequence Difference')
     ax0.axhline(0, color='black', linewidth=0.5, linestyle='--')
@@ -155,7 +172,7 @@ def plot_intonation(eval_df, ref_y):
 
     # --- Bottom: Piano Roll ---
     for _, row in plot_df.iterrows():
-        ax2.hlines(y=row[pitch_label], xmin=row[onset_label], xmax=row['offset'], color='red', linewidth=2)
+        ax2.hlines(y=row[pitch_col], xmin=row[onset_col], xmax=row['offset'], color='red', linewidth=2)
     ax2.set_ylabel('MIDI Pitch')
     ax2.set_xlabel('Time (s)')
     ax2.set_ylim(0, 128)
