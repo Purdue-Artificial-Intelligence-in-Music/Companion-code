@@ -12,52 +12,51 @@ with open("config.yaml", "r") as f:
     config = yaml.safe_load(f)
 
 SAMPLE_RATE = config.get("sample_rate")
+HOP_LENGTH = config.get("hop_length")
 WIN_LENGTH = config.get("win_length")
 REF_TEMPO = config.get("ref_tempo")
 
 FEATURE_NAME = config.get("feature_type", "CENS")
 
-STEP_SIZE = WIN_LENGTH / SAMPLE_RATE  # * (REF_TEMPO / 60) for beats
+STEP_SIZE = HOP_LENGTH / SAMPLE_RATE  # * (REF_TEMPO / 60) for beats
+
+import numpy as np
 
 def calculate_warped_times(warping_path, ref_times):
-    # map each baseline note time to live_ts
-    warped_times = []
+    step_size = HOP_LENGTH / SAMPLE_RATE
+    ref_ts  = warping_path[:,0].astype(float) * step_size
+    live_ts = warping_path[:,1].astype(float) * step_size
 
-    path_times = warping_path * STEP_SIZE
+    order = np.argsort(ref_ts, kind="stable")
+    ref_ts  = ref_ts[order]
+    live_ts = live_ts[order]
 
-    ref_path_times = path_times[:, 0]
-    live_path_times = path_times[:, 1]
-
-    for query_time in ref_times:
-        diffs = ref_path_times - query_time
-        idx = np.argmin(np.abs(diffs))  # find closest step in warping path to ref_time
-
-        if diffs[idx] >= 0 and idx > 0:
-            left_idx = idx - 1
-            right_idx = idx
-        elif idx + 1 < len(live_path_times):
-            left_idx = idx
-            right_idx = idx + 1
-        else:
-            left_idx = right_idx = idx
-
-        if left_idx == right_idx:
-            warped_times.append(live_path_times[left_idx])
+    warp_times = []
+    for q in ref_times:
+        # Boundary check
+        if q <= ref_ts[0]:
+            warp_times.append(live_ts[0])
+            continue
+        if q >= ref_ts[-1]:
+            warp_times.append(live_ts[-1])
             continue
 
-        query_ref_offset = query_time - ref_path_times[left_idx]  # must be positive
+        # Find enclosing segment
+        right_idx = np.searchsorted(ref_ts, q, side="right")
+        left_idx = right_idx - 1
 
-        query_offset_norm = query_ref_offset
-        if query_ref_offset != 0:
-            query_offset_norm = query_offset_norm / STEP_SIZE
+        lRef, rRef = ref_ts[left_idx], ref_ts[right_idx]
+        lLive, rLive = live_ts[left_idx], live_ts[right_idx]
 
-        live_max_offset = live_path_times[right_idx] - live_path_times[left_idx]
-        query_offset_live = live_max_offset * query_offset_norm
+        # Interpolate (or clamp if degenerate)
+        if rRef == lRef:
+            # degenerate / ref stalled
+            warp_times.append((lLive+rLive) / 2)
+        else:
+            alpha = (q - lRef) / (rRef - lRef)
+            warp_times.append(lLive + alpha * (rLive - lLive))
 
-        live_time = live_path_times[left_idx] + query_offset_live
-        warped_times.append(live_time)
-
-    return warped_times
+    return warp_times
 
 
 def evaluate_alignment(
